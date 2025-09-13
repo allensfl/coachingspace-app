@@ -1,0 +1,1 @@
+export const FONT_INTER_BOLD = `AAEAAAARAQAABAAQRFNJRwAAAAEAA... (truncated)`;
