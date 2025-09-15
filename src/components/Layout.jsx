@@ -3,7 +3,6 @@ import { NavLink, Link, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, CheckSquare, Briefcase, LifeBuoy, Store, Menu, X, Command, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useAppStateContext } from '@/context/AppStateContext';
 
 // Akzentfarbe je Navitem (bei Aktivität)
@@ -105,7 +104,6 @@ const Header = ({ setMobileSidebarOpen }) => {
                 <h1 className="text-xl font-semibold text-foreground">{title}</h1>
             </div>
             <div className="flex items-center gap-2">
-                <ThemeToggle />
             </div>
         </header>
     );

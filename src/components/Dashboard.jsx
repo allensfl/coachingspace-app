@@ -6,16 +6,33 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpRight, Users, Calendar, FileText, PackagePlus, ClipboardCheck, CheckCircle2 } from 'lucide-react';
-import TaskManager from '@/components/TaskManager';
+import {
+  ArrowUpRight,
+  Users,
+  Calendar,
+  FileText,
+  PackagePlus,
+  ClipboardCheck,
+  CheckCircle2,
+  AlertTriangle,
+  Gift,
+  Plus,
+  StickyNote,
+  Receipt,
+  Bell,
+  MessageCircle
+} from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
-import { isToday, startOfToday } from 'date-fns';
+import OpenInvoices from './OpenInvoices';
+import EventsAndBirthdays from './EventsAndBirthdays';
+import QuickActions from './QuickActions';
+import CalendarOverview from './CalendarOverview';
 
 // StatCard mit Akzentfarben für Icons und Rand
 const StatCard = ({ title, value, icon, to, colorClass }) => {
   return (
-    <motion.div 
-      whileHover={{ y: -8, scale: 1.03 }} 
+    <motion.div
+      whileHover={{ y: -8, scale: 1.03 }}
       whileTap={{ scale: 0.98 }}
       className="h-full"
     >
@@ -41,165 +58,262 @@ const StatCard = ({ title, value, icon, to, colorClass }) => {
 
 // Formatdatum-Helfer
 const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    if (isNaN(date)) return 'N/A';
-    return new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', timeStyle: 'short' }).format(date);
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  if (date.toDateString() === today.toDateString()) {
+    return 'Heute';
+  } else if (date.toDateString() === tomorrow.toDateString()) {
+    return 'Morgen';
+  } else {
+    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  }
 };
 
-const TodaysTasks = () => {
-  const { state, actions } = useAppStateContext();
-  const { tasks } = state;
-  const { setTasks } = actions;
+export default function Dashboard() {
+  const { 
+    sessions = [], 
+    coachees = [], 
+    tasks = [], 
+    updateTask,
+    packages = []
+  } = useAppStateContext();
 
+  // Sessions für die nächsten 3 Tage
+  const upcomingSessions = useMemo(() => {
+    if (!sessions) return [];
+    const today = new Date();
+    const threeDaysLater = new Date(today);
+    threeDaysLater.setDate(today.getDate() + 3);
+    
+    return sessions
+      .filter(session => {
+        const sessionDate = new Date(session.date);
+        return sessionDate >= today && sessionDate <= threeDaysLater;
+      })
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(0, 5);
+  }, [sessions]);
+
+  // Persönliche Tasks für heute (neue Struktur)
   const todaysTasks = useMemo(() => {
-    const today = startOfToday();
-    return (tasks || []).filter(task => task.dueDate && isToday(new Date(task.dueDate)) && !task.completed);
+    if (!tasks) return [];
+    const today = new Date().toDateString();
+    return tasks.filter(task => {
+      if (!task.faelligkeitsdatum) return false;
+      const taskDate = new Date(task.faelligkeitsdatum).toDateString();
+      return taskDate === today && !task.abgeschlossen && !task.zugewiesenAn;
+    });
   }, [tasks]);
 
+  // Coachee-Deadlines für heute (neue Struktur)
+  const coacheeDeadlines = useMemo(() => {
+    if (!tasks) return [];
+    const today = new Date().toDateString();
+    return tasks.filter(task => {
+      if (!task.faelligkeitsdatum) return false;
+      const taskDate = new Date(task.faelligkeitsdatum).toDateString();
+      return taskDate === today && task.zugewiesenAn && !task.abgeschlossen;
+    });
+  }, [tasks]);
+
+  // Statistiken berechnen
+  const activeCoachees = coachees?.filter(c => c.status === 'active').length || 0;
+  const sessionsThisWeek = sessions?.filter(s => {
+    const sessionDate = new Date(s.date);
+    const today = new Date();
+    const weekStart = new Date(today.setDate(today.getDate() - today.getDay()));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    return sessionDate >= weekStart && sessionDate <= weekEnd;
+  }).length || 0;
+  const activePackages = packages?.filter(p => p.status === 'active').length || 0;
+
   const toggleTask = (taskId) => {
-    setTasks(prevTasks => (prevTasks || []).map(task =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      updateTask(taskId, { abgeschlossen: !task.abgeschlossen });
+    }
   };
-
-  if (todaysTasks.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="mb-6">
-      <h3 className="text-xl font-bold tracking-tight text-foreground mb-3">Heute fällig</h3>
-      <Card className="glass-card">
-        <CardContent className="p-4 space-y-3">
-          {todaysTasks.map(task => (
-             <motion.div
-                key={task.id}
-                layout
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50"
-              >
-                <Button variant="ghost" size="icon" onClick={() => toggleTask(task.id)} className="text-muted-foreground hover:text-primary">
-                    <CheckCircle2 className="h-5 w-5" />
-                </Button>
-                <div className="flex-1">
-                    <span className="text-sm text-foreground">{task.text}</span>
-                </div>
-            </motion.div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-export default function Dashboard() {
-  const { state } = useAppStateContext();
-  const { coachees, sessions, invoices, activePackages } = state;
-
-  const upcomingSessions = (sessions || [])
-    .filter(s => new Date(s.date) >= new Date())
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .slice(0, 3);
-
-  const recentCoachees = [...(coachees || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
-
-  const getCoacheeById = (id) => (coachees || []).find(c => c.id === id);
 
   return (
     <>
       <Helmet>
-        <title>Dashboard - Coachingspace</title>
-        <meta name="description" content="Dein zentrales Dashboard für die Verwaltung deiner Coachings." />
+        <title>Dashboard - Coaching Plattform</title>
+        <meta name="description" content="Übersicht über Ihre Coaching-Aktivitäten" />
       </Helmet>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-background min-h-screen">
-        <h2 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Aktive Coachees" value={(coachees || []).length} icon={<Users className="h-5 w-5 text-sky-400" />} to="/coachees" colorClass="border-sky-500/10" />
-          <StatCard title="Geplante Sessions" value={(sessions || []).filter(s => new Date(s.date) >= new Date()).length} icon={<Calendar className="h-5 w-5 text-violet-400" />} to="/sessions" colorClass="border-violet-500/10" />
-          <StatCard title="Offene Rechnungen" value={(invoices || []).filter(i => i.status === 'open').length} icon={<FileText className="h-5 w-5 text-emerald-400" />} to="/invoices" colorClass="border-emerald-500/10" />
-          <StatCard title="Aktive Pakete" value={(activePackages || []).filter(p => p.usedUnits < p.totalUnits).length} icon={<PackagePlus className="h-5 w-5 text-amber-400" />} to="/invoices" colorClass="border-amber-500/10" />
+
+      <div className="container mx-auto p-6 space-y-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent mb-2">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Willkommen zurück! Hier ist Ihre Übersicht für heute.
+          </p>
         </div>
-        
-        <TodaysTasks />
-        
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-12 lg:col-span-4 glass-card-enhanced">
+
+        {/* Statistik-Karten */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Aktive Coachees"
+            value={activeCoachees}
+            icon={<Users />}
+            to="/coachees"
+            colorClass="text-blue-500"
+          />
+          <StatCard
+            title="Sessions diese Woche"
+            value={sessionsThisWeek}
+            icon={<Calendar />}
+            to="/sessions"
+            colorClass="text-green-500"
+          />
+          <StatCard
+            title="Offene Dokumente"
+            value="12"
+            icon={<FileText />}
+            to="/documents"
+            colorClass="text-orange-500"
+          />
+          <StatCard
+            title="Aktive Pakete"
+            value={activePackages}
+            icon={<PackagePlus />}
+            to="/settings"
+            colorClass="text-purple-500"
+          />
+        </div>
+
+        {/* To-Do Bereich - separate Cards */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Persönliche Tasks */}
+          <Card className="glass-card-enhanced">
             <CardHeader>
-              <CardTitle className="text-foreground">Nächste Sessions</CardTitle>
+              <CardTitle className="flex items-center text-foreground text-lg">
+                <CheckCircle2 className="mr-3 h-6 w-6 text-green-500" />
+                Meine Aufgaben heute ({todaysTasks.length})
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {upcomingSessions.length > 0 ? (
-                upcomingSessions.map(session => {
-                  const coachee = getCoacheeById(session.coacheeId);
-                  return (
-                    <motion.div 
-                      whileHover={{ scale: 1.02, backgroundColor: 'hsl(var(--muted-hsl) / 0.5)' }} 
-                      key={session.id} 
-                      className="flex items-center space-x-4 p-3 rounded-xl transition-all duration-300 glass-nav-item group"
-                    >
-                       <Avatar className="h-10 w-10 border-2 border-primary group-hover:border-primary/80 transition-colors duration-300">
-                        <AvatarImage src={coachee?.avatarUrl} />
-                        <AvatarFallback>{coachee ? `${coachee.firstName[0]}${coachee.lastName[0]}` : '?'}</AvatarFallback>
-                      </Avatar>
+            <CardContent>
+              {todaysTasks.length > 0 ? (
+                <div className="space-y-3">
+                  {todaysTasks.slice(0, 5).map((task) => (
+                    <div key={task.id} className="flex items-center space-x-3 p-3 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors group">
+                      <CheckCircle2 
+                        className="h-5 w-5 text-muted-foreground cursor-pointer hover:text-green-500 transition-colors" 
+                        onClick={() => toggleTask(task.id)}
+                      />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors duration-300">{session.topic}</p>
-                        <p className="text-sm text-muted-foreground">mit {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}</p>
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                          {task.titel || 'Unbenannte Aufgabe'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {task.thema && <span className="font-medium">{task.thema}</span>}
+                          {task.thema && task.konkretesToDo && ' • '}
+                          {task.konkretesToDo}
+                        </p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">{formatDate(session.date)}</p>
-                        <Badge variant={session.type === 'remote' ? 'default' : 'secondary'}>{session.type === 'remote' ? 'Remote' : 'Präsenz'}</Badge>
+                      <div className="flex flex-col items-end space-y-1">
+                        <Badge variant="outline" className="text-xs">
+                          {task.prioritaet || 'Normal'}
+                        </Badge>
+                        {task.schaetzung && (
+                          <span className="text-xs text-muted-foreground">{task.schaetzung}</span>
+                        )}
                       </div>
-                       <Link to={`/coaching-room/${coachee?.id}`}>
-                        <Button size="sm" className="group-hover:scale-105 transition-transform duration-300">Starten</Button>
-                      </Link>
-                    </motion.div>
-                  )
-                })
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <p className="text-muted-foreground text-center py-4">Keine bevorstehenden Sessions geplant.</p>
+                <p className="text-muted-foreground text-center py-6">Keine Aufgaben für heute.</p>
               )}
             </CardContent>
           </Card>
-          
-          <Card className="col-span-12 lg:col-span-3 glass-card-enhanced">
+
+          {/* Coachee Deadlines */}
+          <Card className="glass-card-enhanced">
             <CardHeader>
-              <CardTitle className="text-foreground">Neue Coachees</CardTitle>
+              <CardTitle className="flex items-center text-foreground text-lg">
+                <AlertTriangle className="mr-3 h-6 w-6 text-orange-500" />
+                Coachee-Deadlines heute ({coacheeDeadlines.length})
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {recentCoachees.map(coachee => (
-                <div key={coachee.id} className="flex items-center space-x-4">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={coachee.avatarUrl} />
-                    <AvatarFallback>{`${coachee.firstName[0]}${coachee.lastName[0]}`}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                     <p className="text-sm font-medium text-foreground">{coachee.firstName} {coachee.lastName}</p>
-                     <p className="text-sm text-muted-foreground">{coachee.email}</p>
-                  </div>
-                  <Link to={`/coachees/${coachee.id}`} className="ml-auto">
-                    <Button variant="ghost" size="sm">Anzeigen</Button>
-                  </Link>
+            <CardContent>
+              {coacheeDeadlines.length > 0 ? (
+                <div className="space-y-3">
+                  {coacheeDeadlines.slice(0, 5).map((task) => {
+                    const coachee = coachees?.find(c => c.id === task.zugewiesenAn);
+                    const isOverdue = new Date(task.faelligkeitsdatum) < new Date();
+                    return (
+                      <div key={task.id} className="flex items-center space-x-3 p-3 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={coachee?.avatarUrl} />
+                          <AvatarFallback className="text-xs">
+                            {coachee ? `${coachee.firstName[0]}${coachee.lastName[0]}` : '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">{task.titel}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}
+                            {task.thema && ` • ${task.thema}`}
+                          </p>
+                          {task.konkretesToDo && (
+                            <p className="text-xs text-muted-foreground mt-1">{task.konkretesToDo}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={isOverdue ? "destructive" : "default"} className="text-xs mb-2">
+                            {isOverdue ? 'Überfällig' : 'Fällig heute'}
+                          </Badge>
+                          <Button size="sm" variant="outline" className="text-xs h-7 w-full">
+                            <MessageCircle className="h-3 w-3 mr-1" />
+                            Nachfassen
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              ))}
+              ) : (
+                <p className="text-muted-foreground text-center py-6">Keine Deadlines heute.</p>
+              )}
             </CardContent>
           </Card>
         </div>
-        <div className="pt-4">
-          <Card className="glass-card-enhanced">
-            <CardHeader>
-                <CardTitle className="flex items-center text-foreground">
-                    <ClipboardCheck className="mr-2 h-6 w-6 text-primary" />
-                    Aufgaben-Manager
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <TaskManager isCompact />
-            </CardContent>
-          </Card>
+
+        {/* Link zu vollständigem Aufgaben-Manager */}
+        <div className="text-center">
+          <Link to="/tasks">
+            <Button variant="outline" size="lg" className="bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-primary/20">
+              <ClipboardCheck className="mr-2 h-5 w-5" />
+              Alle Aufgaben verwalten
+            </Button>
+          </Link>
+        </div>
+
+        {/* Sekundärer Bereich */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Kalender - kombiniert Sessions + Termine */}
+          <CalendarOverview sessions={upcomingSessions} coachees={coachees} />
+          
+          {/* Weitere Bereiche in der oberen Zeile */}
+          <div className="grid gap-6 lg:grid-cols-2 lg:col-span-2">
+            <OpenInvoices />
+            <EventsAndBirthdays />
+          </div>
+        </div>
+
+        {/* Quick Actions - volle Breite aber kleiner */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-1">
+            <QuickActions />
+          </div>
         </div>
       </div>
     </>

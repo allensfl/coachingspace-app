@@ -1,0 +1,458 @@
+import React, { useMemo } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { 
+  ArrowUpRight, 
+  Users, 
+  Calendar, 
+  FileText, 
+  PackagePlus, 
+  ClipboardCheck, 
+  CheckCircle2,
+  AlertTriangle,
+  Gift,
+  Plus,
+  StickyNote,
+  Receipt
+} from 'lucide-react';
+import TaskManager from '@/components/TaskManager';
+import { useAppStateContext } from '@/context/AppStateContext';
+import { isToday, startOfToday, format, isBefore, isAfter, addDays } from 'date-fns';
+import OpenInvoices from './OpenInvoices';
+import EventsAndBirthdays from './EventsAndBirthdays';
+import QuickActions from './QuickActions';
+
+// StatCard mit Akzentfarben für Icons und Rand
+const StatCard = ({ title, value, icon, to, colorClass }) => {
+  return (
+    <motion.div 
+      whileHover={{ y: -8, scale: 1.03 }} 
+      whileTap={{ scale: 0.98 }}
+      className="h-full"
+    >
+      <Card className="relative overflow-hidden h-full flex flex-col justify-between glass-card-enhanced hover:shadow-2xl transition-all duration-500 group">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-300">{title}</CardTitle>
+          <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-all duration-300">
+            {React.cloneElement(icon, { className: 'h-5 w-5 text-primary group-hover:scale-110 transition-transform duration-300' })}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-4xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">{value}</div>
+          {to && (
+            <Link to={to} className="text-xs text-primary hover:text-primary/80 mt-2 flex items-center group-hover:translate-x-1 transition-all duration-300">
+              Details anzeigen <ArrowUpRight className="h-4 w-4 ml-1 group-hover:scale-110 transition-transform duration-300" />
+            </Link>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
+
+// Formatdatum-Helfer
+const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date)) return 'N/A';
+    return new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', timeStyle: 'short' }).format(date);
+};
+
+const TodaysTasks = () => {
+  const { state, actions } = useAppStateContext();
+  const { tasks, coachees } = state;
+  const { setTasks } = actions;
+
+  const { personalTasks, coacheeDeadlines } = useMemo(() => {
+    const today = startOfToday();
+    const personal = (tasks || []).filter(task => 
+      task.dueDate && 
+      isToday(new Date(task.dueDate)) && 
+      !task.completed &&
+      !task.assignedTo // Persönliche Tasks haben keine assignedTo
+    );
+    
+    const deadlines = (tasks || []).filter(task => 
+      task.dueDate && 
+      isToday(new Date(task.dueDate)) && 
+      task.assignedTo // Tasks die an Coachees vergeben wurden
+    );
+    
+    return { personalTasks: personal, coacheeDeadlines: deadlines };
+  }, [tasks]);
+
+  const toggleTask = (taskId) => {
+    setTasks(prevTasks => (prevTasks || []).map(task =>
+      task.id === taskId ? { ...task, completed: !task.completed } : task
+    ));
+  };
+
+  const getCoacheeById = (id) => (coachees || []).find(c => c.id === id);
+
+  if (personalTasks.length === 0 && coacheeDeadlines.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-6">
+      <h3 className="text-xl font-bold tracking-tight text-foreground mb-3">Meine Aufgaben heute</h3>
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Persönliche Tasks */}
+        {personalTasks.length > 0 && (
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-foreground flex items-center">
+                <CheckCircle2 className="h-4 w-4 mr-2 text-blue-400" />
+                Meine To-Dos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {personalTasks.map(task => (
+                <motion.div
+                  key={task.id}
+                  layout
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50"
+                >
+                  <Button variant="ghost" size="icon" onClick={() => toggleTask(task.id)} className="text-muted-foreground hover:text-primary">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </Button>
+                  <div className="flex-1">
+                    <span className="text-sm text-foreground">{task.text}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Coachee Deadlines */}
+        {coacheeDeadlines.length > 0 && (
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-foreground flex items-center">
+                <AlertTriangle className="h-4 w-4 mr-2 text-orange-400" />
+                Coachee-Deadlines heute
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {coacheeDeadlines.map(task => {
+                const coachee = getCoacheeById(task.assignedTo);
+                const isOverdue = isBefore(new Date(task.dueDate), new Date());
+                
+                return (
+                  <motion.div
+                    key={task.id}
+                    layout
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={coachee?.avatarUrl} />
+                      <AvatarFallback className="text-xs">
+                        {coachee ? `${coachee.firstName[0]}${coachee.lastName[0]}` : '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <span className="text-sm text-foreground">{task.text}</span>
+                      <p className="text-xs text-muted-foreground">
+                        {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}
+                      </p>
+                    </div>
+                    <Badge variant={isOverdue ? "destructive" : "secondary"}>
+                      {isOverdue ? 'Überfällig' : 'Heute fällig'}
+                    </Badge>
+                  </motion.div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Neue Komponente für offene Rechnungen
+const OpenInvoices = () => {
+  const { state } = useAppStateContext();
+  const { invoices } = state;
+
+  const overdueInvoices = useMemo(() => {
+    return (invoices || []).filter(invoice => 
+      invoice.status === 'open' && 
+      invoice.dueDate && 
+      isBefore(new Date(invoice.dueDate), new Date())
+    );
+  }, [invoices]);
+
+  if (overdueInvoices.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="glass-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base text-foreground flex items-center">
+          <AlertTriangle className="h-4 w-4 mr-2 text-red-400" />
+          Überfällige Rechnungen ({overdueInvoices.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {overdueInvoices.slice(0, 3).map(invoice => {
+          const daysPastDue = Math.floor((new Date() - new Date(invoice.dueDate)) / (1000 * 60 * 60 * 24));
+          
+          return (
+            <div key={invoice.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+              <div className="flex-1">
+                <span className="text-sm text-foreground">{invoice.clientName}</span>
+                <p className="text-xs text-muted-foreground">
+                  {daysPastDue} Tage überfällig • €{invoice.amount}
+                </p>
+              </div>
+              <Button variant="outline" size="sm">
+                Mahnung
+              </Button>
+            </div>
+          );
+        })}
+        {overdueInvoices.length > 3 && (
+          <Link to="/invoices" className="text-xs text-primary hover:underline">
+            {overdueInvoices.length - 3} weitere anzeigen
+          </Link>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Neue Komponente für Termine & Geburtstage
+const EventsAndBirthdays = () => {
+  const { state } = useAppStateContext();
+  const { coachees, sessions } = state;
+
+  const upcomingEvents = useMemo(() => {
+    const today = new Date();
+    const nextWeek = addDays(today, 7);
+    
+    // Heutige Sessions
+    const todaySessions = (sessions || []).filter(session => 
+      isToday(new Date(session.date))
+    );
+    
+    // Geburtstage in den nächsten 7 Tagen
+    const upcomingBirthdays = (coachees || []).filter(coachee => {
+      if (!coachee.birthday) return false;
+      const birthday = new Date(coachee.birthday);
+      const thisYearBirthday = new Date(today.getFullYear(), birthday.getMonth(), birthday.getDate());
+      return isAfter(thisYearBirthday, today) && isBefore(thisYearBirthday, nextWeek);
+    });
+    
+    return { todaySessions, upcomingBirthdays };
+  }, [sessions, coachees]);
+
+  const { todaySessions, upcomingBirthdays } = upcomingEvents;
+
+  if (todaySessions.length === 0 && upcomingBirthdays.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="glass-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base text-foreground flex items-center">
+          <Gift className="h-4 w-4 mr-2 text-purple-400" />
+          Termine & Ereignisse
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Heutige Sessions */}
+        {todaySessions.map(session => (
+          <div key={session.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
+            <Calendar className="h-4 w-4 text-blue-400" />
+            <div className="flex-1">
+              <span className="text-sm text-foreground">Session: {session.topic}</span>
+              <p className="text-xs text-muted-foreground">{formatDate(session.date)}</p>
+            </div>
+          </div>
+        ))}
+        
+        {/* Anstehende Geburtstage */}
+        {upcomingBirthdays.map(coachee => (
+          <div key={coachee.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
+            <Gift className="h-4 w-4 text-purple-400" />
+            <div className="flex-1">
+              <span className="text-sm text-foreground">🎂 {coachee.firstName} {coachee.lastName}</span>
+              <p className="text-xs text-muted-foreground">
+                Geburtstag am {format(new Date(coachee.birthday), 'dd.MM.')}
+              </p>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Neue Komponente für Quick Actions
+const QuickActions = () => {
+  return (
+    <Card className="glass-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base text-foreground">Quick Actions</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Link to="/sessions/new">
+          <Button className="w-full justify-start" variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Neue Session buchen
+          </Button>
+        </Link>
+        
+        <Button className="w-full justify-start" variant="outline">
+          <StickyNote className="h-4 w-4 mr-2" />
+          Schnelle Notiz erfassen
+        </Button>
+        
+        <Link to="/invoices/create">
+          <Button className="w-full justify-start" variant="outline">
+            <Receipt className="h-4 w-4 mr-2" />
+            Rechnung erstellen
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default function Dashboard() {
+  const { state } = useAppStateContext();
+  const { coachees, sessions, invoices, activePackages } = state;
+
+  const upcomingSessions = (sessions || [])
+    .filter(s => new Date(s.date) >= new Date())
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(0, 3);
+
+  const getCoacheeById = (id) => (coachees || []).find(c => c.id === id);
+
+  return (
+    <>
+      <Helmet>
+        <title>Dashboard - Coachingspace</title>
+        <meta name="description" content="Dein zentrales Dashboard für die Verwaltung deiner Coachings." />
+      </Helmet>
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-background min-h-screen">
+        <h2 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h2>
+        
+        {/* Statistik-Karten */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard 
+            title="Aktive Coachees" 
+            value={(coachees || []).length} 
+            icon={<Users className="h-5 w-5 text-sky-400" />} 
+            to="/coachees" 
+            colorClass="border-sky-500/10" 
+          />
+          <StatCard 
+            title="Geplante Sessions" 
+            value={(sessions || []).filter(s => new Date(s.date) >= new Date()).length} 
+            icon={<Calendar className="h-5 w-5 text-violet-400" />} 
+            to="/sessions" 
+            colorClass="border-violet-500/10" 
+          />
+          <StatCard 
+            title="Offene Rechnungen" 
+            value={(invoices || []).filter(i => i.status === 'open').length} 
+            icon={<FileText className="h-5 w-5 text-emerald-400" />} 
+            to="/invoices" 
+            colorClass="border-emerald-500/10" 
+          />
+          <StatCard 
+            title="Aktive Pakete" 
+            value={(activePackages || []).filter(p => p.usedUnits < p.totalUnits).length} 
+            icon={<PackagePlus className="h-5 w-5 text-amber-400" />} 
+            to="/store" 
+            colorClass="border-amber-500/10" 
+          />
+        </div>
+        
+        {/* Aufgaben für heute */}
+        <TodaysTasks />
+        
+        {/* Hauptbereich mit Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Nächste Sessions - nimmt 2 Spalten */}
+          <Card className="col-span-2 glass-card-enhanced">
+            <CardHeader>
+              <CardTitle className="text-foreground">Nächste Sessions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {upcomingSessions.length > 0 ? (
+                upcomingSessions.map(session => {
+                  const coachee = getCoacheeById(session.coacheeId);
+                  return (
+                    <motion.div 
+                      whileHover={{ scale: 1.02, backgroundColor: 'hsl(var(--muted-hsl) / 0.5)' }} 
+                      key={session.id} 
+                      className="flex items-center space-x-4 p-3 rounded-xl transition-all duration-300 glass-nav-item group"
+                    >
+                       <Avatar className="h-10 w-10 border-2 border-primary group-hover:border-primary/80 transition-colors duration-300">
+                        <AvatarImage src={coachee?.avatarUrl} />
+                        <AvatarFallback>{coachee ? `${coachee.firstName[0]}${coachee.lastName[0]}` : '?'}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors duration-300">{session.topic}</p>
+                        <p className="text-sm text-muted-foreground">mit {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">{formatDate(session.date)}</p>
+                        <Badge variant={session.type === 'remote' ? 'default' : 'secondary'}>{session.type === 'remote' ? 'Remote' : 'Präsenz'}</Badge>
+                      </div>
+                       <Link to={`/coaching-room/${coachee?.id}`}>
+                        <Button size="sm" className="group-hover:scale-105 transition-transform duration-300">Starten</Button>
+                      </Link>
+                    </motion.div>
+                  )
+                })
+              ) : (
+                <p className="text-muted-foreground text-center py-4">Keine bevorstehenden Sessions geplant.</p>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Rechte Spalte mit kleineren Cards */}
+          <div className="col-span-2 space-y-4">
+            <OpenInvoices />
+            <EventsAndBirthdays />
+            <QuickActions />
+          </div>
+        </div>
+        
+        {/* Aufgaben-Manager */}
+        <div className="pt-4">
+          <Card className="glass-card-enhanced">
+            <CardHeader>
+                <CardTitle className="flex items-center text-foreground">
+                    <ClipboardCheck className="mr-2 h-6 w-6 text-primary" />
+                    Aufgaben-Manager
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <TaskManager isCompact />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
+  );
+}
