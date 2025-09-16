@@ -217,3 +217,14 @@
     @apply bg-yellow-500/20 text-yellow-400 border-yellow-500/30;
   }
 }
+css/* Datepicker Icon Fix */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 1 !important;
+  cursor: pointer !important;
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3e%3cpath fill='%236b7280' d='M15 2v2H5V2H3v2H2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1V2h-2zM2 8h16v8H2V8zm13-4v2H5V4h10z'/%3e%3c/svg%3e") !important;
+  background-size: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}

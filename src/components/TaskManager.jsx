@@ -1,330 +1,688 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { format, isToday, isFuture, startOfToday } from 'date-fns';
-import { de } from 'date-fns/locale';
-import { useAppStateContext } from '@/context/AppStateContext';
-import { Input } from '@/components/ui/input';
+import { Plus, Edit2, Trash2, Calendar, Clock, User, Tag, AlertCircle, CheckCircle2, Filter, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Plus, Trash2, Edit, Calendar as CalendarIcon, Flag } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { TaskPriority } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils'; // Import cn utility
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { useAppStateContext } from '../context/AppStateContext';
 
-const TaskManager = ({ isCompact = false, coacheeId = null }) => {
-  const { state, actions } = useAppStateContext();
-  const { tasks, coachees } = state;
-  const { setTasks } = actions;
-  const [newTask, setNewTask] = useState('');
-  const [dueDate, setDueDate] = useState(null);
-  const [newPriority, setNewPriority] = useState(TaskPriority.MEDIUM);
-  const [assignedCoacheeId, setAssignedCoacheeId] = useState(coacheeId ? coacheeId.toString() : 'unassigned');
+const TaskManager = () => {
+  const { tasks, coachees, addTask, updateTask, deleteTask } = useAppStateContext();
+  
+  const [isOpen, setIsOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [filter, setFilter] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [filterAssignment, setFilterAssignment] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('faelligkeitsdatum');
 
-  const handleAddTask = (e) => {
-    e.preventDefault();
-    if (newTask.trim() === '') return;
-    const task = { 
-      id: Date.now(), 
-      text: newTask, 
-      completed: false, 
-      dueDate: dueDate ? dueDate.toISOString() : null,
-      coacheeId: assignedCoacheeId === 'unassigned' ? null : parseInt(assignedCoacheeId),
-      priority: newPriority
-    };
-    setTasks(prevTasks => [task, ...(prevTasks || [])]);
-    setNewTask('');
-    setDueDate(null);
-    setNewPriority(TaskPriority.MEDIUM);
-    if (!coacheeId) { // Only reset coachee selection if not in coachee-specific view
-      setAssignedCoacheeId('unassigned');
+  const [newTask, setNewTask] = useState({
+    titel: '',
+    thema: '',
+    konkretesToDo: '',
+    faelligkeitsdatum: new Date().toISOString().split('T')[0],
+    prioritaet: 'Normal',
+    zugewiesenAn: 'self',
+    zeitschaetzung: '',
+    notizen: ''
+  });
+
+  const themen = [
+    { value: 'coaching', label: 'Coaching', icon: '📖' },
+    { value: 'marketing', label: 'Marketing', icon: '🎯' },
+    { value: 'administration', label: 'Administration', icon: '⚙️' },
+    { value: 'kundenbetreuung', label: 'Kundenbetreuung', icon: '🤝' },
+    { value: 'weiterbildung', label: 'Weiterbildung', icon: '📚' },
+    { value: 'networking', label: 'Networking', icon: '🌐' },
+    { value: 'finanzen', label: 'Finanzen', icon: '💰' },
+    { value: 'strategie', label: 'Strategie', icon: '🎲' }
+  ];
+
+  const prioritaeten = ['Niedrig', 'Normal', 'Hoch', 'Dringend'];
+  
+  const getPriorityColor = (prioritaet) => {
+    switch (prioritaet) {
+      case 'Dringend': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'Hoch': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+      case 'Normal': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'Niedrig': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      default: return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
     }
+  };
+
+  const getThemeIcon = (thema) => {
+    const theme = themen.find(t => t.value === thema);
+    return theme ? theme.icon : '📝';
+  };
+
+  const getThemeLabel = (thema) => {
+    const theme = themen.find(t => t.value === thema);
+    return theme ? theme.label : thema;
+  };
+
+  const isOverdue = (faelligkeitsdatum) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const taskDate = new Date(faelligkeitsdatum);
+    taskDate.setHours(0, 0, 0, 0);
+    return taskDate < today;
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const handleCreateTask = () => {
+    console.log('Available coachees:', coachees);
+    console.log('Creating task:', newTask);
+    
+    if (!newTask.titel.trim()) {
+      alert('Bitte geben Sie einen Titel ein.');
+      return;
+    }
+
+    if (typeof addTask !== 'function') {
+      console.error('addTask is not a function');
+      alert('Fehler: Task kann nicht erstellt werden.');
+      return;
+    }
+
+    const taskToAdd = {
+      ...newTask,
+      id: Date.now().toString(),
+      abgeschlossen: false,
+      erstelltAm: new Date().toISOString(),
+      faelligkeitsdatum: newTask.faelligkeitsdatum || new Date().toISOString().split('T')[0],
+      zugewiesenAn: newTask.zugewiesenAn === 'self' ? null : newTask.zugewiesenAn
+    };
+
+    try {
+      addTask(taskToAdd);
+      console.log('Task successfully created');
+      
+      // Reset form
+      setNewTask({
+        titel: '',
+        thema: '',
+        konkretesToDo: '',
+        faelligkeitsdatum: new Date().toISOString().split('T')[0],
+        prioritaet: 'Normal',
+        zugewiesenAn: 'self',
+        zeitschaetzung: '',
+        notizen: ''
+      });
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      alert('Fehler beim Erstellen der Aufgabe.');
+    }
+  };
+
+  const handleEditTask = (task) => {
+    setEditingTask({
+      ...task,
+      zugewiesenAn: task.zugewiesenAn || 'self'
+    });
+    setEditDialogOpen(true);
   };
 
   const handleUpdateTask = () => {
-    if (!editingTask || editingTask.text.trim() === '') return;
-    setTasks(prevTasks => (prevTasks || []).map(task =>
-      task.id === editingTask.id ? { 
-        ...editingTask, 
-        coacheeId: editingTask.coacheeId === 'unassigned' ? null : parseInt(editingTask.coacheeId),
-        priority: editingTask.priority
-      } : task
-    ));
+    if (!editingTask.titel.trim()) {
+      alert('Bitte geben Sie einen Titel ein.');
+      return;
+    }
+
+    const updatedTask = {
+      ...editingTask,
+      zugewiesenAn: editingTask.zugewiesenAn === 'self' ? null : editingTask.zugewiesenAn
+    };
+
+    updateTask(editingTask.id, updatedTask);
+    setEditDialogOpen(false);
     setEditingTask(null);
   };
 
-  const toggleTask = (taskId) => {
-    setTasks(prevTasks => (prevTasks || []).map(task =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+  const handleDeleteTask = (taskId) => {
+    if (window.confirm('Sind Sie sicher, dass Sie diese Aufgabe löschen möchten?')) {
+      deleteTask(taskId);
+    }
   };
 
-  const deleteTask = (taskId) => {
-    setTasks(prevTasks => (prevTasks || []).filter(task => task.id !== taskId));
+  const handleToggleComplete = (task) => {
+    updateTask(task.id, { abgeschlossen: !task.abgeschlossen });
   };
-  
-  const startEditing = (task) => {
-    setEditingTask({ 
-      ...task, 
-      dueDate: task.dueDate ? new Date(task.dueDate) : null, 
-      coacheeId: task.coacheeId ? task.coacheeId.toString() : 'unassigned',
-      priority: task.priority || TaskPriority.MEDIUM // Ensure priority is set
+
+  const filteredAndSortedTasks = useMemo(() => {
+    let filtered = tasks || [];
+
+    // Filter by status
+    if (filterStatus === 'completed') {
+      filtered = filtered.filter(task => task.abgeschlossen);
+    } else if (filterStatus === 'active') {
+      filtered = filtered.filter(task => !task.abgeschlossen);
+    } else if (filterStatus === 'overdue') {
+      filtered = filtered.filter(task => !task.abgeschlossen && isOverdue(task.faelligkeitsdatum));
+    }
+
+    // Filter by priority
+    if (filterPriority !== 'all') {
+      filtered = filtered.filter(task => task.prioritaet === filterPriority);
+    }
+
+    // Filter by assignment
+    if (filterAssignment !== 'all') {
+      const matchesAssignment = filterAssignment === 'self' ? 
+        (task) => !task.zugewiesenAn : 
+        (task) => task.zugewiesenAn === filterAssignment;
+      filtered = filtered.filter(matchesAssignment);
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(task => 
+        task.titel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        task.konkretesToDo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        task.thema.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'faelligkeitsdatum':
+          return new Date(a.faelligkeitsdatum) - new Date(b.faelligkeitsdatum);
+        case 'prioritaet':
+          const priorityOrder = { 'Dringend': 4, 'Hoch': 3, 'Normal': 2, 'Niedrig': 1 };
+          return (priorityOrder[b.prioritaet] || 2) - (priorityOrder[a.prioritaet] || 2);
+        case 'titel':
+          return a.titel.localeCompare(b.titel);
+        case 'erstelltAm':
+          return new Date(b.erstelltAm) - new Date(a.erstelltAm);
+        default:
+          return 0;
+      }
     });
-  };
 
-  const filteredTasks = useMemo(() => {
-    let currentTasks = tasks || [];
-    if (coacheeId) {
-      currentTasks = currentTasks.filter(task => task.coacheeId === coacheeId);
-    } else if (assignedCoacheeId !== 'unassigned') {
-      currentTasks = currentTasks.filter(task => task.coacheeId === parseInt(assignedCoacheeId));
-    }
-
-    let sortedTasks = [...currentTasks].sort((a, b) => {
-        // Sort by completion status (incomplete first)
-        if (a.completed !== b.completed) return a.completed ? 1 : -1;
-        
-        // Then by priority (High -> Medium -> Low)
-        const priorityOrder = { [TaskPriority.HIGH]: 1, [TaskPriority.MEDIUM]: 2, [TaskPriority.LOW]: 3 };
-        const pA = priorityOrder[a.priority] || 4; // Default to lowest if undefined
-        const pB = priorityOrder[b.priority] || 4;
-        if (pA !== pB) return pA - pB;
-
-        // Then by due date (earliest first)
-        const dateA = a.dueDate ? new Date(a.dueDate) : null;
-        const dateB = b.dueDate ? new Date(b.dueDate) : null;
-        if (dateA && dateB) return dateA - dateB;
-        if (dateA) return -1; // tasks with date before tasks without
-        if (dateB) return 1; // tasks with date before tasks without
-
-        return b.id - a.id; // Fallback to ID for stable sort
-    });
-
-    switch (filter) {
-      case 'today':
-        return sortedTasks.filter(t => t.dueDate && isToday(new Date(t.dueDate)));
-      case 'future':
-        return sortedTasks.filter(t => t.dueDate && isFuture(new Date(t.dueDate)) && !t.completed);
-      case 'no_date':
-        return sortedTasks.filter(t => !t.dueDate);
-      case 'completed':
-        return sortedTasks.filter(t => t.completed);
-      case TaskPriority.LOW:
-      case TaskPriority.MEDIUM:
-      case TaskPriority.HIGH:
-        return sortedTasks.filter(t => t.priority === filter);
-      case 'all':
-      default:
-        return sortedTasks;
-    }
-  }, [tasks, filter, coacheeId, assignedCoacheeId]);
-
-  const getCoacheeName = (id) => {
-    const coachee = coachees.find(c => c.id === id);
-    return coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unzugewiesen';
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case TaskPriority.HIGH: return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case TaskPriority.MEDIUM: return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      case TaskPriority.LOW: return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      default: return 'bg-slate-700/20 text-slate-400 border-slate-500/30';
-    }
-  };
+    return filtered;
+  }, [tasks, filterStatus, filterPriority, filterAssignment, searchTerm, sortBy]);
 
   return (
-    <div>
-      <form onSubmit={handleAddTask} className="flex flex-wrap gap-2 mb-4 items-end">
-        <div className="flex-grow">
-          <Label htmlFor="newTask" className="sr-only">Neue Aufgabe</Label>
-          <Input
-            id="newTask"
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-            placeholder="Neue Aufgabe, Idee, Notiz..."
-            className="bg-slate-800/50 border-slate-700 text-white"
-          />
+    <div className="p-6 max-w-7xl mx-auto">
+      
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Aufgaben-Management</h1>
+          <p className="text-muted-foreground mt-2">Verwalten Sie Ihre Coaching-Aufgaben strukturiert</p>
         </div>
         
-        {!coacheeId && (
-          <div className="w-full sm:w-auto flex-shrink-0">
-            <Label htmlFor="assignCoachee" className="sr-only">Coachee zuweisen</Label>
-            <Select onValueChange={setAssignedCoacheeId} value={assignedCoacheeId}>
-              <SelectTrigger id="assignCoachee" className="w-full sm:w-[180px] bg-slate-800/50 border-slate-700 text-white">
-                <SelectValue placeholder="Coachee zuweisen" />
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger asChild>
+            <Button className="glass-button">
+              <Plus className="h-4 w-4 mr-2" />
+              Neue Aufgabe
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="glass-card-enhanced max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Neue Aufgabe erstellen</DialogTitle>
+              <DialogDescription>
+                Strukturieren Sie Ihre Aufgabe mit Titel, Thema und konkretem To-Do
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-6 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="titel">Titel *</Label>
+                  <Input
+                    id="titel"
+                    placeholder="z.B. LinkedIn-Content erstellen"
+                    value={newTask.titel}
+                    onChange={(e) => setNewTask({...newTask, titel: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="thema">Thema</Label>
+                  <Select 
+                    value={newTask.thema} 
+                    onValueChange={(value) => setNewTask({...newTask, thema: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Thema wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {themen.map(thema => (
+                        <SelectItem key={thema.value} value={thema.value}>
+                          <span className="flex items-center gap-2">
+                            {thema.icon} {thema.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="konkretesToDo">Konkretes To-Do *</Label>
+                <Textarea
+                  id="konkretesToDo"
+                  placeholder="Beschreiben Sie genau, was zu tun ist..."
+                  value={newTask.konkretesToDo}
+                  onChange={(e) => setNewTask({...newTask, konkretesToDo: e.target.value})}
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="prioritaet">Priorität</Label>
+                  <Select 
+                    value={newTask.prioritaet} 
+                    onValueChange={(value) => setNewTask({...newTask, prioritaet: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {prioritaeten.map(prio => (
+                        <SelectItem key={prio} value={prio}>{prio}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zeitschaetzung">Zeitschätzung</Label>
+                  <Input
+                    id="zeitschaetzung"
+                    placeholder="z.B. 2h, 30min"
+                    value={newTask.zeitschaetzung}
+                    onChange={(e) => setNewTask({...newTask, zeitschaetzung: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="faelligkeitsdatum">Fälligkeitsdatum</Label>
+                  <Input
+                    id="faelligkeitsdatum"
+                    type="date"
+                    value={newTask.faelligkeitsdatum}
+                    onChange={(e) => setNewTask({...newTask, faelligkeitsdatum: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zugewiesenAn">Zugewiesen an</Label>
+                  <Select 
+                    value={newTask.zugewiesenAn} 
+                    onValueChange={(value) => setNewTask({...newTask, zugewiesenAn: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="self">Mir selbst</SelectItem>
+                      {coachees?.map(coachee => (
+                        <SelectItem key={coachee.id} value={coachee.id}>
+                          {coachee.firstName || coachee.vorname} {coachee.lastName || coachee.nachname}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notizen">Zusätzliche Notizen</Label>
+                <Textarea
+                  id="notizen"
+                  placeholder="Weitere Details, Links, Kontext..."
+                  value={newTask.notizen}
+                  onChange={(e) => setNewTask({...newTask, notizen: e.target.value})}
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsOpen(false)}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleCreateTask} className="glass-button">
+                Aufgabe erstellen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Filters and Search */}
+      <div className="glass-card mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filter & Suche
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Aufgaben durchsuchen..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status filter" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                <SelectItem value="unassigned">Keinem Coachee zuweisen</SelectItem>
-                {coachees.map(c => (
-                  <SelectItem key={c.id} value={String(c.id)}>{c.firstName} {c.lastName}</SelectItem>
+              <SelectContent>
+                <SelectItem value="all">Alle Status</SelectItem>
+                <SelectItem value="active">Aktiv</SelectItem>
+                <SelectItem value="completed">Abgeschlossen</SelectItem>
+                <SelectItem value="overdue">Überfällig</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterPriority} onValueChange={setFilterPriority}>
+              <SelectTrigger>
+                <SelectValue placeholder="Priorität filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Prioritäten</SelectItem>
+                {prioritaeten.map(prio => (
+                  <SelectItem key={prio} value={prio}>{prio}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sortieren nach" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="faelligkeitsdatum">Fälligkeitsdatum</SelectItem>
+                <SelectItem value="prioritaet">Priorität</SelectItem>
+                <SelectItem value="titel">Titel</SelectItem>
+                <SelectItem value="erstelltAm">Erstellungsdatum</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        )}
-
-        <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={`w-full sm:w-[150px] justify-start text-left font-normal ${!dueDate && "text-muted-foreground"}`}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dueDate ? format(dueDate, 'dd.MM.yyyy') : <span>Datum</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={dueDate}
-                onSelect={setDueDate}
-                initialFocus
-                locale={de}
-              />
-            </PopoverContent>
-          </Popover>
-
-          <Select onValueChange={setNewPriority} value={newPriority}>
-            <SelectTrigger className="w-full sm:w-[150px] bg-slate-800/50 border-slate-700 text-white">
-              <SelectValue placeholder="Priorität" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700 text-white">
-              <SelectItem value={TaskPriority.HIGH}>Dringend</SelectItem>
-              <SelectItem value={TaskPriority.MEDIUM}>Mittel</SelectItem>
-              <SelectItem value={TaskPriority.LOW}>Niedrig</SelectItem>
-            </SelectContent>
-          </Select>
-
-        <Button type="submit" size="icon" className="w-full sm:w-auto"><Plus /></Button>
-      </form>
-
-      <div className="flex gap-2 mb-4 border-b border-slate-800 pb-2 flex-wrap">
-        <Button variant={filter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('all')}>Alle</Button>
-        <Button variant={filter === 'today' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('today')}>Heute</Button>
-        <Button variant={filter === 'future' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('future')}>Zukünftig</Button>
-        <Button variant={filter === 'no_date' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('no_date')}>Ohne Datum</Button>
-        <Button variant={filter === 'completed' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('completed')}>Erledigt</Button>
-        <Button variant={filter === TaskPriority.HIGH ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter(TaskPriority.HIGH)}>Dringend</Button>
-        <Button variant={filter === TaskPriority.MEDIUM ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter(TaskPriority.MEDIUM)}>Mittel</Button>
-        <Button variant={filter === TaskPriority.LOW ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter(TaskPriority.LOW)}>Niedrig</Button>
+        </CardContent>
       </div>
 
-      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-        <AnimatePresence>
-          {filteredTasks && filteredTasks.map(task => (
-            <motion.div
-              key={task.id}
-              layout
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-800/50"
-            >
-              <Checkbox
-                id={`task-${task.id}`}
-                checked={task.completed}
-                onCheckedChange={() => toggleTask(task.id)}
-              />
-              {editingTask?.id === task.id ? (
-                <div className="flex-1 flex flex-wrap gap-2 items-end">
-                  <div className="flex-grow">
-                    <Input 
-                      value={editingTask.text} 
-                      onChange={(e) => setEditingTask({...editingTask, text: e.target.value})}
-                      className="bg-slate-800/50 border-slate-700 text-white"
-                      autoFocus
-                    />
-                  </div>
-                  {!coacheeId && (
-                    <div className="w-full sm:w-auto flex-shrink-0">
-                      <Select onValueChange={(value) => setEditingTask({...editingTask, coacheeId: value})} value={editingTask.coacheeId}>
-                        <SelectTrigger className="w-full sm:w-[180px] bg-slate-800/50 border-slate-700 text-white">
-                          <SelectValue placeholder="Coachee zuweisen" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                          <SelectItem value="unassigned">Keinem Coachee zuweisen</SelectItem>
-                          {coachees.map(c => (
-                            <SelectItem key={c.id} value={String(c.id)}>{c.firstName} {c.lastName}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+      {/* Tasks List */}
+      <div className="space-y-4">
+        {filteredAndSortedTasks.length === 0 ? (
+          <Card className="glass-card">
+            <CardContent className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">Keine Aufgaben gefunden</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchTerm || filterStatus !== 'all' || filterPriority !== 'all' 
+                    ? 'Keine Aufgaben entsprechen Ihren aktuellen Filterkriterien.'
+                    : 'Sie haben noch keine Aufgaben erstellt.'}
+                </p>
+                {!searchTerm && filterStatus === 'all' && filterPriority === 'all' && (
+                  <Button onClick={() => setIsOpen(true)} className="glass-button">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Erste Aufgabe erstellen
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredAndSortedTasks.map((task) => (
+            <Card key={task.id} className={`glass-card transition-all duration-300 hover:shadow-lg ${task.abgeschlossen ? 'opacity-60' : ''}`}>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleComplete(task)}
+                        className={`p-1 h-6 w-6 rounded-full border-2 transition-all duration-200 ${
+                          task.abgeschlossen 
+                            ? 'bg-green-500 border-green-500 text-white' 
+                            : 'border-muted-foreground/30 hover:border-primary'
+                        }`}
+                      >
+                        {task.abgeschlossen && <CheckCircle2 className="h-3 w-3" />}
+                      </Button>
+                      <h3 className={`text-lg font-semibold ${task.abgeschlossen ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        {task.titel}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{getThemeIcon(task.thema)}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {getThemeLabel(task.thema)}
+                        </Badge>
+                      </div>
                     </div>
-                  )}
-                  <Popover>
-                      <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-full sm:w-[150px]">
-                              {editingTask.dueDate ? format(editingTask.dueDate, 'dd.MM.yyyy') : 'Datum'}
-                          </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                          <Calendar
-                              mode="single"
-                              selected={editingTask.dueDate}
-                              onSelect={(date) => setEditingTask({...editingTask, dueDate: date})}
-                              locale={de}
-                          />
-                      </PopoverContent>
-                  </Popover>
-                  <Select onValueChange={(value) => setEditingTask({...editingTask, priority: value})} value={editingTask.priority}>
-                    <SelectTrigger className="w-full sm:w-[150px] bg-slate-800/50 border-slate-700 text-white">
-                      <SelectValue placeholder="Priorität" />
+                    
+                    <p className="text-muted-foreground mb-4 leading-relaxed">
+                      {task.konkretesToDo}
+                    </p>
+                    
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        <span className={isOverdue(task.faelligkeitsdatum) && !task.abgeschlossen ? 'text-red-400 font-medium' : ''}>
+                          {formatDate(task.faelligkeitsdatum)}
+                        </span>
+                        {isOverdue(task.faelligkeitsdatum) && !task.abgeschlossen && (
+                          <Badge variant="outline" className="ml-2 text-red-400 border-red-400/30 bg-red-500/10">
+                            Überfällig
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {task.zeitschaetzung && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{task.zeitschaetzung}</span>
+                        </div>
+                      )}
+                      
+                      {task.zugewiesenAn && (
+                        <div className="flex items-center gap-1">
+                          <User className="h-4 w-4" />
+                          <span>
+                            {coachees?.find(c => c.id === task.zugewiesenAn)?.firstName || 
+                             coachees?.find(c => c.id === task.zugewiesenAn)?.vorname || 'Unbekannt'}
+                          </span>
+                        </div>
+                      )}
+                      
+                      <Badge className={getPriorityColor(task.prioritaet)}>
+                        {task.prioritaet}
+                      </Badge>
+                    </div>
+
+                    {task.notizen && (
+                      <div className="mt-3 p-3 bg-muted/20 rounded-lg">
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Notizen:</strong> {task.notizen}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 ml-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditTask(task)}
+                      className="h-8 w-8 p-0 hover:bg-blue-500/20"
+                    >
+                      <Edit2 className="h-4 w-4 text-blue-400" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="h-8 w-8 p-0 hover:bg-red-500/20"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-400" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="glass-card-enhanced max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Aufgabe bearbeiten</DialogTitle>
+            <DialogDescription>
+              Ändern Sie die Details Ihrer Aufgabe
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingTask && (
+            <div className="grid gap-6 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-titel">Titel *</Label>
+                  <Input
+                    id="edit-titel"
+                    value={editingTask.titel}
+                    onChange={(e) => setEditingTask({...editingTask, titel: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-thema">Thema</Label>
+                  <Select 
+                    value={editingTask.thema} 
+                    onValueChange={(value) => setEditingTask({...editingTask, thema: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                      <SelectItem value={TaskPriority.HIGH}>Dringend</SelectItem>
-                      <SelectItem value={TaskPriority.MEDIUM}>Mittel</SelectItem>
-                      <SelectItem value={TaskPriority.LOW}>Niedrig</SelectItem>
+                    <SelectContent>
+                      {themen.map(thema => (
+                        <SelectItem key={thema.value} value={thema.value}>
+                          <span className="flex items-center gap-2">
+                            {thema.icon} {thema.label}
+                          </span>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <Button size="sm" onClick={handleUpdateTask} className="w-full sm:w-auto">Speichern</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditingTask(null)} className="w-full sm:w-auto">Abbrechen</Button>
                 </div>
-              ) : (
-                <>
-                  <div className="flex-1 cursor-pointer" onClick={() => toggleTask(task.id)}>
-                    <label
-                      htmlFor={`task-${task.id}`}
-                      className={`text-sm cursor-pointer ${task.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}
-                    >
-                      {task.text}
-                    </label>
-                    {task.dueDate && (
-                      <p className={`text-xs ${isToday(new Date(task.dueDate)) ? 'text-primary' : 'text-slate-500'}`}>
-                          Fällig: {format(new Date(task.dueDate), 'dd. MMM yyyy', { locale: de })}
-                      </p>
-                    )}
-                    {task.coacheeId && !coacheeId && ( // Show coachee name only if not in coachee-specific view
-                      <p className="text-xs text-slate-600">
-                        Coachee: {getCoacheeName(task.coacheeId)}
-                      </p>
-                    )}
-                    {task.priority && (
-                        <Badge variant="secondary" className={cn("mt-1", getPriorityColor(task.priority))}>
-                            <Flag className="h-3 w-3 mr-1" /> {task.priority === TaskPriority.HIGH ? 'Dringend' : task.priority === TaskPriority.MEDIUM ? 'Mittel' : 'Niedrig'}
-                        </Badge>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => startEditing(task)} className="text-slate-500 hover:text-primary">
-                      <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="text-slate-500 hover:text-red-500">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-         {filteredTasks.length === 0 && (
-           <p className="text-center text-slate-500 py-4">Keine Aufgaben in dieser Ansicht.</p>
-         )}
-      </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-konkretesToDo">Konkretes To-Do *</Label>
+                <Textarea
+                  id="edit-konkretesToDo"
+                  value={editingTask.konkretesToDo}
+                  onChange={(e) => setEditingTask({...editingTask, konkretesToDo: e.target.value})}
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-prioritaet">Priorität</Label>
+                  <Select 
+                    value={editingTask.prioritaet} 
+                    onValueChange={(value) => setEditingTask({...editingTask, prioritaet: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {prioritaeten.map(prio => (
+                        <SelectItem key={prio} value={prio}>{prio}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-zeitschaetzung">Zeitschätzung</Label>
+                  <Input
+                    id="edit-zeitschaetzung"
+                    value={editingTask.zeitschaetzung || ''}
+                    onChange={(e) => setEditingTask({...editingTask, zeitschaetzung: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-faelligkeitsdatum">Fälligkeitsdatum</Label>
+                  <Input
+                    id="edit-faelligkeitsdatum"
+                    type="date"
+                    value={editingTask.faelligkeitsdatum}
+                    onChange={(e) => setEditingTask({...editingTask, faelligkeitsdatum: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-zugewiesenAn">Zugewiesen an</Label>
+                  <Select 
+                    value={editingTask.zugewiesenAn} 
+                    onValueChange={(value) => setEditingTask({...editingTask, zugewiesenAn: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="self">Mir selbst</SelectItem>
+                      {coachees?.map(coachee => (
+                        <SelectItem key={coachee.id} value={coachee.id}>
+                          {coachee.firstName || coachee.vorname} {coachee.lastName || coachee.nachname}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-notizen">Zusätzliche Notizen</Label>
+                <Textarea
+                  id="edit-notizen"
+                  value={editingTask.notizen || ''}
+                  onChange={(e) => setEditingTask({...editingTask, notizen: e.target.value})}
+                  rows={2}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleUpdateTask} className="glass-button">
+              Änderungen speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -68,7 +68,6 @@ const useAppState = () => {
   const [recurringInvoices, setRecurringInvoices] = useLocalStorage('recurringInvoices', dummyRecurringInvoices);
   const [packageTemplates, setPackageTemplates] = useLocalStorage('packageTemplates', dummyPackageTemplates);
 
-
   const [settings, setSettings] = useLocalStorage('appSettings', defaultSettings, (savedSettings) => {
     const parsedSettings = savedSettings || {};
     const customPrompts = parsedSettings.ai?.prompts || [];
@@ -106,8 +105,8 @@ const useAppState = () => {
       const hasVisitedBefore = localStorage.getItem('hasVisitedCoachingspace');
       if (!hasVisitedBefore) {
         toast({
-          title: "Willkommen zu Coachingspace! 🎉",
-          description: "Drücke ⌘+K um die globale Suche zu öffnen. Lass uns gemeinsam Großes erreichen! 🚀",
+          title: "Willkommen zu Coachingspace!",
+          description: "Drücke ⌘+K um die globale Suche zu öffnen. Lass uns gemeinsam Großes erreichen!",
           duration: 7000,
         });
         localStorage.setItem('hasVisitedCoachingspace', 'true');
@@ -309,6 +308,32 @@ const useAppState = () => {
     });
   }, [setActivePackages, toast]);
 
+  // Task Management Funktionen
+  const addTask = useCallback((newTask) => {
+    setTasks(prevTasks => [...(prevTasks || []), newTask]);
+    toast({
+      title: "Aufgabe erstellt",
+      description: `"${newTask.titel}" wurde zu deinen Aufgaben hinzugefügt.`,
+    });
+  }, [setTasks, toast]);
+
+  const updateTask = useCallback((taskId, updates) => {
+    setTasks(prevTasks => 
+      (prevTasks || []).map(task => 
+        task.id === taskId ? { ...task, ...updates } : task
+      )
+    );
+  }, [setTasks]);
+
+  const deleteTask = useCallback((taskId) => {
+    const taskToDelete = tasks.find(task => task.id === taskId);
+    setTasks(prevTasks => (prevTasks || []).filter(task => task.id !== taskId));
+    toast({
+      title: "Aufgabe gelöscht",
+      description: taskToDelete ? `"${taskToDelete.titel}" wurde entfernt.` : "Die Aufgabe wurde erfolgreich entfernt.",
+    });
+  }, [setTasks, tasks, toast]);
+
   const backupData = useCallback(() => {
     const dataToBackup = { coachees, sessions, invoices, journalEntries, generalDocuments, settings, tools, activePackages, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates };
     const dataStr = JSON.stringify(dataToBackup, null, 2);
@@ -325,6 +350,22 @@ const useAppState = () => {
   }, [coachees, sessions, invoices, journalEntries, generalDocuments, settings, tools, activePackages, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates, toast]);
 
   const contextValue = useMemo(() => ({
+    // Direct access to states and setters for backwards compatibility
+    isLoading,
+    isCommandOpen,
+    coachees, sessions, invoices, journalEntries, generalDocuments, tools, activePackages, settings, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates,
+    setCommandOpen,
+    setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
+    
+    // Action functions
+    addCoachee, updateCoachee, getCoacheeById, getCoacheeByToken, ensurePermanentTokenForDemo,
+    getToolById, updateCoacheeConsent, getAllCoacheeDocuments, addDocument, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
+    activatePackage,
+    
+    // Task Management Functions
+    addTask, updateTask, deleteTask,
+
+    // Legacy structure for backwards compatibility
     state: {
       isLoading,
       isCommandOpen,
@@ -335,14 +376,15 @@ const useAppState = () => {
       setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
       addCoachee, updateCoachee, getCoacheeById, getCoacheeByToken, ensurePermanentTokenForDemo,
       getToolById, updateCoacheeConsent, getAllCoacheeDocuments, addDocument, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
-      activatePackage
+      activatePackage,
+      addTask, updateTask, deleteTask
     },
   }), [
     isLoading, isCommandOpen, coachees, sessions, invoices, journalEntries, generalDocuments, tools, activePackages, settings, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates,
     setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
     addCoachee, updateCoachee, getCoacheeById, getCoacheeByToken, ensurePermanentTokenForDemo,
     getToolById, updateCoacheeConsent, getAllCoacheeDocuments, addDocument, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
-    activatePackage
+    activatePackage, addTask, updateTask, deleteTask
   ]);
 
   return contextValue;
