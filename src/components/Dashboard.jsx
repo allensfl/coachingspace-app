@@ -20,13 +20,106 @@ import {
   StickyNote,
   Receipt,
   Bell,
-  MessageCircle
+  MessageCircle,
+  Mail,
+  DollarSign,
+  PartyPopper,
+  CalendarPlus
 } from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
 import OpenInvoices from './OpenInvoices';
 import EventsAndBirthdays from './EventsAndBirthdays';
 import QuickActions from './QuickActions';
 import CalendarOverview from './CalendarOverview';
+
+// E-Mail Template Funktionen
+const emailTemplates = {
+  nachfassen: (coachee, task) => ({
+    subject: `Nachfassen: ${task.titel}`,
+    body: `Hallo ${coachee.firstName},
+
+ich wollte kurz nachfragen, wie es mit deiner Aufgabe "${task.titel}" läuft.
+
+Deadline war heute - wie ist der Stand? Brauchst du Unterstützung oder haben sich neue Herausforderungen ergeben?
+
+Lass uns gerne kurz telefonieren oder in der nächsten Session darüber sprechen.
+
+Beste Grüße,
+[Dein Name]`
+  }),
+
+  mahnen: (coachee) => ({
+    subject: `Zahlungserinnerung - Coaching Sessions`,
+    body: `Hallo ${coachee.firstName},
+
+ich hoffe, es geht dir gut! 
+
+Mir ist aufgefallen, dass eine Rechnung noch offen ist. Könntest du bitte einen Blick darauf werfen?
+
+Falls es Fragen gibt oder sich etwas geändert hat, melde dich gerne bei mir.
+
+Vielen Dank und beste Grüße,
+[Dein Name]`
+  }),
+
+  gratulieren: (coachee, task) => ({
+    subject: `Herzlichen Glückwunsch - ${task.titel} erfolgreich abgeschlossen!`,
+    body: `Hallo ${coachee.firstName},
+
+ich freue mich riesig mit dir! Du hast dein Ziel "${task.titel}" erfolgreich erreicht. 🎉
+
+Das zeigt wieder einmal, was für eine starke und zielstrebige Person du bist. Ich bin stolz auf deinen Fortschritt!
+
+Lass uns in der nächsten Session gemeinsam reflektieren und den nächsten Schritt planen.
+
+Herzliche Glückwünsche,
+[Dein Name]`
+  }),
+
+  terminieren: (coachee) => ({
+    subject: `Terminfindung für unsere nächste Coaching Session`,
+    body: `Hallo ${coachee.firstName},
+
+es ist Zeit für unsere nächste Session! 
+
+Wann passt es dir in den nächsten 1-2 Wochen am besten? Ich habe folgende Zeiten frei:
+- [Datum/Zeit 1]
+- [Datum/Zeit 2] 
+- [Datum/Zeit 3]
+
+Oder schlage gerne eigene Zeiten vor. Wir können wie gewohnt [online/in meinem Büro] treffen.
+
+Freue mich auf unser Gespräch!
+
+Beste Grüße,
+[Dein Name]`
+  }),
+
+  kontaktieren: (coachee) => ({
+    subject: `Kurzes Check-in`,
+    body: `Hallo ${coachee.firstName},
+
+ich wollte mich kurz bei dir melden und fragen, wie es dir geht.
+
+Falls du Fragen hast oder einfach mal sprechen möchtest, melde dich gerne.
+
+Beste Grüße,
+[Dein Name]`
+  })
+};
+
+const sendEmail = (coachee, templateType, task = null) => {
+  if (!coachee?.email && !coachee?.emailAddress) {
+    alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
+    return;
+  }
+
+  const email = coachee.email || coachee.emailAddress;
+  const template = emailTemplates[templateType](coachee, task);
+  
+  const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
+  window.open(mailtoUrl);
+};
 
 // StatCard mit Akzentfarben für Icons und Rand
 const StatCard = ({ title, value, icon, to, colorClass }) => {
@@ -139,6 +232,46 @@ export default function Dashboard() {
     }
   };
 
+  // Quick Action Buttons für häufige Coach-Aktionen - Vereinfacht für kontextuelle Nutzung
+  const sendMahnung = (coachee) => {
+    const template = emailTemplates.mahnen(coachee);
+    const email = coachee.email || coachee.emailAddress;
+    
+    if (!email) {
+      alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
+      return;
+    }
+    
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
+    window.open(mailtoUrl);
+  };
+
+  const sendGratulation = (coachee, occasion = 'Geburtstag') => {
+    const template = {
+      subject: `Herzlichen Glückwunsch zum ${occasion}!`,
+      body: `Hallo ${coachee.firstName},
+
+herzlichen Glückwunsch zu deinem ${occasion}! 🎉
+
+Ich wünsche dir alles Gute, viel Freude und dass alle deine Wünsche in Erfüllung gehen.
+
+Genieße deinen besonderen Tag!
+
+Herzliche Grüße,
+[Dein Name]`
+    };
+    
+    const email = coachee.email || coachee.emailAddress;
+    
+    if (!email) {
+      alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
+      return;
+    }
+    
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
+    window.open(mailtoUrl);
+  };
+
   return (
     <>
       <Helmet>
@@ -235,7 +368,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Coachee Deadlines */}
+          {/* Coachee Deadlines - nur Nachfassen */}
           <Card className="glass-card-enhanced">
             <CardHeader>
               <CardTitle className="flex items-center text-foreground text-lg">
@@ -267,14 +400,21 @@ export default function Dashboard() {
                             <p className="text-xs text-muted-foreground mt-1">{task.konkretesToDo}</p>
                           )}
                         </div>
-                        <div className="text-right">
-                          <Badge variant={isOverdue ? "destructive" : "default"} className="text-xs mb-2">
+                        <div className="text-right space-y-2">
+                          <Badge variant={isOverdue ? "destructive" : "default"} className="text-xs">
                             {isOverdue ? 'Überfällig' : 'Fällig heute'}
                           </Badge>
-                          <Button size="sm" variant="outline" className="text-xs h-7 w-full">
-                            <MessageCircle className="h-3 w-3 mr-1" />
-                            Nachfassen
-                          </Button>
+                          {coachee && (
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-xs h-7 w-full hover:bg-blue-50 hover:border-blue-300"
+                              onClick={() => sendEmail(coachee, 'nachfassen', task)}
+                            >
+                              <MessageCircle className="h-3 w-3 mr-1" />
+                              Nachfassen
+                            </Button>
+                          )}
                         </div>
                       </div>
                     )

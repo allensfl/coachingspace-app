@@ -2,19 +2,15 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Receipt, Clock, AlertCircle, DollarSign } from 'lucide-react';
+import { Receipt, Clock, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAppStateContext } from '@/context/AppStateContext';
 
 const OpenInvoices = () => {
-  const { coachees = [] } = useAppStateContext();
-
-  // Mock-Daten für offene Rechnungen - erweitert mit Coachee-Referenzen
+  // Mock-Daten für offene Rechnungen
   const openInvoices = [
     {
       id: 1,
       clientName: 'Sarah Müller',
-      coacheeId: 3, // Referenz zu Sarah Müller aus Coachees
       amount: 450,
       dueDate: '2025-09-10',
       daysOverdue: 5,
@@ -22,60 +18,13 @@ const OpenInvoices = () => {
     },
     {
       id: 2,
-      clientName: 'Michael Weber',
-      coacheeId: 2, // Referenz zu Michael Weber aus Coachees  
+      clientName: 'Michael König',
       amount: 300,
       dueDate: '2025-09-18',
       daysOverdue: 0,
       status: 'due_soon'
     }
   ];
-
-  const sendMahnung = (invoice) => {
-    // Finde den entsprechenden Coachee
-    const coachee = coachees.find(c => c.id === invoice.coacheeId);
-    
-    if (!coachee) {
-      alert('Coachee-Daten nicht gefunden.');
-      return;
-    }
-
-    const email = coachee.email || coachee.emailAddress;
-    
-    if (!email) {
-      alert(`Keine E-Mail-Adresse für ${invoice.clientName} gefunden.`);
-      return;
-    }
-
-    const template = {
-      subject: `Zahlungserinnerung - Rechnung ${invoice.id}`,
-      body: `Hallo ${coachee.firstName},
-
-ich hoffe, es geht dir gut!
-
-Mir ist aufgefallen, dass die Rechnung über ${formatCurrency(invoice.amount)} vom ${invoice.dueDate} noch offen ist.
-
-${invoice.status === 'overdue' 
-  ? `Die Rechnung ist bereits ${invoice.daysOverdue} Tage überfällig.` 
-  : 'Die Rechnung wird bald fällig.'}
-
-Könntest du bitte einen Blick darauf werfen? Falls es Fragen gibt oder sich etwas geändert hat, melde dich gerne bei mir.
-
-Vielen Dank für dein Verständnis!
-
-Beste Grüße,
-[Dein Name]
-
----
-Rechnungsdetails:
-Betrag: ${formatCurrency(invoice.amount)}
-Fälligkeitsdatum: ${invoice.dueDate}
-Rechnungsnummer: ${invoice.id}`
-    };
-    
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
-    window.open(mailtoUrl);
-  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('de-DE', {
@@ -121,15 +70,9 @@ Rechnungsnummer: ${invoice.id}`
                 </div>
                 <div className="text-right space-y-2">
                   {getStatusBadge(invoice.status, invoice.daysOverdue)}
-                  {(invoice.status === 'overdue' || invoice.status === 'due_soon') && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-xs h-7 w-full hover:bg-orange-50 hover:border-orange-300"
-                      onClick={() => sendMahnung(invoice)}
-                    >
-                      <DollarSign className="h-3 w-3 mr-1" />
-                      {invoice.status === 'overdue' ? 'Mahnen' : 'Erinnern'}
+                  {invoice.status === 'overdue' && (
+                    <Button size="sm" variant="outline" className="text-xs h-7">
+                      Mahnung
                     </Button>
                   )}
                 </div>
