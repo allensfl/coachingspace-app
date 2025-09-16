@@ -445,16 +445,11 @@ Herzliche Grüße,
           {/* Weitere Bereiche in der oberen Zeile */}
           <div className="grid gap-6 lg:grid-cols-2 lg:col-span-2">
             <OpenInvoices />
-            <EventsAndBirthdays />
-          </div>
-        </div>
-
-        {/* Quick Actions - volle Breite aber kleiner */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
             <QuickActions />
           </div>
         </div>
+
+        
       </div>
     </>
   );

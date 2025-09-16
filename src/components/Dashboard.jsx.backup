@@ -232,63 +232,44 @@ export default function Dashboard() {
     }
   };
 
-  // Quick Action Buttons für häufige Coach-Aktionen
-  const renderQuickActionButtons = (coachee, task = null) => {
-    const buttonClass = "h-8 px-3 text-xs";
+  // Quick Action Buttons für häufige Coach-Aktionen - Vereinfacht für kontextuelle Nutzung
+  const sendMahnung = (coachee) => {
+    const template = emailTemplates.mahnen(coachee);
+    const email = coachee.email || coachee.emailAddress;
     
-    return (
-      <div className="flex gap-2 flex-wrap">
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className={`${buttonClass} hover:bg-blue-50 hover:border-blue-300`}
-          onClick={() => sendEmail(coachee, 'nachfassen', task)}
-        >
-          <MessageCircle className="h-3 w-3 mr-1" />
-          Nachfassen
-        </Button>
-        
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className={`${buttonClass} hover:bg-orange-50 hover:border-orange-300`}
-          onClick={() => sendEmail(coachee, 'mahnen')}
-        >
-          <DollarSign className="h-3 w-3 mr-1" />
-          Mahnen
-        </Button>
+    if (!email) {
+      alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
+      return;
+    }
+    
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
+    window.open(mailtoUrl);
+  };
 
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className={`${buttonClass} hover:bg-green-50 hover:border-green-300`}
-          onClick={() => sendEmail(coachee, 'gratulieren', task)}
-        >
-          <PartyPopper className="h-3 w-3 mr-1" />
-          Gratulieren
-        </Button>
+  const sendGratulation = (coachee, occasion = 'Geburtstag') => {
+    const template = {
+      subject: `Herzlichen Glückwunsch zum ${occasion}!`,
+      body: `Hallo ${coachee.firstName},
 
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className={`${buttonClass} hover:bg-purple-50 hover:border-purple-300`}
-          onClick={() => sendEmail(coachee, 'terminieren')}
-        >
-          <CalendarPlus className="h-3 w-3 mr-1" />
-          Terminieren
-        </Button>
+herzlichen Glückwunsch zu deinem ${occasion}! 🎉
 
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className={`${buttonClass} hover:bg-gray-50 hover:border-gray-300`}
-          onClick={() => sendEmail(coachee, 'kontaktieren')}
-        >
-          <Mail className="h-3 w-3 mr-1" />
-          Kontaktieren
-        </Button>
-      </div>
-    );
+Ich wünsche dir alles Gute, viel Freude und dass alle deine Wünsche in Erfüllung gehen.
+
+Genieße deinen besonderen Tag!
+
+Herzliche Grüße,
+[Dein Name]`
+    };
+    
+    const email = coachee.email || coachee.emailAddress;
+    
+    if (!email) {
+      alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
+      return;
+    }
+    
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
+    window.open(mailtoUrl);
   };
 
   return (
@@ -387,7 +368,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Coachee Deadlines mit Action Buttons */}
+          {/* Coachee Deadlines - nur Nachfassen */}
           <Card className="glass-card-enhanced">
             <CardHeader>
               <CardTitle className="flex items-center text-foreground text-lg">
@@ -397,36 +378,44 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {coacheeDeadlines.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {coacheeDeadlines.slice(0, 5).map((task) => {
                     const coachee = coachees?.find(c => c.id === task.zugewiesenAn);
                     const isOverdue = new Date(task.faelligkeitsdatum) < new Date();
                     return (
-                      <div key={task.id} className="p-4 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors space-y-3">
-                        <div className="flex items-start space-x-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={coachee?.avatarUrl} />
-                            <AvatarFallback className="text-xs">
-                              {coachee ? `${coachee.firstName[0]}${coachee.lastName[0]}` : '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-foreground">{task.titel}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}
-                              {task.thema && ` • ${task.thema}`}
-                            </p>
-                            {task.konkretesToDo && (
-                              <p className="text-xs text-muted-foreground mt-1">{task.konkretesToDo}</p>
-                            )}
-                          </div>
+                      <div key={task.id} className="flex items-center space-x-3 p-3 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={coachee?.avatarUrl} />
+                          <AvatarFallback className="text-xs">
+                            {coachee ? `${coachee.firstName[0]}${coachee.lastName[0]}` : '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">{task.titel}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}
+                            {task.thema && ` • ${task.thema}`}
+                          </p>
+                          {task.konkretesToDo && (
+                            <p className="text-xs text-muted-foreground mt-1">{task.konkretesToDo}</p>
+                          )}
+                        </div>
+                        <div className="text-right space-y-2">
                           <Badge variant={isOverdue ? "destructive" : "default"} className="text-xs">
                             {isOverdue ? 'Überfällig' : 'Fällig heute'}
                           </Badge>
+                          {coachee && (
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-xs h-7 w-full hover:bg-blue-50 hover:border-blue-300"
+                              onClick={() => sendEmail(coachee, 'nachfassen', task)}
+                            >
+                              <MessageCircle className="h-3 w-3 mr-1" />
+                              Nachfassen
+                            </Button>
+                          )}
                         </div>
-                        
-                        {/* Quick Action Buttons */}
-                        {coachee && renderQuickActionButtons(coachee, task)}
                       </div>
                     )
                   })}
