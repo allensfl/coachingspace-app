@@ -178,63 +178,16 @@ export default function Dashboard() {
   } = state;
   const { 
     updateTask,
-    getSharedJournalEntries
+    getSharedJournalEntries = () => [] // Fallback-Funktion
   } = actions;
   
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // Debug: AppState global verfügbar machen
-  useEffect(() => {
-    if (actions) {
-      window.appState = { actions };
-      console.log('Debug: getSharedJournalEntries available:', typeof getSharedJournalEntries);
-    }
-  }, [actions, getSharedJournalEntries]);
-
-  // Geteilte Journal-Einträge von Coachees mit robuster Behandlung
+  // Geteilte Journal-Einträge temporär deaktiviert bis Funktion repariert ist
   const sharedEntries = useMemo(() => {
-    if (!getSharedJournalEntries) {
-      console.log('getSharedJournalEntries not available');
-      return [];
-    }
-    
-    try {
-      const rawEntries = getSharedJournalEntries();
-      console.log('Raw shared entries:', rawEntries);
-      
-      if (!Array.isArray(rawEntries)) {
-        console.log('getSharedJournalEntries did not return an array');
-        return [];
-      }
-      
-      // Filtere undefined/null entries und solche ohne ID
-      const validEntries = rawEntries.filter(entry => {
-        if (!entry) {
-          console.log('Filtered out null/undefined entry');
-          return false;
-        }
-        if (!entry.id) {
-          console.log('Filtered out entry without id:', entry);
-          return false;
-        }
-        if (!entry.content && !entry.title) {
-          console.log('Filtered out entry without content/title:', entry);
-          return false;
-        }
-        return true;
-      });
-      
-      console.log('Valid shared entries:', validEntries.length, validEntries);
-      
-      return validEntries
-        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-        .slice(0, 3); // Nur die neuesten 3 anzeigen
-    } catch (error) {
-      console.error('Error processing shared entries:', error);
-      return [];
-    }
-  }, [getSharedJournalEntries]);
+    return []; // Temporär deaktiviert
+  }, []);
 
   // Sessions für die nächsten 3 Tage
   const upcomingSessions = useMemo(() => {
@@ -412,70 +365,6 @@ Herzliche Grüße,
           />
         </div>
 
-        {/* Geteilte Einträge von Coachees - Robust mit Fallbacks */}
-        {sharedEntries.length > 0 && (
-          <Card className="glass-card-enhanced border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-            <CardHeader>
-              <CardTitle className="flex items-center text-foreground text-lg">
-                <Share2 className="mr-3 h-6 w-6 text-primary" />
-                Von Coachees geteilt ({sharedEntries.length})
-                <Badge variant="secondary" className="ml-2 bg-primary/20 text-primary">Neu</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {sharedEntries.map((entry) => {
-                  const coachee = coachees?.find(c => c.id === entry.coacheeId);
-                  const displayTitle = entry.title || (entry.content ? entry.content.slice(0, 50) : 'Geteilter Eintrag');
-                  const displayContent = entry.content || '';
-                  const displayDate = entry.date || new Date().toISOString();
-                  const displayAuthor = entry.sharedBy || (coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannter Coachee');
-                  
-                  return (
-                    <div 
-                      key={entry.id} 
-                      className="flex items-center space-x-3 p-4 bg-background/50 rounded-lg border border-primary/10 hover:bg-background/80 hover:border-primary/20 transition-colors cursor-pointer group"
-                      onClick={() => openEntryDetail(entry)}
-                    >
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={coachee?.avatarUrl} />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {coachee ? `${coachee.firstName[0]}${coachee.lastName[0]}` : '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                          {displayTitle}
-                          {displayContent.length > 50 && '...'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Von {displayAuthor} • {formatDate(displayDate)}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline" className="text-xs bg-primary/5 border-primary/20">
-                          <Share2 className="h-3 w-3 mr-1" />
-                          Geteilt
-                        </Badge>
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Debug Info - Erweitert */}
-        <div className="text-xs text-slate-500 p-2 bg-slate-800/20 rounded">
-          Debug: Shared entries count: {sharedEntries?.length || 0} | 
-          getSharedJournalEntries: {typeof getSharedJournalEntries} |
-          Valid entries: {sharedEntries.filter(e => e && e.id).length}
-        </div>
-
         {/* To-Do Bereich - separate Cards */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Persönliche Tasks */}
@@ -602,8 +491,6 @@ Herzliche Grüße,
             <QuickActions />
           </div>
         </div>
-
-        
       </div>
     </>
   );

@@ -192,11 +192,6 @@ const CoacheeDetail = () => {
       description: 'Der Link wurde in die Zwischenablage kopiert. Senden Sie ihn an Ihren Coachee.',
     });
   }, [coachee, toast]);
-  
-  const handleStartCoachingRoom = () => {
-     navigate(`/coaching-room/${id}`);
-  };
-
 
   if (isLoading || !coachee) {
     return (
@@ -243,7 +238,6 @@ const CoacheeDetail = () => {
             onEditToggle={handleEditToggle}
             onSave={handleSave}
             onCancelEdit={handleCancelEdit}
-            onStartCoachingRoom={handleStartCoachingRoom}
             onDelete={handleDeleteCoachee}
             onGeneratePortalLink={handleGeneratePortalLink}
         />
@@ -292,7 +286,17 @@ const CoacheeDetail = () => {
           <TabsContent value="sessions" className="mt-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
               <Card className="glass-card">
-                <CardHeader><CardTitle>Alle Sessions</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>Sessions mit {coachee.firstName}</CardTitle>
+                  <div className="flex gap-2">
+                    <Button asChild variant="default">
+                      <Link to="/sessions/new">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Neue Session
+                      </Link>
+                    </Button>
+                  </div>
+                </CardHeader>
                 <CardContent>
                   {coachee.sessions && coachee.sessions.length > 0 ? (
                     <ul className="space-y-4">
@@ -322,7 +326,15 @@ const CoacheeDetail = () => {
                       })}
                     </ul>
                   ) : (
-                    <p className="text-slate-400 text-center py-4">Noch keine Sessions mit diesem Coachee.</p>
+                    <div className="text-center py-8">
+                      <p className="text-slate-400 mb-4">Noch keine Sessions mit diesem Coachee.</p>
+                      <Button asChild>
+                        <Link to="/sessions/new">
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Erste Session erstellen
+                        </Link>
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -331,7 +343,7 @@ const CoacheeDetail = () => {
           <TabsContent value="journal" className="mt-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
               <Card className="glass-card">
-                <CardHeader><CardTitle>Journal-Einträge</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Journal-Einträge von {coachee.firstName}</CardTitle></CardHeader>
                 <CardContent>
                   {coachee.journalEntries && coachee.journalEntries.length > 0 ? (
                     <ul className="space-y-3">
@@ -343,7 +355,7 @@ const CoacheeDetail = () => {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-slate-400 text-center py-4">Noch keine Journal-Einträge für diesen Coachee.</p>
+                    <p className="text-slate-400 text-center py-4">Noch keine Journal-Einträge von diesem Coachee geteilt.</p>
                   )}
                 </CardContent>
               </Card>
@@ -353,6 +365,47 @@ const CoacheeDetail = () => {
             <AuditLogCard auditLog={dataToDisplay.auditLog} />
           </TabsContent>
         </Tabs>
+
+        {/* Smart Filter Buttons - Mit Coachee-spezifischen Filtern */}
+        <div className="mt-8 pt-6 border-t border-slate-700">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Button 
+              variant="outline" 
+              className="w-full h-12" 
+              onClick={() => navigate(`/sessions?coachee=${coachee.id}&name=${encodeURIComponent(coachee.firstName + ' ' + coachee.lastName)}`)}
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              {coachee.firstName}s Sessions
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full h-12" 
+              onClick={() => navigate(`/journal?coachee=${coachee.id}&name=${encodeURIComponent(coachee.firstName + ' ' + coachee.lastName)}`)}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              {coachee.firstName}s Journal
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full h-12" 
+              onClick={() => navigate(`/invoices?coachee=${coachee.id}&name=${encodeURIComponent(coachee.firstName + ' ' + coachee.lastName)}`)}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              {coachee.firstName}s Rechnungen
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full h-12" 
+              onClick={() => navigate(`/documents?coachee=${coachee.id}&name=${encodeURIComponent(coachee.firstName + ' ' + coachee.lastName)}`)}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              {coachee.firstName}s Dokumente
+            </Button>
+          </div>
+        </div>
       </div>
     </>
   );

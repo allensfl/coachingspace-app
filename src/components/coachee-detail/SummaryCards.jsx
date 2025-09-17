@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Calendar, BookOpen, DollarSign, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
@@ -12,8 +12,7 @@ const formatDate = (dateString) => {
   return new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 };
 
-const SummaryCard = ({ icon: Icon, title, items, children, delay }) => {
-  const { toast } = useToast();
+const SummaryCard = ({ icon: Icon, title, items, children, delay, onButtonClick, coacheeName }) => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay }}>
       <Card className="glass-card h-full flex flex-col">
@@ -26,7 +25,11 @@ const SummaryCard = ({ icon: Icon, title, items, children, delay }) => {
         <CardContent className="space-y-2 flex-1">
           {items && items.length > 0 ? (
             <>
-              {items.slice(0, 3).map(children)}
+              {items.slice(0, 3).map((item, index) => (
+                <div key={item.id || `${title}-${index}`}>
+                  {children(item)}
+                </div>
+              ))}
               {items.length > 3 && (
                 <p className="text-muted-foreground text-sm">+ {items.length - 3} weitere</p>
               )}
@@ -36,11 +39,13 @@ const SummaryCard = ({ icon: Icon, title, items, children, delay }) => {
           )}
         </CardContent>
         <div className="p-6 pt-0">
-          <Button variant="outline" className="w-full mt-2" onClick={() => toast({
-            title: "🚧 Diese Funktion ist noch nicht implementiert",
-            description: "Du kannst sie in deinem nächsten Prompt anfordern! 🚀"
-          })}>
-            Alle {title}
+          <Button 
+            variant="default" 
+            size="lg"
+            className="w-full mt-2 h-12 font-semibold" 
+            onClick={onButtonClick}
+          >
+            {coacheeName}s {title}
           </Button>
         </div>
       </Card>
@@ -49,41 +54,75 @@ const SummaryCard = ({ icon: Icon, title, items, children, delay }) => {
 };
 
 export default function SummaryCards({ coachee }) {
+  const navigate = useNavigate();
+
+  const handleNavigate = (route) => {
+    navigate(`${route}?coachee=${coachee.id}&name=${encodeURIComponent(coachee.firstName + ' ' + coachee.lastName)}`);
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-      <SummaryCard icon={Calendar} title="Sitzungen" items={coachee.sessions} delay={0.3}>
+      <SummaryCard 
+        icon={Calendar} 
+        title="Sessions" 
+        items={coachee.sessions} 
+        delay={0.3}
+        onButtonClick={() => handleNavigate('/sessions')}
+        coacheeName={coachee.firstName}
+      >
         {(session) => (
-          <div key={session.id}>
+          <>
             <p className="font-medium">{session.topic}</p>
             <p className="text-sm text-muted-foreground">{formatDate(session.date)}</p>
-          </div>
+          </>
         )}
       </SummaryCard>
-      
-      <SummaryCard icon={BookOpen} title="Journal" items={coachee.journalEntries} delay={0.4}>
+
+      <SummaryCard 
+        icon={BookOpen} 
+        title="Journal" 
+        items={coachee.journalEntries} 
+        delay={0.4}
+        onButtonClick={() => handleNavigate('/journal')}
+        coacheeName={coachee.firstName}
+      >
         {(entry) => (
-          <div key={entry.id}>
+          <>
             <p className="font-medium">{entry.title}</p>
             <p className="text-sm text-muted-foreground">{formatDate(entry.date)}</p>
-          </div>
+          </>
         )}
       </SummaryCard>
-      
-      <SummaryCard icon={DollarSign} title="Rechnungen" items={coachee.invoices} delay={0.5}>
+
+      <SummaryCard 
+        icon={DollarSign} 
+        title="Rechnungen" 
+        items={coachee.invoices} 
+        delay={0.5}
+        onButtonClick={() => handleNavigate('/invoices')}
+        coacheeName={coachee.firstName}
+      >
         {(invoice) => (
-          <div key={invoice.id}>
+          <>
             <p className="font-medium">Rechnung #{invoice.id}</p>
             <p className="text-sm text-muted-foreground">{formatDate(invoice.date)} - {invoice.amount} {invoice.currency}</p>
-          </div>
+          </>
         )}
       </SummaryCard>
-      
-      <SummaryCard icon={FileText} title="Dokumente" items={coachee.documents} delay={0.6}>
+
+      <SummaryCard 
+        icon={FileText} 
+        title="Dokumente" 
+        items={coachee.documents} 
+        delay={0.6}
+        onButtonClick={() => handleNavigate('/documents')}
+        coacheeName={coachee.firstName}
+      >
         {(doc) => (
-          <div key={doc.id}>
+          <>
             <p className="font-medium">{doc.name}</p>
             <p className="text-sm text-muted-foreground">{formatDate(doc.uploadDate)} - {doc.format}</p>
-          </div>
+          </>
         )}
       </SummaryCard>
     </div>

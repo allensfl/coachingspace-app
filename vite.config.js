@@ -217,6 +217,7 @@ export default defineConfig(({ mode }) => ({
 		host: "::",
 		port: 8080,
 		cors: true,
+		historyApiFallback: true, // <- DIESE ZEILE HINZUGEFÜGT für Client-Side-Routing
 		headers: {
 			'Cross-Origin-Embedder-Policy': 'credentialless',
 		},
