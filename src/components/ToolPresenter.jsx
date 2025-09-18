@@ -1,199 +1,329 @@
-import React, { useState } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { X, Maximize, Minimize } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
-import { Input } from '@/components/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStateContext } from '@/context/AppStateContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { ArrowLeft, ExternalLink, AlertTriangle, Circle, Target, List, TreePine, Compass } from 'lucide-react';
 
-const WheelOfLife = () => {
-  const segments = [
-    { name: 'Karriere', color: '#3b82f6', value: 8 },
-    { name: 'Finanzen', color: '#10b981', value: 6 },
-    { name: 'Gesundheit', color: '#ef4444', value: 7 },
-    { name: 'Familie & Freunde', color: '#f97316', value: 9 },
-    { name: 'Liebe & Partnerschaft', color: '#ec4899', value: 8 },
-    { name: 'Persönl. Wachstum', color: '#8b5cf6', value: 7 },
-    { name: 'Freizeit & Spaß', color: '#f59e0b', value: 5 },
-    { name: 'Umgebung', color: '#14b8a6', value: 8 },
-  ];
-  const size = 400;
-  const center = size / 2;
-  const radius = size / 2 - 20;
-
-  return (
-    <div className="flex items-center justify-center">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {segments.map((segment, i) => {
-          const angle = (i / segments.length) * 2 * Math.PI;
-          const nextAngle = ((i + 1) / segments.length) * 2 * Math.PI;
-          const x1 = center + Math.cos(angle) * radius * (segment.value / 10);
-          const y1 = center + Math.sin(angle) * radius * (segment.value / 10);
-          const x2 = center + Math.cos(nextAngle) * radius * (segment.value / 10);
-          const y2 = center + Math.sin(nextAngle) * radius * (segment.value / 10);
-          
-          const textAngle = angle + (nextAngle - angle) / 2;
-          const textX = center + Math.cos(textAngle) * (radius + 10);
-          const textY = center + Math.sin(textAngle) * (radius + 10);
-
-          return (
-            <g key={segment.name}>
-              <path d={`M ${center},${center} L ${x1},${y1} A ${radius * (segment.value / 10)},${radius * (segment.value / 10)} 0 0,1 ${x2},${y2} Z`} fill={segment.color} fillOpacity="0.7" />
-              <text x={textX} y={textY} textAnchor="middle" alignmentBaseline="middle" fill="white" fontSize="12">{segment.name}</text>
-            </g>
-          );
-        })}
-        {[...Array(10)].map((_, i) => (
-          <circle key={i} cx={center} cy={center} r={(radius / 10) * (i + 1)} fill="none" stroke="rgba(255,255,255,0.1)" />
-        ))}
-      </svg>
+// Temporäre Tool-Komponenten (bis echte Dateien erstellt werden)
+const Lebensrad = () => (
+  <div className="text-center p-8">
+    <Circle className="w-16 h-16 mx-auto mb-4 text-blue-400" />
+    <h2 className="text-2xl font-bold mb-4">Lebensrad</h2>
+    <p className="text-slate-300 mb-6">Bewerte verschiedene Lebensbereiche auf einer Skala von 1-10.</p>
+    <div className="bg-slate-800 p-6 rounded-lg">
+      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
+      <p className="text-sm text-slate-400 mt-2">Die interaktive Lebensrad-Komponente wird hier angezeigt.</p>
     </div>
-  );
-};
+  </div>
+);
 
-const ScalingQuestion = () => {
-  const [value, setValue] = useState([5]);
-  return (
-    <div className="w-full max-w-md mx-auto p-8">
-      <h3 className="text-xl text-center text-white mb-4">Auf einer Skala von 1 bis 10...</h3>
-      <Slider defaultValue={value} onValueChange={setValue} max={10} step={1} />
-      <div className="text-center text-6xl font-bold text-white mt-6">{value[0]}</div>
+const Skalenfrage = () => (
+  <div className="text-center p-8">
+    <Target className="w-16 h-16 mx-auto mb-4 text-green-400" />
+    <h2 className="text-2xl font-bold mb-4">Skalenfrage</h2>
+    <p className="text-slate-300 mb-6">Bewerte deine aktuelle Situation auf einer Skala.</p>
+    <div className="bg-slate-800 p-6 rounded-lg">
+      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
+      <p className="text-sm text-slate-400 mt-2">Die interaktive Skalenfrage-Komponente wird hier angezeigt.</p>
     </div>
-  );
-};
+  </div>
+);
 
-const ResourceList = () => {
-  const [items, setItems] = useState(['Unterstützende Familie', 'Gute Ausbildung', 'Starkes Netzwerk']);
-  const [newItem, setNewItem] = useState('');
-
-  const handleAddItem = () => {
-    if (newItem.trim()) {
-      setItems([...items, newItem.trim()]);
-      setNewItem('');
-    }
-  };
-
-  return (
-    <div className="w-full max-w-md mx-auto p-4">
-      <ul className="space-y-2">
-        {items.map((item, index) => (
-          <li key={index} className="bg-slate-800 p-3 rounded-md text-white">{item}</li>
-        ))}
-      </ul>
-      <div className="flex gap-2 mt-4">
-        <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="Neue Ressource..." className="bg-slate-700 border-slate-600 text-white" />
-        <Button onClick={handleAddItem}>Hinzufügen</Button>
-      </div>
+const RessourcenListe = () => (
+  <div className="text-center p-8">
+    <List className="w-16 h-16 mx-auto mb-4 text-purple-400" />
+    <h2 className="text-2xl font-bold mb-4">Ressourcen-Liste</h2>
+    <p className="text-slate-300 mb-6">Sammle deine verfügbaren Ressourcen und Stärken.</p>
+    <div className="bg-slate-800 p-6 rounded-lg">
+      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
+      <p className="text-sm text-slate-400 mt-2">Die interaktive Ressourcen-Listen-Komponente wird hier angezeigt.</p>
     </div>
-  );
-};
+  </div>
+);
 
-const GoalTree = () => {
-  return (
-    <div className="text-white p-4 text-center">
-      <div className="p-4 bg-blue-600 rounded-lg inline-block mb-4">Hauptziel</div>
-      <div className="flex justify-center gap-8">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex flex-col items-center">
-            <div className="w-px h-8 bg-slate-600"></div>
-            <div className="p-3 bg-green-600 rounded-lg">Teilziel {i+1}</div>
-          </div>
-        ))}
-      </div>
+const Zielbaum = () => (
+  <div className="text-center p-8">
+    <TreePine className="w-16 h-16 mx-auto mb-4 text-emerald-400" />
+    <h2 className="text-2xl font-bold mb-4">Zielbaum</h2>
+    <p className="text-slate-300 mb-6">Visualisiere deine Ziele in einer Baumstruktur.</p>
+    <div className="bg-slate-800 p-6 rounded-lg">
+      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
+      <p className="text-sm text-slate-400 mt-2">Die interaktive Zielbaum-Komponente wird hier angezeigt.</p>
     </div>
-  );
-};
+  </div>
+);
 
-const toolComponentMap = {
-  'Lebensrad': WheelOfLife,
-  'Skalenfrage': ScalingQuestion,
-  'Ressourcen-Liste': ResourceList,
-  'Zielbaum': GoalTree,
+const WerteKompass = () => (
+  <div className="text-center p-8">
+    <Compass className="w-16 h-16 mx-auto mb-4 text-orange-400" />
+    <h2 className="text-2xl font-bold mb-4">Werte-Kompass</h2>
+    <p className="text-slate-300 mb-6">Erkunde und definiere deine wichtigsten Werte.</p>
+    <div className="bg-slate-800 p-6 rounded-lg">
+      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
+      <p className="text-sm text-slate-400 mt-2">Die interaktive Werte-Kompass-Komponente wird hier angezeigt.</p>
+    </div>
+  </div>
+);
+
+// Tool-Komponenten-Map für dynamisches Rendern
+const TOOL_COMPONENTS = {
+  1: Lebensrad,
+  2: Skalenfrage, 
+  3: RessourcenListe,
+  4: Zielbaum,
+  5: WerteKompass,
+  'lebensrad': Lebensrad,
+  'skalenfrage': Skalenfrage,
+  'ressourcen-liste': RessourcenListe,
+  'zielbaum': Zielbaum,
+  'werte-kompass': WerteKompass,
 };
 
 export default function ToolPresenter() {
-  const { id } = useParams();
-  const { state } = useAppStateContext();
-  const { tools } = state;
-  const tool = tools.find(t => t.id === parseInt(id));
-  const [isFullScreen, setIsFullScreen] = useState(!!document.fullscreenElement);
+  const { toolId } = useParams();
+  const navigate = useNavigate();
+  const context = useAppStateContext();
+  const [debugInfo, setDebugInfo] = useState(null);
 
-  const toggleFullScreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullScreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-        setIsFullScreen(false);
-      }
-    }
+  // Context und Tools sicher laden
+  const tools = context?.state?.tools || [];
+  const isContextAvailable = !!context;
+
+  useEffect(() => {
+    // Debug-Information sammeln
+    const debug = {
+      contextAvailable: isContextAvailable,
+      toolId: toolId,
+      toolIdType: typeof toolId,
+      toolsCount: tools.length,
+      toolIds: tools.map(t => ({ id: t.id, type: typeof t.id, name: t.name })),
+      hasToolComponents: Object.keys(TOOL_COMPONENTS).length
+    };
+    
+    setDebugInfo(debug);
+    console.log('ToolPresenter Debug:', debug);
+  }, [toolId, tools, isContextAvailable]);
+
+  // Tool finden - Mehrfach-Suche für verschiedene ID-Typen
+  const findTool = () => {
+    if (!tools || tools.length === 0) return null;
+    
+    // Verschiedene ID-Matching-Strategien
+    return tools.find(t => 
+      String(t.id) === String(toolId) ||     // String-Vergleich
+      t.id === parseInt(toolId) ||           // Number-Vergleich  
+      t.id === toolId ||                     // Direkte Übereinstimmung
+      t.name?.toLowerCase().replace(/[^a-z0-9]/g, '-') === toolId  // Name-basierte Suche
+    ) || null;
   };
 
-  if (!tool) {
+  const tool = findTool();
+
+  // Tool-Komponente finden
+  const getToolComponent = () => {
+    // Erst nach ID suchen
+    if (TOOL_COMPONENTS[toolId]) {
+      return TOOL_COMPONENTS[toolId];
+    }
+    
+    // Dann nach numerischer ID
+    if (TOOL_COMPONENTS[parseInt(toolId)]) {
+      return TOOL_COMPONENTS[parseInt(toolId)];
+    }
+    
+    // Als letztes über Tool-Name
+    if (tool?.name) {
+      const nameKey = tool.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      return TOOL_COMPONENTS[nameKey];
+    }
+    
+    return null;
+  };
+
+  const ToolComponent = getToolComponent();
+
+  // Fallback: Context-Problem
+  if (!isContextAvailable) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-white text-slate-800">
-        <h2 className="text-2xl font-bold mb-4">Tool nicht gefunden</h2>
-        <Link to="/toolbox"><Button>Zurück zur Toolbox</Button></Link>
+      <div className="min-h-screen bg-slate-950 text-white p-6">
+        <div className="max-w-4xl mx-auto">
+          <Button 
+            onClick={() => navigate('/coaching-room/' + (sessionStorage.getItem('currentSessionId') || '1'))}
+            className="mb-6 bg-slate-800 hover:bg-slate-700"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Zurück zum CoachingRoom
+          </Button>
+          
+          <Card className="bg-slate-900 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-red-400 flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2" />
+                Context-Problem
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-slate-300 mb-4">
+                Der AppStateContext ist nicht verfügbar. ToolPresenter kann nicht auf die Toolbox zugreifen.
+              </p>
+              <div className="bg-slate-800 p-4 rounded-lg">
+                <pre className="text-sm text-green-400">
+{`Lösung:
+1. Stelle sicher, dass ToolPresenter innerhalb des AppStateProvider läuft
+2. Prüfe ob die Route korrekt konfiguriert ist
+3. Context muss auf derselben Ebene wie CoachingRoom verfügbar sein`}
+                </pre>
+              </div>
+              
+              {/* Notfall-Tool-Auswahl */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-3">Direkte Tool-Auswahl:</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(TOOL_COMPONENTS).filter(([key]) => !isNaN(key)).map(([id, Component]) => (
+                    <Button
+                      key={id}
+                      onClick={() => navigate(`/tool-presenter/${id}`)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Tool {id}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
-  const ToolComponent = toolComponentMap[tool.name];
-
-  return (
-    <>
-      <Helmet>
-        <title>Präsentation: {tool.name} - Coachingspace</title>
-        <meta name="description" content={`Präsentationsmodus für das Tool ${tool.name}.`} />
-      </Helmet>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="fixed inset-0 bg-slate-950 flex flex-col p-4"
-      >
-        <header className="flex items-center justify-between text-white mb-4 flex-shrink-0">
-          <h1 className="text-xl font-bold">{tool.name}</h1>
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={toggleFullScreen}>
-                    {isFullScreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{isFullScreen ? 'Vollbild verlassen' : 'Vollbild'}</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link to="/toolbox">
-                    <Button variant="ghost" size="icon"><X className="h-5 w-5" /></Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Präsentation schließen</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </header>
-        <main className="flex-grow bg-white rounded-lg flex items-center justify-center overflow-auto">
-          <Card className="w-full h-full max-w-4xl max-h-full bg-slate-900 border-none shadow-none flex flex-col">
+  // Tool nicht gefunden
+  if (!tool && !ToolComponent) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white p-6">
+        <div className="max-w-4xl mx-auto">
+          <Button 
+            onClick={() => navigate('/coaching-room/' + (sessionStorage.getItem('currentSessionId') || '1'))}
+            className="mb-6 bg-slate-800 hover:bg-slate-700"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Zurück zum CoachingRoom
+          </Button>
+          
+          <Card className="bg-slate-900 border-slate-700">
             <CardHeader>
-              <CardTitle className="text-white text-center">{tool.name}</CardTitle>
+              <CardTitle className="text-yellow-400">Tool nicht gefunden</CardTitle>
             </CardHeader>
-            <CardContent className="flex-grow flex items-center justify-center">
-              {ToolComponent ? <ToolComponent /> : <p className="text-slate-400">Für dieses Tool ist keine interaktive Komponente verfügbar.</p>}
+            <CardContent>
+              <p className="text-slate-300 mb-4">
+                Das Tool mit ID "{toolId}" konnte nicht gefunden werden.
+              </p>
+              
+              {debugInfo && (
+                <div className="bg-slate-800 p-4 rounded-lg mb-4">
+                  <h4 className="font-semibold mb-2 text-green-400">Debug-Info:</h4>
+                  <pre className="text-sm text-slate-300">
+{`Gesuchte ID: ${debugInfo.toolId}
+Context verfügbar: ${debugInfo.contextAvailable}
+Verfügbare Tools: ${debugInfo.toolsCount}
+Tool-Komponenten: ${debugInfo.hasToolComponents}
+
+Tool-IDs aus Context:
+${debugInfo.toolIds.map(t => `* ID: ${t.id} (${t.type}) - ${t.name}`).join('\n')}
+
+Verfügbare Tool-Komponenten:
+${Object.keys(TOOL_COMPONENTS).map(id => `* ${id}`).join(', ')}`}
+                  </pre>
+                </div>
+              )}
+              
+              {tools.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Verfügbare Tools:</h4>
+                  {tools.map(t => (
+                    <Button
+                      key={t.id}
+                      onClick={() => navigate(`/tool-presenter/${t.id}`)}
+                      className="block w-full text-left bg-slate-800 hover:bg-slate-700 p-3"
+                    >
+                      {t.name} (ID: {t.id})
+                    </Button>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
-        </main>
-      </motion.div>
-    </>
+        </div>
+      </div>
+    );
+  }
+
+  // Tool erfolgreich gefunden und geladen
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      {/* Header */}
+      <div className="bg-slate-900 border-b border-slate-700 p-4">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <div className="flex items-center space-x-4">
+            <Button 
+              onClick={() => navigate('/coaching-room/' + (sessionStorage.getItem('currentSessionId') || '1'))}
+              className="bg-slate-800 hover:bg-slate-700"
+              size="sm"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Zurück zum CoachingRoom
+            </Button>
+            <h1 className="text-xl font-bold">{tool?.name || `Tool ${toolId}`}</h1>
+          </div>
+          
+          <Button 
+            onClick={() => window.open(window.location.href, '_blank')}
+            className="bg-blue-600 hover:bg-blue-700"
+            size="sm"
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            In neuem Tab öffnen
+          </Button>
+        </div>
+      </div>
+
+      {/* Tool-Inhalt */}
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto">
+          {ToolComponent ? (
+            <div className="bg-slate-900 rounded-lg border border-slate-700 p-6">
+              <ToolComponent />
+            </div>
+          ) : (
+            <Card className="bg-slate-900 border-slate-700">
+              <CardHeader>
+                <CardTitle>Tool wird geladen...</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-300">
+                  Das Tool "{tool?.name || toolId}" wird vorbereitet.
+                </p>
+                {tool?.description && (
+                  <p className="text-slate-400 mt-2">{tool.description}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Debug-Panel (nur in Development) */}
+      {process.env.NODE_ENV === 'development' && debugInfo && (
+        <div className="fixed bottom-4 right-4 bg-slate-800 text-xs p-3 rounded-lg border border-slate-600 max-w-sm">
+          <details>
+            <summary className="cursor-pointer font-semibold">Debug Info</summary>
+            <pre className="mt-2 text-slate-300">
+{JSON.stringify(debugInfo, null, 2)}
+            </pre>
+          </details>
+        </div>
+      )}
+    </div>
   );
 }

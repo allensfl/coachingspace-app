@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Video, Phone, Users, Play, Archive, ArchiveRestore, CalendarPlus, Package, FileText as InvoiceIcon, Calendar, User, Clock } from 'lucide-react';
+import { MapPin, Video, Phone, Users, Play, Archive, ArchiveRestore, CalendarPlus, Package, FileText as InvoiceIcon, Calendar, User, Clock, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -87,6 +86,18 @@ const SessionCard = ({ session, index, onCardClick, onToggleArchive, onStatusCha
             {session.status === SessionStatus.PLANNED && (
               <Button size="icon" variant="ghost" onClick={() => onAddToCalendar(session)} title="Zum Kalender hinzufügen">
                 <CalendarPlus className="h-4 w-4" />
+              </Button>
+            )}
+            {/* NEU: Vorbereitung-Button für geplante Sessions */}
+            {session.status === SessionStatus.PLANNED && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => navigate(`/sessions/${session.id}/prepare`)}
+                className="border-blue-500 text-blue-400 hover:bg-blue-500/20"
+              >
+                <ClipboardList className="h-4 w-4 mr-2" /> 
+                Vorbereitung
               </Button>
             )}
             {session.status === SessionStatus.PLANNED && (

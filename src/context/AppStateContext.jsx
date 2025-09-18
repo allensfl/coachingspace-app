@@ -177,9 +177,14 @@ const useAppState = () => {
     };
   }, [coachees, sessions, invoices, journalEntries]);
 
+  // ERWEITERTE getCoacheeByToken Funktion für Portal-System
   const getCoacheeByToken = useCallback((token) => {
     if (!token || !coachees) return null;
-    return coachees.find(c => c.portalAccess?.initialToken === token || c.portalAccess?.permanentToken === token);
+    return coachees.find(c => 
+      c.portalAccess?.initialToken === token || 
+      c.portalAccess?.permanentToken === token ||
+      c.portalAccess?.oneTimeToken === token
+    );
   }, [coachees]);
 
   const ensurePermanentTokenForDemo = useCallback((coachee) => {

@@ -1,7 +1,7 @@
 import React, { useState, Suspense } from 'react';
 import { NavLink, Link, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, CheckSquare, Briefcase, LifeBuoy, Store, Menu, X, Command, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, CheckSquare, Store, Menu, X, Command, Loader2, LifeBuoy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStateContext } from '@/context/AppStateContext';
 
@@ -17,7 +17,6 @@ const navItems = [
     { icon: FileText, label: 'Rechnungen', path: '/invoices', color: 'text-rose-500' },
     { icon: Bot, label: 'KI-Assistent', path: '/ai-coaching', color: 'text-fuchsia-500' },
     { icon: Wrench, label: 'Toolbox', path: '/toolbox', color: 'text-pink-500' },
-    { icon: Briefcase, label: 'Coachee Portal', path: '/coachee-portal', color: 'text-cyan-500' },
     { icon: Store, label: 'Store', path: '/store', color: 'text-yellow-500' },
 ];
 

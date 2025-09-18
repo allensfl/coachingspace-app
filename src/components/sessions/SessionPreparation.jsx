@@ -4,543 +4,477 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   ArrowLeft, 
   Play, 
+  Plus, 
+  Trash2, 
+  Clock, 
   User, 
   Target, 
-  Clock, 
-  Plus, 
-  Trash2,
-  Brain,
-  MessageCircle,
-  Eye,
-  Search,
-  Video,
-  ExternalLink
+  BookOpen,
+  Calendar,
+  CheckCircle,
+  Lightbulb
 } from 'lucide-react';
-import { useAppStateContext } from '../context/AppStateContext';
+import { useAppStateContext } from '@/context/AppStateContext';
 
-const coachingApproaches = [
-  {
-    id: 'solution-focused',
-    name: 'Lösungsorientiert',
-    description: 'Fokus auf Lösungen und Ressourcen',
-    methods: ['Skalierungsfragen', 'Ausnahmeerkundung', 'Wunderfrage'],
-    duration: '60-90 min',
-    color: 'bg-blue-500'
-  },
-  {
-    id: 'resource-oriented', 
-    name: 'Ressourcenorientiert',
-    description: 'Stärken und Fähigkeiten aktivieren',
-    methods: ['Stärkenanalyse', 'Erfolgsgeschichten', 'Ressourcenmapping'],
-    duration: '45-75 min',
-    color: 'bg-green-500'
-  },
-  {
-    id: 'systemic',
-    name: 'Systemisch', 
-    description: 'Systemzusammenhänge erkunden',
-    methods: ['Genogramm', 'Systemaufstellung', 'Zirkuläre Fragen'],
-    duration: '75-120 min',
-    color: 'bg-purple-500'
-  },
-  {
-    id: 'triadic-ai',
-    name: 'Triadisches Coaching (mit KI)',
-    description: 'Coach, Coachee und KI als dritte Instanz',
-    methods: ['KI-Perspektivwechsel', 'Automatische Mustererkennung', 'KI-Reflexionsfragen'],
-    duration: '60-90 min',
-    requiresAI: true,
-    color: 'bg-orange-500'
-  },
-  {
-    id: 'individual',
-    name: 'Individueller Ansatz',
-    description: 'Flexibler Mix verschiedener Methoden',
-    methods: ['Situativ angepasst'],
-    duration: 'Variabel',
-    color: 'bg-gray-500'
-  }
-];
-
-const aiRoles = [
-  {
-    id: 'observer',
-    name: 'Beobachter',
-    description: 'KI analysiert Kommunikationsmuster und Emotionen',
-    icon: Eye
-  },
-  {
-    id: 'questioner', 
-    name: 'Fragensteller',
-    description: 'KI stellt ergänzende, systemische Fragen',
-    icon: MessageCircle
-  },
-  {
-    id: 'pattern-finder',
-    name: 'Mustererkenner',
-    description: 'KI erkennt wiederkehrende Themen und Blockaden',
-    icon: Search
-  }
-];
-
-export default function SessionPreparation() {
+const SessionPreparation = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { state } = useAppStateContext();
-  const { sessions, coachees } = state;
+  const context = useAppStateContext();
   
   const [session, setSession] = useState(null);
   const [coachee, setCoachee] = useState(null);
-  const [selectedApproach, setSelectedApproach] = useState('');
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [selectedAiRole, setSelectedAiRole] = useState('observer');
+  const [loading, setLoading] = useState(true);
+  
+  // Preparation state
+  const [selectedApproach, setSelectedApproach] = useState(null);
   const [agenda, setAgenda] = useState([]);
-  const [sessionNotes, setSessionNotes] = useState('');
-  const [externalTools, setExternalTools] = useState({
-    zoom: '',
-    miro: '',
-    custom: []
-  });
+  const [sessionGoals, setSessionGoals] = useState('');
+  const [preparationNotes, setPreparationNotes] = useState('');
 
+  // Load session data
   useEffect(() => {
-    if (sessionId && sessions) {
-      const foundSession = sessions.find(s => s.id === sessionId);
+    if (context && sessionId) {
+      // Find session with type flexibility
+      const foundSession = context.sessions?.find(s => 
+        s.id === sessionId || s.id === parseInt(sessionId) || String(s.id) === sessionId
+      );
+      
       if (foundSession) {
         setSession(foundSession);
-        const foundCoachee = coachees?.find(c => c.id === foundSession.coacheeId);
+        
+        // Find coachee
+        const foundCoachee = context.coachees?.find(c => c.id === foundSession.coacheeId);
         setCoachee(foundCoachee);
+        
+        // Initialize default agenda
+        setAgenda([
+          { 
+            id: 1, 
+            title: 'Check-in & Zielsetzung', 
+            method: 'conversation',
+            duration: 10,
+            notes: 'Wie geht es dem Coachee? Was ist das Ziel für heute?'
+          },
+          { 
+            id: 2, 
+            title: 'Hauptteil', 
+            method: 'exploration',
+            duration: 40,
+            notes: 'Kernthema der Session bearbeiten'
+          },
+          { 
+            id: 3, 
+            title: 'Abschluss & nächste Schritte', 
+            method: 'action-planning',
+            duration: 10,
+            notes: 'Zusammenfassung und konkrete Maßnahmen'
+          }
+        ]);
       }
     }
-  }, [sessionId, sessions, coachees]);
+    
+    setLoading(false);
+  }, [sessionId, context]);
 
-  const addAgendaItem = () => {
-    const newItem = {
-      id: Date.now(),
-      time: '',
-      topic: '',
-      method: '',
-      duration: 15
-    };
-    setAgenda([...agenda, newItem]);
+  const coachingApproaches = [
+    {
+      id: 'solution-focused',
+      name: 'Lösungsfokussiert',
+      description: 'Fokus auf Lösungen und Ressourcen',
+      color: 'bg-blue-500',
+      methods: ['scaling', 'miracle-question', 'resource-activation']
+    },
+    {
+      id: 'systemic',
+      name: 'Systemisch',
+      description: 'Betrachtung des Systems und Beziehungen',
+      color: 'bg-green-500',
+      methods: ['genogram', 'constellation', 'perspective-change']
+    },
+    {
+      id: 'cognitive',
+      name: 'Kognitiv',
+      description: 'Arbeit mit Denkmustern',
+      color: 'bg-purple-500',
+      methods: ['belief-work', 'reframing', 'thought-analysis']
+    },
+    {
+      id: 'gestalt',
+      name: 'Gestalt',
+      description: 'Hier und Jetzt, Emotionen',
+      color: 'bg-orange-500',
+      methods: ['empty-chair', 'body-awareness', 'here-now']
+    }
+  ];
+
+  const methodsLibrary = {
+    'conversation': 'Gespräch',
+    'exploration': 'Erkundung',
+    'action-planning': 'Aktionsplanung',
+    'scaling': 'Skalierung',
+    'miracle-question': 'Wunderfrage',
+    'resource-activation': 'Ressourcenaktivierung',
+    'genogram': 'Genogramm',
+    'constellation': 'Aufstellung',
+    'perspective-change': 'Perspektivwechsel',
+    'belief-work': 'Glaubenssatzarbeit',
+    'reframing': 'Reframing',
+    'thought-analysis': 'Gedankenanalyse',
+    'empty-chair': 'Leerer Stuhl',
+    'body-awareness': 'Körperwahrnehmung',
+    'here-now': 'Hier und Jetzt'
   };
 
   const updateAgendaItem = (id, field, value) => {
-    setAgenda(agenda.map(item => 
+    setAgenda(prev => prev.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
   };
 
-  const removeAgendaItem = (id) => {
-    setAgenda(agenda.filter(item => item.id !== id));
+  const addAgendaItem = () => {
+    const newItem = {
+      id: Date.now(),
+      title: 'Neuer Agenda-Punkt',
+      method: 'conversation',
+      duration: 15,
+      notes: ''
+    };
+    setAgenda(prev => [...prev, newItem]);
   };
 
-  const addCustomTool = () => {
-    const name = prompt('Name des externen Tools:');
-    const url = prompt('URL des Tools:');
-    if (name && url) {
-      setExternalTools({
-        ...externalTools,
-        custom: [...externalTools.custom, { name, url }]
-      });
-    }
+  const removeAgendaItem = (id) => {
+    setAgenda(prev => prev.filter(item => item.id !== id));
   };
 
   const handleStartCoaching = () => {
-    // Session mit Vorbereitung markieren
+    // Save preparation data to localStorage
     const preparationData = {
-      approach: selectedApproach,
-      aiEnabled,
-      aiRole: selectedAiRole,
+      sessionId,
+      coacheeId: coachee.id,
+      selectedApproach,
       agenda,
-      notes: sessionNotes,
-      externalTools
+      sessionGoals,
+      preparationNotes,
+      timestamp: new Date().toISOString()
     };
     
-    // Hier würde die Session mit Vorbereitung gespeichert werden
-    console.log('Starting coaching with preparation:', preparationData);
+    localStorage.setItem(`session_prep_${sessionId}`, JSON.stringify(preparationData));
     
-    navigate(`/coaching-room/${coachee?.id}?session_id=${sessionId}`);
+    // Navigate to coaching room
+    navigate(`/coaching-room/${coachee.id}?session_id=${sessionId}`);
   };
 
-  if (!session || !coachee) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-white">Session wird geladen...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">Lade Session-Daten...</div>
       </div>
     );
   }
 
+  if (!session || !coachee) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">Session oder Coachee nicht gefunden</div>
+      </div>
+    );
+  }
+
+  const totalDuration = agenda.reduce((sum, item) => sum + (item.duration || 0), 0);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-slate-900 text-white">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/sessions')}
-              className="text-slate-300 border-slate-600 hover:bg-slate-700"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Zurück zu Sessions
-            </Button>
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/sessions')}
+            className="mb-4 text-slate-400 hover:text-white"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Zurück zu Sessions
+          </Button>
+          
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-white">Session Vorbereitung</h1>
+              <h1 className="text-3xl font-bold mb-2">Session Vorbereitung</h1>
               <p className="text-slate-400">
-                {coachee.firstName} {coachee.lastName} • {new Date(session.date).toLocaleDateString('de-DE')}
+                {coachee.name} • {session.scheduledDate ? new Date(session.scheduledDate).toLocaleDateString('de-DE') : 'Datum nicht gesetzt'} • 
+                Geplant: {session.duration || 60} Min
               </p>
             </div>
+            
+            <div className="text-right">
+              <div className="text-2xl font-bold text-emerald-400">{totalDuration} Min</div>
+              <div className="text-sm text-slate-400">Geplante Agenda</div>
+            </div>
           </div>
-          <Button 
-            onClick={handleStartCoaching}
-            className="bg-green-600 hover:bg-green-700"
-            disabled={!selectedApproach}
-          >
-            <Play className="mr-2 h-4 w-4" />
-            Coaching starten
-          </Button>
         </div>
 
-        <Tabs defaultValue="context" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-slate-800">
-            <TabsTrigger value="context" className="text-slate-300">
-              <User className="mr-2 h-4 w-4" />
-              Kontext
-            </TabsTrigger>
-            <TabsTrigger value="approach" className="text-slate-300">
-              <Target className="mr-2 h-4 w-4" />
-              Ansatz
-            </TabsTrigger>
-            <TabsTrigger value="agenda" className="text-slate-300">
-              <Clock className="mr-2 h-4 w-4" />
-              Agenda
-            </TabsTrigger>
-            <TabsTrigger value="tools" className="text-slate-300">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Tools
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Kontext Tab */}
-          <TabsContent value="context" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="glass-card-enhanced border-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <User className="mr-2 h-5 w-5" />
-                    Coachee-Profil
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-slate-300">
-                  <div>
-                    <strong>Name:</strong> {coachee.firstName} {coachee.lastName}
-                  </div>
-                  <div>
-                    <strong>Hauptthema:</strong> {coachee.mainTopic}
-                  </div>
-                  <div>
-                    <strong>E-Mail:</strong> {coachee.email}
-                  </div>
-                  <div>
-                    <strong>Status:</strong> <Badge variant="secondary">{coachee.status}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card-enhanced border-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Target className="mr-2 h-5 w-5" />
-                    Coaching-Ziele
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-slate-300">
-                  {coachee.goals?.map((goal, index) => (
-                    <div key={index} className="p-2 bg-slate-800/50 rounded">
-                      {goal}
-                    </div>
-                  )) || <div className="text-slate-400">Keine Ziele definiert</div>}
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="glass-card-enhanced border-slate-700">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Coaching Approach */}
+            <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="text-white">Session-Notizen</CardTitle>
+                <CardTitle className="text-white flex items-center">
+                  <Target className="w-5 h-5 mr-2" />
+                  Coaching-Ansatz wählen
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  value={sessionNotes}
-                  onChange={(e) => setSessionNotes(e.target.value)}
-                  placeholder="Vorbereitende Notizen für diese Session..."
-                  className="min-h-32 bg-slate-800 border-slate-600 text-slate-300"
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  {coachingApproaches.map((approach) => (
+                    <div
+                      key={approach.id}
+                      onClick={() => setSelectedApproach(approach)}
+                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                        selectedApproach?.id === approach.id
+                          ? 'border-white bg-white/10'
+                          : 'border-slate-600 hover:border-slate-400'
+                      }`}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className={`w-3 h-3 rounded-full ${approach.color} mt-1 flex-shrink-0`} />
+                        <div>
+                          <h3 className="text-white font-semibold text-sm">{approach.name}</h3>
+                          <p className="text-slate-400 text-xs mt-1">{approach.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* Ansatz Tab */}
-          <TabsContent value="approach" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {coachingApproaches.map((approach) => (
-                <Card 
-                  key={approach.id}
-                  className={`glass-card-enhanced border-slate-700 cursor-pointer transition-all hover:scale-105 ${
-                    selectedApproach === approach.id ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                  onClick={() => setSelectedApproach(approach.id)}
-                >
-                  <CardHeader>
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-3 h-3 rounded-full ${approach.color}`} />
-                      <CardTitle className="text-white text-lg">{approach.name}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-slate-300 text-sm">{approach.description}</p>
-                    <div>
-                      <p className="text-slate-400 text-xs mb-1">Typische Methoden:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {approach.methods.map((method, idx) => (
-                          <Badge key={idx} variant="secondary" className="text-xs">
-                            {method}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-slate-400 text-xs">Dauer: {approach.duration}</p>
-                    {approach.requiresAI && (
-                      <Badge className="bg-orange-600">KI-Unterstützung</Badge>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* KI-Integration wenn triadisch gewählt */}
-            {selectedApproach === 'triadic-ai' && (
-              <Card className="glass-card-enhanced border-orange-500 border-2">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Brain className="mr-2 h-5 w-5 text-orange-500" />
-                    KI-Konfiguration
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={aiEnabled}
-                      onCheckedChange={setAiEnabled}
-                    />
-                    <span className="text-slate-300">KI-Unterstützung aktivieren</span>
-                  </div>
-                  
-                  {aiEnabled && (
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-slate-300 mb-2">KI-Rolle wählen:</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          {aiRoles.map((role) => {
-                            const Icon = role.icon;
-                            return (
-                              <Card 
-                                key={role.id}
-                                className={`cursor-pointer transition-all ${
-                                  selectedAiRole === role.id 
-                                    ? 'bg-orange-600/20 border-orange-500' 
-                                    : 'bg-slate-800 border-slate-600 hover:bg-slate-700'
-                                }`}
-                                onClick={() => setSelectedAiRole(role.id)}
-                              >
-                                <CardContent className="p-3 text-center">
-                                  <Icon className="h-6 w-6 mx-auto mb-2 text-orange-500" />
-                                  <h4 className="text-white font-medium">{role.name}</h4>
-                                  <p className="text-slate-400 text-xs mt-1">{role.description}</p>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Agenda Tab */}
-          <TabsContent value="agenda" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-white">Agenda planen</h3>
-              <Button onClick={addAgendaItem} className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="mr-2 h-4 w-4" />
-                Element hinzufügen
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              {agenda.map((item, index) => (
-                <Card key={item.id} className="glass-card-enhanced border-slate-700">
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                      <div>
-                        <Input
-                          placeholder="Zeit (z.B. 14:00)"
-                          value={item.time}
-                          onChange={(e) => updateAgendaItem(item.id, 'time', e.target.value)}
-                          className="bg-slate-800 border-slate-600 text-slate-300"
-                        />
-                      </div>
-                      <div>
-                        <Input
-                          placeholder="Thema/Aktivität"
-                          value={item.topic}
-                          onChange={(e) => updateAgendaItem(item.id, 'topic', e.target.value)}
-                          className="bg-slate-800 border-slate-600 text-slate-300"
-                        />
-                      </div>
-                      <div>
-                        <Select value={item.method} onValueChange={(value) => updateAgendaItem(item.id, 'method', value)}>
-                          <SelectTrigger className="bg-slate-800 border-slate-600 text-slate-300">
-                            <SelectValue placeholder="Methode wählen" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="discussion">Gespräch</SelectItem>
-                            <SelectItem value="questions">Fragerunde</SelectItem>
-                            <SelectItem value="exercise">Übung</SelectItem>
-                            <SelectItem value="reflection">Reflektion</SelectItem>
-                            <SelectItem value="planning">Planung</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Input
-                          type="number"
-                          value={item.duration}
-                          onChange={(e) => updateAgendaItem(item.id, 'duration', parseInt(e.target.value))}
-                          className="w-16 bg-slate-800 border-slate-600 text-slate-300"
-                          min="5"
-                          max="120"
-                        />
-                        <span className="text-slate-400 text-sm">min</span>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => removeAgendaItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {agenda.length > 0 && (
-              <Card className="glass-card-enhanced border-slate-700">
-                <CardContent className="p-4">
-                  <div className="text-slate-300">
-                    <strong>Geschätzte Gesamtdauer: </strong>
-                    {agenda.reduce((total, item) => total + (item.duration || 0), 0)} Minuten
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Tools Tab */}
-          <TabsContent value="tools" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="glass-card-enhanced border-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Video className="mr-2 h-5 w-5" />
-                    Video-Tools
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <label className="text-slate-300 text-sm mb-1 block">Zoom Meeting-Link</label>
-                    <Input
-                      value={externalTools.zoom}
-                      onChange={(e) => setExternalTools({...externalTools, zoom: e.target.value})}
-                      placeholder="https://zoom.us/j/..."
-                      className="bg-slate-800 border-slate-600 text-slate-300"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card-enhanced border-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <ExternalLink className="mr-2 h-5 w-5" />
-                    Kollaborations-Tools
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <label className="text-slate-300 text-sm mb-1 block">Miro/Whiteboard</label>
-                    <Input
-                      value={externalTools.miro}
-                      onChange={(e) => setExternalTools({...externalTools, miro: e.target.value})}
-                      placeholder="https://miro.com/..."
-                      className="bg-slate-800 border-slate-600 text-slate-300"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="glass-card-enhanced border-slate-700">
+            {/* Session Agenda */}
+            <Card className="glass-card">
               <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-white">Weitere Tools</CardTitle>
-                  <Button onClick={addCustomTool} variant="outline" size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Tool hinzufügen
+                <CardTitle className="text-white flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Clock className="w-5 h-5 mr-2" />
+                    Session-Ablauf ({totalDuration} Min)
+                  </span>
+                  <Button onClick={addAgendaItem} size="sm" variant="outline">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Punkt hinzufügen
                   </Button>
-                </div>
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                {externalTools.custom.length > 0 ? (
-                  <div className="space-y-2">
-                    {externalTools.custom.map((tool, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-slate-800/50 rounded">
-                        <div>
-                          <span className="text-slate-300 font-medium">{tool.name}</span>
-                          <p className="text-slate-400 text-xs">{tool.url}</p>
+                <div className="space-y-4">
+                  {agenda.map((item, index) => (
+                    <div key={item.id} className="p-4 bg-slate-800/50 rounded-lg">
+                      <div className="flex items-start space-x-4">
+                        <div className="flex-shrink-0 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                          {index + 1}
                         </div>
+                        
+                        <div className="flex-1 space-y-3">
+                          <Input
+                            placeholder="Agenda-Punkt Titel"
+                            value={item.title}
+                            onChange={(e) => updateAgendaItem(item.id, 'title', e.target.value)}
+                            className="bg-slate-700 border-slate-600 text-white"
+                          />
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <Select 
+                              value={item.method}
+                              onValueChange={(value) => updateAgendaItem(item.id, 'method', value)}
+                            >
+                              <SelectTrigger className="bg-slate-700 border-slate-600">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(methodsLibrary).map(([key, label]) => (
+                                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            <Select 
+                              value={String(item.duration)}
+                              onValueChange={(value) => updateAgendaItem(item.id, 'duration', parseInt(value))}
+                            >
+                              <SelectTrigger className="bg-slate-700 border-slate-600">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="5">5 Min</SelectItem>
+                                <SelectItem value="10">10 Min</SelectItem>
+                                <SelectItem value="15">15 Min</SelectItem>
+                                <SelectItem value="20">20 Min</SelectItem>
+                                <SelectItem value="30">30 Min</SelectItem>
+                                <SelectItem value="45">45 Min</SelectItem>
+                                <SelectItem value="60">60 Min</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <Textarea
+                            placeholder="Notizen zu diesem Punkt..."
+                            value={item.notes}
+                            onChange={(e) => updateAgendaItem(item.id, 'notes', e.target.value)}
+                            className="bg-slate-700 border-slate-600 text-white"
+                            rows={2}
+                          />
+                        </div>
+                        
                         <Button
+                          onClick={() => removeAgendaItem(item.id)}
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            const filtered = externalTools.custom.filter((_, i) => i !== index);
-                            setExternalTools({...externalTools, custom: filtered});
-                          }}
+                          className="text-red-400 hover:text-red-300"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-400">Keine zusätzlichen Tools konfiguriert</p>
-                )}
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+
+            {/* Session Goals & Notes */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <BookOpen className="w-5 h-5 mr-2" />
+                  Ziele & Notizen
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-slate-300 text-sm font-medium block mb-2">
+                    Session-Ziele
+                  </label>
+                  <Textarea
+                    placeholder="Was soll in dieser Session erreicht werden?"
+                    value={sessionGoals}
+                    onChange={(e) => setSessionGoals(e.target.value)}
+                    className="bg-slate-700 border-slate-600 text-white"
+                    rows={3}
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-slate-300 text-sm font-medium block mb-2">
+                    Vorbereitungsnotizen
+                  </label>
+                  <Textarea
+                    placeholder="Wichtige Punkte, Fragen, Bedenken..."
+                    value={preparationNotes}
+                    onChange={(e) => setPreparationNotes(e.target.value)}
+                    className="bg-slate-700 border-slate-600 text-white"
+                    rows={4}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            
+            {/* Session Overview */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white text-lg flex items-center">
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Session-Übersicht
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Coachee:</span>
+                  <span className="text-white">{coachee.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Status:</span>
+                  <span className="text-emerald-400">{session.status}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Geplant:</span>
+                  <span className="text-white">{session.duration || 60} Min</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Agenda:</span>
+                  <span className="text-white">{totalDuration} Min</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Selected Approach Info */}
+            {selectedApproach && (
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="text-white text-lg flex items-center">
+                    <div className={`w-4 h-4 rounded-full ${selectedApproach.color} mr-2`} />
+                    {selectedApproach.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-slate-300 text-sm mb-3">{selectedApproach.description}</p>
+                  <div className="text-xs text-slate-400">
+                    Typische Methoden: {selectedApproach.methods.map(m => methodsLibrary[m]).join(', ')}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Preparation Checklist */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white text-lg flex items-center">
+                  <Lightbulb className="w-5 h-5 mr-2" />
+                  Vorbereitung
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle className={`w-4 h-4 mt-0.5 ${selectedApproach ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <span className="text-slate-300">Coaching-Ansatz gewählt</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle className={`w-4 h-4 mt-0.5 ${agenda.length > 0 ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <span className="text-slate-300">Agenda erstellt</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle className={`w-4 h-4 mt-0.5 ${sessionGoals ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <span className="text-slate-300">Ziele definiert</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle className={`w-4 h-4 mt-0.5 ${Math.abs(totalDuration - (session.duration || 60)) <= 10 ? 'text-emerald-400' : 'text-yellow-400'}`} />
+                    <span className="text-slate-300">Zeiten abgestimmt</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Start Session Button */}
+            <Button 
+              onClick={handleStartCoaching}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 text-lg"
+              size="lg"
+            >
+              <Play className="w-5 h-5 mr-2" />
+              Coaching starten
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default SessionPreparation;

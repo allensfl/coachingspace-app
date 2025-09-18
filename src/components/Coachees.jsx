@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, User, Mail, ShieldCheck, ShieldOff, ClipboardCopy, Send } from 'lucide-react';
+import { Plus, Search, User, Mail, ShieldCheck, ShieldOff, ClipboardCopy, Send, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,7 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
     email: '',
     phone: '',
     pronouns: '',
+    birthDate: '', // ✅ GEBURTSTAG-FELD HINZUGEFÜGT
     status: CoacheeStatus.POTENTIAL,
     mainTopic: '',
     tags: '',
@@ -52,6 +53,7 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
 
   const handleChange = (e) => {
     const { id, value } = e.target;
+    console.log(`Form-Feld geändert: ${id} = ${value}`); // Debug-Log
     setFormData(prev => ({ ...prev, [id]: value }));
   };
 
@@ -89,8 +91,13 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
       shortNote: '',
       confidentialNotes: '',
       quickNotes: [],
+      consents: {
+        gdpr: false,
+        audioRecording: false
+      }
     };
 
+    console.log('Neuer Coachee wird erstellt:', newCoacheeData); // Debug-Log
     addCoachee(newCoacheeData);
     
     toast({
@@ -98,8 +105,10 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
       description: `${formData.firstName} ${formData.lastName} wurde erfolgreich angelegt.`,
     });
     
+    // ✅ FORM-RESET MIT GEBURTSTAG-FELD
     setFormData({
       firstName: '', lastName: '', email: '', phone: '', pronouns: '', 
+      birthDate: '', // ✅ GEBURTSTAG WIRD AUCH ZURÜCKGESETZT
       status: CoacheeStatus.POTENTIAL, mainTopic: '', tags: '', customData: {}
     });
     onOpenChange(false);
@@ -116,21 +125,124 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+            {/* Name Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label htmlFor="firstName">Vorname</Label><Input id="firstName" value={formData.firstName} onChange={handleChange} placeholder="Max" required /></div>
-              <div className="grid gap-2"><Label htmlFor="lastName">Nachname</Label><Input id="lastName" value={formData.lastName} onChange={handleChange} placeholder="Mustermann" required /></div>
+              <div className="grid gap-2">
+                <Label htmlFor="firstName">Vorname</Label>
+                <Input 
+                  id="firstName" 
+                  value={formData.firstName} 
+                  onChange={handleChange} 
+                  placeholder="Max" 
+                  required 
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="lastName">Nachname</Label>
+                <Input 
+                  id="lastName" 
+                  value={formData.lastName} 
+                  onChange={handleChange} 
+                  placeholder="Mustermann" 
+                  required 
+                />
+              </div>
             </div>
+
+            {/* Contact Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label htmlFor="email">E-Mail</Label><Input id="email" type="email" value={formData.email} onChange={handleChange} placeholder="max@example.com" required /></div>
-              <div className="grid gap-2"><Label htmlFor="phone">Telefon</Label><Input id="phone" value={formData.phone} onChange={handleChange} placeholder="+49 123 456789" /></div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">E-Mail</Label>
+                <Input 
+                  id="email" 
+                  type="email" 
+                  value={formData.email} 
+                  onChange={handleChange} 
+                  placeholder="max@example.com" 
+                  required 
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Telefon</Label>
+                <Input 
+                  id="phone" 
+                  value={formData.phone} 
+                  onChange={handleChange} 
+                  placeholder="+49 123 456789" 
+                />
+              </div>
             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label htmlFor="pronouns">Anrede/Pronomen</Label><Input id="pronouns" value={formData.pronouns} onChange={handleChange} placeholder="Er/Ihm" /></div>
-              <div className="grid gap-2"><Label htmlFor="status">Status</Label><Select value={formData.status} onValueChange={handleSelectChange}><SelectTrigger><SelectValue placeholder="Status auswählen" /></SelectTrigger><SelectContent><SelectItem value={CoacheeStatus.POTENTIAL}>Potenziell</SelectItem><SelectItem value={CoacheeStatus.ACTIVE}>Aktiv</SelectItem><SelectItem value={CoacheeStatus.PAUSED}>Pausiert</SelectItem><SelectItem value={CoacheeStatus.COMPLETED}>Abgeschlossen</SelectItem></SelectContent></Select></div>
+
+            {/* Pronouns & Birthday */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="pronouns">Anrede/Pronomen</Label>
+                <Input 
+                  id="pronouns" 
+                  value={formData.pronouns} 
+                  onChange={handleChange} 
+                  placeholder="Er/Ihm" 
+                />
+              </div>
+              {/* ✅ GEBURTSTAG-FELD HINZUGEFÜGT */}
+              <div className="grid gap-2">
+                <Label htmlFor="birthDate" className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Geburtstag
+                </Label>
+                <Input 
+                  id="birthDate" 
+                  type="date"
+                  value={formData.birthDate} 
+                  onChange={handleChange}
+                  className="text-white"
+                />
+              </div>
             </div>
-            <div className="grid gap-2"><Label htmlFor="mainTopic">Hauptthema/Anliegen</Label><Textarea id="mainTopic" value={formData.mainTopic} onChange={handleChange} placeholder="Beschreibe das Hauptanliegen des Coachees..." /></div>
-            <div className="grid gap-2"><Label htmlFor="tags">Tags (kommagetrennt)</Label><Input id="tags" value={formData.tags} onChange={handleChange} placeholder="Führungskraft, Karriere, Startup" /></div>
+
+            {/* Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={handleSelectChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={CoacheeStatus.POTENTIAL}>Potenziell</SelectItem>
+                    <SelectItem value={CoacheeStatus.ACTIVE}>Aktiv</SelectItem>
+                    <SelectItem value={CoacheeStatus.PAUSED}>Pausiert</SelectItem>
+                    <SelectItem value={CoacheeStatus.COMPLETED}>Abgeschlossen</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Platzhalter für symmetrisches Layout */}
+              <div></div>
+            </div>
+
+            {/* Main Topic */}
+            <div className="grid gap-2">
+              <Label htmlFor="mainTopic">Hauptthema/Anliegen</Label>
+              <Textarea 
+                id="mainTopic" 
+                value={formData.mainTopic} 
+                onChange={handleChange} 
+                placeholder="Beschreibe das Hauptanliegen des Coachees..." 
+              />
+            </div>
+
+            {/* Tags */}
+            <div className="grid gap-2">
+              <Label htmlFor="tags">Tags (kommagetrennt)</Label>
+              <Input 
+                id="tags" 
+                value={formData.tags} 
+                onChange={handleChange} 
+                placeholder="Führungskraft, Karriere, Startup" 
+              />
+            </div>
             
+            {/* Custom Fields */}
             {customFields && customFields.length > 0 && (
               <div className="pt-4 border-t border-slate-700">
                 <h3 className="text-lg font-semibold text-white mb-2">Zusätzliche Informationen</h3>
@@ -138,7 +250,11 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
                   {customFields.map(field => (
                     <div key={field.id} className="grid gap-2">
                       <Label htmlFor={field.id}>{field.label}</Label>
-                      <CustomFieldInput field={field} value={formData.customData[field.id]} onChange={handleCustomFieldChange} />
+                      <CustomFieldInput 
+                        field={field} 
+                        value={formData.customData[field.id]} 
+                        onChange={handleCustomFieldChange} 
+                      />
                     </div>
                   ))}
                 </div>
@@ -146,8 +262,12 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
             )}
           </div>
           <DialogFooter>
-            <DialogClose asChild><Button type="button" variant="outline">Abbrechen</Button></DialogClose>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Coachee speichern</Button>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Abbrechen</Button>
+            </DialogClose>
+            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+              Coachee speichern
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -289,7 +409,7 @@ export default function Coachees() {
                             </Badge>
                           </div>
                         </div>
-                        {coachee.consents.gdpr ? (
+                        {coachee.consents?.gdpr ? (
                           <ShieldCheck className="h-5 w-5 text-green-400 flex-shrink-0" title="DSGVO-Zustimmung erteilt" />
                         ) : (
                           <ShieldOff className="h-5 w-5 text-red-400 flex-shrink-0" title="DSGVO-Zustimmung fehlt" />
@@ -306,7 +426,7 @@ export default function Coachees() {
                         </div>
                         <p className="text-sm text-slate-300 line-clamp-2">{coachee.mainTopic}</p>
                         <div className="flex flex-wrap gap-1">
-                          {coachee.tags.map((tag, tagIndex) => (
+                          {coachee.tags?.map((tag, tagIndex) => (
                             <Badge key={tagIndex} variant="outline" className="text-xs">
                               {tag}
                             </Badge>
@@ -315,7 +435,7 @@ export default function Coachees() {
                       </div>
                   </Link>
                   <div className="pt-3 mt-auto">
-                    {!coachee.consents.gdpr ? (
+                    {!coachee.consents?.gdpr ? (
                       <Button 
                         size="sm" 
                         className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
@@ -326,7 +446,7 @@ export default function Coachees() {
                       </Button>
                     ) : (
                       <div className="flex justify-between text-xs text-slate-500 pt-3 border-t border-slate-700">
-                        <span>{coachee.sessions.length} Sessions</span>
+                        <span>{coachee.sessions?.length || 0} Sessions</span>
                         <span>Seit {new Date(coachee.coachingStartDate).toLocaleDateString('de-DE')}</span>
                       </div>
                     )}

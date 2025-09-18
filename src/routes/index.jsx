@@ -1,13 +1,15 @@
-
 import React, { lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import InvalidLinkPage from '@/components/InvalidLinkPage';
+import CoachingRoom from '@/components/CoachingRoom';
+import ToolPresenter from '@/components/ToolPresenter';
 
 const Dashboard = lazy(() => import('@/components/Dashboard'));
 const Coachees = lazy(() => import('@/components/Coachees'));
 const CoacheeDetail = lazy(() => import('@/components/CoacheeDetail'));
 const Sessions = lazy(() => import('@/components/Sessions'));
+const SessionPreparation = lazy(() => import('@/components/sessions/SessionPreparation'));
 const Invoices = lazy(() => import('@/components/Invoices'));
 const InvoiceCreator = lazy(() => import('@/components/invoice-creator/InvoiceCreator'));
 const Documents = lazy(() => import('@/components/Documents'));
@@ -19,14 +21,12 @@ const SessionNotes = lazy(() => import('@/components/SessionNotes'));
 const SessionNoteEditor = lazy(() => import('@/components/SessionNoteEditor'));
 const Toolbox = lazy(() => import('@/components/Toolbox'));
 const TaskManager = lazy(() => import('@/components/TaskManager'));
-const CoachingRoom = lazy(() => import('@/components/CoachingRoom'));
 const CoacheePortalLinks = lazy(() => import('@/components/CoacheePortalLinks'));
 const CoacheePortal = lazy(() => import('@/components/CoacheePortal'));
 const ConsentPage = lazy(() => import('@/components/ConsentPage'));
 const StorePage = lazy(() => import('@/components/StorePage'));
 const PrivacyPolicyPage = lazy(() => import('@/components/PrivacyPolicyPage'));
 const DocumentationPage = lazy(() => import('@/components/DocumentationPage'));
-const ToolPresenter = lazy(() => import('@/components/ToolPresenter'));
 const Profile = lazy(() => import('@/components/Profile'));
 
 export const AppRoutes = () => (
@@ -37,12 +37,12 @@ export const AppRoutes = () => (
     <Route path="/invalid-link" element={<InvalidLinkPage />} />
     <Route path="/ai-coaching/shared" element={<AiCoachingShared />} />
     <Route path="/tool-presenter/:toolId" element={<ToolPresenter />} />
-    
     <Route path="/" element={<Layout />}>
       <Route index element={<Dashboard />} />
       <Route path="coachees" element={<Coachees />} />
       <Route path="coachees/:id" element={<CoacheeDetail />} />
       <Route path="sessions" element={<Sessions />} />
+      <Route path="sessions/:sessionId/prepare" element={<SessionPreparation />} />
       <Route path="invoices" element={<Invoices />} />
       <Route path="invoices/new" element={<InvoiceCreator />} />
       <Route path="invoices/edit/:id" element={<InvoiceCreator />} />
