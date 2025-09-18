@@ -11,7 +11,7 @@ const navItems = [
     { icon: Users, label: 'Coachees', path: '/coachees', color: 'text-emerald-500' },
     { icon: Calendar, label: 'Sessions', path: '/sessions', color: 'text-violet-500' },
     { icon: PenSquare, label: 'Sitzungsnotizen', path: '/session-notes', color: 'text-orange-500' },
-    { icon: BookOpen, label: 'Journal', path: '/journal', color: 'text-indigo-500' },
+    { icon: BookOpen, label: 'Reflexionstagebuch', path: '/journal', color: 'text-indigo-500' },
     { icon: Folder, label: 'Dokumente', path: '/documents', color: 'text-blue-500' },
     { icon: FileText, label: 'Rechnungen', path: '/invoices', color: 'text-rose-500' },
     { icon: Bot, label: 'KI-Assistent', path: '/ai-coaching', color: 'text-fuchsia-500' },
