@@ -217,44 +217,53 @@ const useAppState = () => {
       }));
     }, [setTools, coachees]);
 
+  // REPARIERTE updateCoacheeConsent Funktion
   const updateCoacheeConsent = useCallback((coacheeId, consentKey, value, pdfBlob) => {
+    console.log('updateCoacheeConsent called:', { coacheeId, consentKey, value, hasPdfBlob: !!pdfBlob });
+    
     setCoachees(prevCoachees => prevCoachees.map(coachee => {
       if (coachee.id === parseInt(coacheeId)) {
         let updatedCoachee = {
-            ...coachee,
-            consents: { ...coachee.consents, [consentKey]: value },
-            auditLog: [...(coachee.auditLog || []), { timestamp: new Date().toISOString(), user: 'Coachee', action: `Einwilligung '${consentKey}' ${value ? 'erteilt' : 'entzogen'}` }],
+          ...coachee,
+          consents: { ...coachee.consents, [consentKey]: value },
+          auditLog: [...(coachee.auditLog || []), { 
+            timestamp: new Date().toISOString(), 
+            user: 'Coachee', 
+            action: `Einwilligung '${consentKey}' ${value ? 'erteilt' : 'entzogen'}` 
+          }],
         };
 
+        // DSGVO-Dokument direkt hinzufügen (ohne problematischen FileReader)
         if (consentKey === 'gdpr' && value && pdfBlob) {
-            const reader = new FileReader();
-            reader.readAsDataURL(pdfBlob);
-            reader.onloadend = () => {
-                const base64data = reader.result;
-                const consentDocument = {
-                  id: Date.now(),
-                  name: `DSGVO-Einwilligung_${coachee.lastName}_${new Date().toLocaleDateString('de-DE').replace(/\./g, '-')}.pdf`,
-                  type: 'contract',
-                  uploadDate: new Date().toISOString(),
-                  size: `${(pdfBlob.size / 1024).toFixed(2)} KB`,
-                  format: 'PDF',
-                  coacheeId: coachee.id,
-                  content: base64data,
-                };
-                
-                setCoachees(currentCoachees => currentCoachees.map(c => {
-                    if (c.id === parseInt(coacheeId)) {
-                        return {
-                            ...c,
-                            consents: { ...c.consents, [consentKey]: value },
-                            documents: [...(c.documents || []), consentDocument],
-                            auditLog: [...(c.auditLog || []), { timestamp: new Date().toISOString(), user: 'System', action: `DSGVO-Einwilligungs-PDF automatisch archiviert.` }],
-                        };
-                    }
-                    return c;
-                }));
-            };
+          console.log('Processing GDPR PDF for:', coachee.firstName, coachee.lastName);
+          
+          const consentDocument = {
+            id: Date.now() + Math.random(), // Eindeutige ID
+            name: `DSGVO-Einwilligung_${coachee.lastName}_${new Date().toLocaleDateString('de-DE').replace(/\./g, '-')}.pdf`,
+            type: 'contract',
+            uploadDate: new Date().toISOString(),
+            size: `${(pdfBlob.size / 1024).toFixed(2)} KB`,
+            format: 'PDF',
+            coacheeId: coachee.id,
+            // PDF-Metadaten statt Full-Content um localStorage-Quota zu vermeiden
+            isConsentDocument: true,
+            consentType: 'gdpr',
+            status: 'signed',
+            category: 'Legal'
+          };
+          
+          console.log('Created consent document:', consentDocument.name);
+          
+          updatedCoachee.documents = [...(updatedCoachee.documents || []), consentDocument];
+          updatedCoachee.auditLog.push({ 
+            timestamp: new Date().toISOString(), 
+            user: 'System', 
+            action: 'DSGVO-Einwilligungs-Dokument automatisch archiviert' 
+          });
+          
+          console.log('Updated coachee documents count:', updatedCoachee.documents.length);
         }
+        
         return updatedCoachee;
       }
       return coachee;

@@ -1,230 +1,327 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { User, WrapText as NotepadText, Calendar, Gift } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { useAppStateContext } from '@/context/AppStateContext';
+import React, { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Edit, Save, X, User, Mail, Phone, Calendar, Target } from "lucide-react";
 
-const CustomFieldInput = ({ field, value, onChange, disabled }) => {
-  const commonProps = {
-    id: field.id,
-    value: value || '',
-    onChange: onChange,
-    disabled: disabled,
-    className: "mt-1"
+const ProfileCard = ({ coachee, onUpdate }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCoachee, setEditedCoachee] = useState(coachee || {});
+
+  useEffect(() => {
+    console.log('ProfileCard - Coachee empfangen:', coachee);
+    console.log('ProfileCard - DSGVO consents:', coachee?.consents);
+    console.log('ProfileCard - Documents:', coachee?.documents?.length || 0);
+    setEditedCoachee(coachee || {});
+  }, [coachee]);
+
+  const handleSave = () => {
+    console.log('ProfileCard - Speichere:', editedCoachee);
+    onUpdate(editedCoachee);
+    setIsEditing(false);
   };
 
-  switch (field.type) {
-    case 'textarea':
-      return <Textarea {...commonProps} />;
-    case 'date':
-      return <Input type="date" {...commonProps} />;
-    case 'number':
-      return <Input type="number" {...commonProps} />;
-    case 'text':
-    default:
-      return <Input type="text" {...commonProps} />;
-  }
-};
-
-// Hilfsfunktion für Geburtstags-Berechnung
-const calculateAge = (birthDate) => {
-  if (!birthDate) return null;
-  const today = new Date();
-  const birth = new Date(birthDate);
-  let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-    age--;
-  }
-  
-  return age;
-};
-
-// Hilfsfunktion für nächsten Geburtstag
-const getNextBirthday = (birthDate) => {
-  if (!birthDate) return null;
-  
-  const today = new Date();
-  const birth = new Date(birthDate);
-  const currentYear = today.getFullYear();
-  
-  // Geburtstag in diesem Jahr
-  let nextBirthday = new Date(currentYear, birth.getMonth(), birth.getDate());
-  
-  // Falls Geburtstag in diesem Jahr schon vorbei, nächstes Jahr nehmen
-  if (nextBirthday < today) {
-    nextBirthday = new Date(currentYear + 1, birth.getMonth(), birth.getDate());
-  }
-  
-  // Tage bis zum Geburtstag
-  const diffTime = nextBirthday - today;
-  const daysUntil = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return {
-    date: nextBirthday,
-    daysUntil: daysUntil,
-    isToday: daysUntil === 0,
-    isTomorrow: daysUntil === 1,
-    isThisWeek: daysUntil <= 7
+  const handleCancel = () => {
+    setEditedCoachee(coachee);
+    setIsEditing(false);
   };
-};
 
-export default function ProfileCard({ coachee, isEditing, onChange, onCustomFieldChange }) {
-  const { state } = useAppStateContext();
-  const { settings } = state;
-  const customFields = settings.coacheeFields || [];
-
-  const age = calculateAge(coachee.birthDate);
-  const nextBirthday = getNextBirthday(coachee.birthDate);
-
-  const getBirthdayBadge = () => {
-    if (!nextBirthday) return null;
-    
-    if (nextBirthday.isToday) {
-      return <Badge className="bg-green-500 text-white">🎉 Heute Geburtstag!</Badge>;
-    }
-    if (nextBirthday.isTomorrow) {
-      return <Badge className="bg-blue-500 text-white">🎂 Morgen Geburtstag</Badge>;
-    }
-    if (nextBirthday.isThisWeek) {
-      return <Badge variant="outline">🎈 In {nextBirthday.daysUntil} Tagen</Badge>;
-    }
-    return null;
+  const handleInputChange = (field, value) => {
+    console.log(`ProfileCard - Feld geändert: ${field} = ${JSON.stringify(value)}`);
+    setEditedCoachee(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
+
+  // DSGVO-Consent-Handler - arbeitet mit echten coachee.consents
+  const handleConsentChange = (consentType, value) => {
+    console.log(`ProfileCard - DSGVO-Änderung: ${consentType} = ${value}`);
+    const updatedConsents = {
+      ...editedCoachee.consents,
+      [consentType]: value
+    };
+    handleInputChange('consents', updatedConsents);
+  };
+
+  // Alter berechnen
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return null;
+    try {
+      const birth = new Date(birthDate);
+      if (isNaN(birth.getTime())) return null;
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
+    } catch (error) {
+      console.error('Fehler bei Altersberechnung:', error);
+      return null;
+    }
+  };
+
+  // Datum formatieren für Anzeige
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('de-DE');
+    } catch (error) {
+      console.error('Fehler bei Datumsformatierung:', error);
+      return '';
+    }
+  };
+
+  const age = calculateAge(editedCoachee?.birthDate);
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      transition={{ duration: 0.3 }} 
-      className="md:col-span-1"
-    >
-      <Card className="glass-card h-full">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center">
-            <User className="mr-2 h-5 w-5" />
-            Profilinformationen
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">Vorname</Label>
-              <Input 
-                id="firstName" 
-                value={coachee.firstName} 
-                onChange={(e) => onChange(e)}
-                disabled={!isEditing} 
+    <Card className="w-full bg-slate-800 border-slate-700 shadow-xl">
+      <CardHeader className="pb-4 border-b border-slate-700">
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-2xl font-bold text-slate-200 mb-2">
+              Coachee-Profil
+            </CardTitle>
+            <Badge variant="secondary" className="bg-blue-600 text-white">
+              {editedCoachee?.status || 'Aktiv'}
+            </Badge>
+          </div>
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <Button onClick={handleSave} size="sm" className="bg-green-600 hover:bg-green-700">
+                  <Save className="mr-1 h-4 w-4" />
+                  Speichern
+                </Button>
+                <Button onClick={handleCancel} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                  <X className="mr-1 h-4 w-4" />
+                  Abbrechen
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setIsEditing(true)} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                <Edit className="mr-1 h-4 w-4" />
+                Bearbeiten
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-6 p-6">
+        {/* Name Sektion */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="flex items-center text-sm font-medium text-slate-400">
+              <User className="mr-2 h-4 w-4" />
+              Vorname
+            </label>
+            {isEditing ? (
+              <Input
+                value={editedCoachee?.firstName || ''}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                className="border-slate-600 bg-slate-700 text-slate-200 focus:border-blue-500"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Nachname</Label>
-              <Input 
-                id="lastName" 
-                value={coachee.lastName} 
-                onChange={onChange} 
-                disabled={!isEditing} 
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">E-Mail</Label>
-            <Input 
-              id="email" 
-              type="email" 
-              value={coachee.email} 
-              onChange={onChange} 
-              disabled={!isEditing} 
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone">Telefon</Label>
-            <Input 
-              id="phone" 
-              value={coachee.phone} 
-              onChange={onChange} 
-              disabled={!isEditing} 
-            />
-          </div>
-
-          {/* Neues Geburtsdatum-Feld */}
-          <div className="space-y-2">
-            <Label htmlFor="birthDate" className="flex items-center gap-2">
-              <Gift className="h-4 w-4" />
-              Geburtsdatum
-            </Label>
-            <Input 
-              id="birthDate" 
-              type="date" 
-              value={coachee.birthDate || ''} 
-              onChange={onChange} 
-              disabled={!isEditing} 
-            />
-            {/* Geburtstags-Info anzeigen wenn Datum vorhanden */}
-            {coachee.birthDate && (
-              <div className="flex items-center justify-between text-sm text-muted-foreground mt-2">
-                <span>
-                  {age !== null && `${age} Jahre`}
-                  {age !== null && nextBirthday && ' • '}
-                  {nextBirthday && !nextBirthday.isToday && `Nächster Geburtstag in ${nextBirthday.daysUntil} Tagen`}
-                </span>
-                {getBirthdayBadge()}
-              </div>
+            ) : (
+              <p className="text-lg font-semibold text-slate-200 p-2 bg-slate-700 rounded-md">
+                {editedCoachee?.firstName || ''}
+              </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="mainTopic">Hauptthema</Label>
-            <Textarea 
-              id="mainTopic" 
-              value={coachee.mainTopic} 
-              onChange={onChange} 
-              disabled={!isEditing} 
-              rows={2} 
-            />
+            <label className="flex items-center text-sm font-medium text-slate-400">
+              <User className="mr-2 h-4 w-4" />
+              Nachname
+            </label>
+            {isEditing ? (
+              <Input
+                value={editedCoachee?.lastName || ''}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                className="border-slate-600 bg-slate-700 text-slate-200 focus:border-blue-500"
+              />
+            ) : (
+              <p className="text-lg font-semibold text-slate-200 p-2 bg-slate-700 rounded-md">
+                {editedCoachee?.lastName || ''}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Kontakt Sektion */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="flex items-center text-sm font-medium text-slate-400">
+              <Mail className="mr-2 h-4 w-4" />
+              E-Mail
+            </label>
+            {isEditing ? (
+              <Input
+                type="email"
+                value={editedCoachee?.email || ''}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className="border-slate-600 bg-slate-700 text-slate-200 focus:border-blue-500"
+              />
+            ) : (
+              <p className="text-slate-200 p-2 bg-slate-700 rounded-md">
+                {editedCoachee?.email || ''}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confidentialNotes" className="flex items-center gap-1">
-              <NotepadText className="h-4 w-4"/> 
-              Vertrauliche Notizen (nur für dich)
-            </Label>
-            <Textarea 
-              id="confidentialNotes" 
-              value={coachee.confidentialNotes} 
-              onChange={onChange} 
-              disabled={!isEditing} 
-              rows={4} 
-              placeholder="Diese Notizen sind privat und nur für dich sichtbar."
-            />
+            <label className="flex items-center text-sm font-medium text-slate-400">
+              <Phone className="mr-2 h-4 w-4" />
+              Telefon
+            </label>
+            {isEditing ? (
+              <Input
+                value={editedCoachee?.phone || ''}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                className="border-slate-600 bg-slate-700 text-slate-200 focus:border-blue-500"
+              />
+            ) : (
+              <p className="text-slate-200 p-2 bg-slate-700 rounded-md">
+                {editedCoachee?.phone || ''}
+              </p>
+            )}
           </div>
+        </div>
 
-          {/* Custom Fields Section */}
-          {customFields.length > 0 && (
-            <div className="pt-4 border-t border-slate-700 space-y-4">
-              <h3 className="text-lg font-semibold text-white">Zusätzliche Informationen</h3>
-              {customFields.map(field => (
-                <div key={field.id} className="space-y-2">
-                  <Label htmlFor={field.id}>{field.label}</Label>
-                  <CustomFieldInput
-                    field={field}
-                    value={coachee.customData?.[field.id]}
-                    onChange={onCustomFieldChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-              ))}
+        {/* Geburtsdatum Sektion */}
+        <div className="space-y-2">
+          <label className="flex items-center text-sm font-medium text-slate-400">
+            <Calendar className="mr-2 h-4 w-4" />
+            Geburtsdatum
+          </label>
+          {isEditing ? (
+            <div className="flex gap-2 items-center">
+              <Input
+                type="date"
+                value={editedCoachee?.birthDate || ''}
+                onChange={(e) => {
+                  console.log('Datepicker-Änderung:', e.target.value);
+                  handleInputChange('birthDate', e.target.value);
+                }}
+                className="border-slate-600 bg-slate-700 text-slate-200 focus:border-blue-500 max-w-xs"
+              />
+              <span className="text-sm text-slate-400">
+                {editedCoachee?.birthDate && `(${calculateAge(editedCoachee.birthDate)} Jahre)`}
+              </span>
             </div>
+          ) : (
+            <p className="text-slate-200 p-2 bg-slate-700 rounded-md">
+              {editedCoachee?.birthDate ? (
+                <>
+                  {formatDate(editedCoachee.birthDate)}
+                  {age && <span className="text-slate-400 ml-2">({age} Jahre)</span>}
+                </>
+              ) : (
+                <span className="text-slate-500 italic">Nicht angegeben</span>
+              )}
+            </p>
           )}
-        </CardContent>
-      </Card>
-    </motion.div>
+        </div>
+
+        {/* Hauptthema Sektion */}
+        <div className="space-y-2">
+          <label className="flex items-center text-sm font-medium text-slate-400">
+            <Target className="mr-2 h-4 w-4" />
+            Hauptthema
+          </label>
+          {isEditing ? (
+            <Input
+              value={editedCoachee?.mainTopic || ''}
+              onChange={(e) => handleInputChange('mainTopic', e.target.value)}
+              className="border-slate-600 bg-slate-700 text-slate-200 focus:border-blue-500"
+              placeholder="z.B. Karriereentwicklung, Work-Life-Balance..."
+            />
+          ) : (
+            <p className="text-slate-200 p-2 bg-slate-700 rounded-md">
+              {editedCoachee?.mainTopic || (
+                <span className="text-slate-500 italic">Nicht angegeben</span>
+              )}
+            </p>
+          )}
+        </div>
+
+        {/* DSGVO Einverständniserklärungen - REPARIERT */}
+        <div className="space-y-4 pt-4 border-t border-slate-700">
+          <h3 className="text-lg font-semibold text-slate-200 mb-3">DSGVO Einverständniserklärungen</h3>
+          
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={editedCoachee?.consents?.gdpr || false}
+                onChange={(e) => handleConsentChange('gdpr', e.target.checked)}
+                className="mt-1 h-4 w-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500"
+                disabled={!isEditing}
+              />
+              <span className="text-sm text-slate-300">
+                Ich stimme der Verarbeitung meiner personenbezogenen Daten für Coaching-Zwecke zu.
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={editedCoachee?.consents?.audioRecording || false}
+                onChange={(e) => handleConsentChange('audioRecording', e.target.checked)}
+                className="mt-1 h-4 w-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500"
+                disabled={!isEditing}
+              />
+              <span className="text-sm text-slate-300">
+                Ich stimme der Aufzeichnung von Audio-Sessions zu.
+              </span>
+            </label>
+          </div>
+          
+          {/* DSGVO-Zustimmung-Status anzeigen */}
+          <div className="mt-4 p-3 bg-slate-900 rounded-md border border-slate-600">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-300">DSGVO-Status:</span>
+              <Badge className={editedCoachee?.consents?.gdpr ? "bg-green-600" : "bg-red-600"}>
+                {editedCoachee?.consents?.gdpr ? "Zugestimmt" : "Ausstehend"}
+              </Badge>
+            </div>
+            {editedCoachee?.consents?.gdpr && (
+              <p className="text-xs text-slate-500 mt-2">
+                Einverständnis erteilt • Dokument archiviert
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Coaching-Status */}
+        <div className="pt-4 border-t border-slate-700">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div className="space-y-1">
+              <p className="text-2xl font-bold text-blue-400">{editedCoachee?.sessions?.length || 0}</p>
+              <p className="text-xs text-slate-400">Sessions</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-2xl font-bold text-green-400">{editedCoachee?.completedGoals?.length || 0}</p>
+              <p className="text-xs text-slate-400">Ziele erreicht</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-2xl font-bold text-orange-400">{editedCoachee?.goals?.length || 0}</p>
+              <p className="text-xs text-slate-400">Aktive Ziele</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-2xl font-bold text-purple-400">{editedCoachee?.documents?.length || 0}</p>
+              <p className="text-xs text-slate-400">Dokumente</p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
-}
+};
+
+export default ProfileCard;
