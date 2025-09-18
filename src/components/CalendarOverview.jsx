@@ -1,10 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, Gift } from 'lucide-react';
 
 const CalendarOverview = ({ sessions, coachees }) => {
+  const navigate = useNavigate();
   
   const sendGratulation = (coachee) => {
     if (!coachee.email && !coachee.emailAddress) {
@@ -69,7 +71,7 @@ const CalendarOverview = ({ sessions, coachees }) => {
   }
 
   const openSessionsCalendar = () => {
-    window.location.href = '#/sessions';
+    navigate('/sessions');
   };
 
   return (

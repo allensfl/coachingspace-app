@@ -1,7 +1,7 @@
 import React, { useState, Suspense } from 'react';
 import { NavLink, Link, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, CheckSquare, Store, Menu, X, Command, Loader2, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, Store, Menu, X, Command, Loader2, LifeBuoy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStateContext } from '@/context/AppStateContext';
 
@@ -11,7 +11,6 @@ const navItems = [
     { icon: Users, label: 'Coachees', path: '/coachees', color: 'text-emerald-500' },
     { icon: Calendar, label: 'Sessions', path: '/sessions', color: 'text-violet-500' },
     { icon: PenSquare, label: 'Sitzungsnotizen', path: '/session-notes', color: 'text-orange-500' },
-    { icon: CheckSquare, label: 'Aufgaben', path: '/tasks', color: 'text-teal-500' },
     { icon: BookOpen, label: 'Journal', path: '/journal', color: 'text-indigo-500' },
     { icon: Folder, label: 'Dokumente', path: '/documents', color: 'text-blue-500' },
     { icon: FileText, label: 'Rechnungen', path: '/invoices', color: 'text-rose-500' },

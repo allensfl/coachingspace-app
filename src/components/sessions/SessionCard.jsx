@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Video, Phone, Users, Play, Archive, ArchiveRestore, CalendarPlus, Package, FileText as InvoiceIcon, Calendar, User, Clock, ClipboardList } from 'lucide-react';
+import { MapPin, Video, Phone, Users, Play, Archive, ArchiveRestore, CalendarPlus, Package, FileText as InvoiceIcon, Calendar, User, Clock, ClipboardList, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -36,7 +36,17 @@ const getStatusColor = (status) => {
   }
 };
 
-const SessionCard = ({ session, index, onCardClick, onToggleArchive, onStatusChange, onCreateInvoice, activePackages, onAddToCalendar }) => {
+const SessionCard = ({ 
+  session, 
+  index, 
+  onCardClick, 
+  onDirectStart, // NEU: Direktstart-Handler hinzugefügt
+  onToggleArchive, 
+  onStatusChange, 
+  onCreateInvoice, 
+  activePackages, 
+  onAddToCalendar 
+}) => {
   const navigate = useNavigate();
   const ModeIcon = getModeIcon(session.mode);
   const relatedPackage = session.packageId ? (activePackages || []).find(p => p.id === session.packageId) : null;
@@ -88,29 +98,41 @@ const SessionCard = ({ session, index, onCardClick, onToggleArchive, onStatusCha
                 <CalendarPlus className="h-4 w-4" />
               </Button>
             )}
-            {/* NEU: Vorbereitung-Button für geplante Sessions */}
+            
+            {/* Zwei separate Buttons für geplante Sessions */}
             {session.status === SessionStatus.PLANNED && (
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={() => navigate(`/sessions/${session.id}/prepare`)}
-                className="border-blue-500 text-blue-400 hover:bg-blue-500/20"
-              >
-                <ClipboardList className="h-4 w-4 mr-2" /> 
-                Vorbereitung
-              </Button>
+              <>
+                {/* Vorbereitung-Button */}
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => navigate(`/sessions/${session.id}/prepare`)}
+                  className="border-blue-500 text-blue-400 hover:bg-blue-500/20"
+                  title="Session mit Vorbereitung starten"
+                >
+                  <ClipboardList className="h-4 w-4 mr-2" /> 
+                  Vorbereitung
+                </Button>
+                
+                {/* REPARIERT: Direktstart-Button mit session.id statt session.coacheeId */}
+                <Button 
+                  size="sm" 
+                  className="bg-green-600 hover:bg-green-700" 
+                  onClick={() => onDirectStart ? onDirectStart(session) : navigate(`/coaching-room/${session.id}`)}
+                  title="Session direkt ohne Vorbereitung starten"
+                >
+                  <Zap className="h-4 w-4 mr-2" /> 
+                  Direktstart
+                </Button>
+              </>
             )}
-            {session.status === SessionStatus.PLANNED && (
-              <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => navigate(`/coaching-room/${session.coacheeId}`)}>
-                <Play className="h-4 w-4 mr-2" /> Starten
-              </Button>
-            )}
+            
             {session.status === SessionStatus.COMPLETED && !session.billed && !session.packageId && (
               <Button size="sm" variant="outline" onClick={() => onCreateInvoice(session)}>
                 <InvoiceIcon className="h-4 w-4 mr-2" /> Rechnung
               </Button>
             )}
-             <Button size="icon" variant="ghost" onClick={() => onToggleArchive(session.id)} title={session.archived ? 'Wiederherstellen' : 'Archivieren'}>
+            <Button size="icon" variant="ghost" onClick={() => onToggleArchive(session.id)} title={session.archived ? 'Wiederherstellen' : 'Archivieren'}>
               {session.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
             </Button>
           </div>

@@ -4,8 +4,13 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/ui/use-toast';
 import {
   ArrowUpRight,
   Users,
@@ -26,7 +31,11 @@ import {
   PartyPopper,
   CalendarPlus,
   Share2,
-  Eye
+  Eye,
+  Edit,
+  Trash2,
+  X,
+  Target
 } from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
 import OpenInvoices from './OpenInvoices';
@@ -37,10 +46,10 @@ import CalendarOverview from './CalendarOverview';
 // E-Mail Template Funktionen
 const emailTemplates = {
   nachfassen: (coachee, task) => ({
-    subject: `Nachfassen: ${task.titel}`,
+    subject: `Nachfassen: ${task.title}`,
     body: `Hallo ${coachee.firstName},
 
-ich wollte kurz nachfragen, wie es mit deiner Aufgabe "${task.titel}" läuft.
+ich wollte kurz nachfragen, wie es mit deiner Aufgabe "${task.title}" läuft.
 
 Deadline war heute - wie ist der Stand? Brauchst du Unterstützung oder haben sich neue Herausforderungen ergeben?
 
@@ -65,10 +74,10 @@ Vielen Dank und beste Grüße,
   }),
 
   gratulieren: (coachee, task) => ({
-    subject: `Herzlichen Glückwunsch - ${task.titel} erfolgreich abgeschlossen!`,
+    subject: `Herzlichen Glückwunsch - ${task.title} erfolgreich abgeschlossen!`,
     body: `Hallo ${coachee.firstName},
 
-ich freue mich riesig mit dir! Du hast dein Ziel "${task.titel}" erfolgreich erreicht. 🎉
+ich freue mich riesig mit dir! Du hast dein Ziel "${task.title}" erfolgreich erreicht. 🎉
 
 Das zeigt wieder einmal, was für eine starke und zielstrebige Person du bist. Ich bin stolz auf deinen Fortschritt!
 
@@ -123,6 +132,48 @@ const sendEmail = (coachee, templateType, task = null) => {
   window.open(mailtoUrl);
 };
 
+// Task Management Functions
+const saveTask = (task) => {
+  const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+  let updatedTasks;
+
+  if (task.id) {
+    // Update existing task
+    updatedTasks = allTasks.map(t => t.id === task.id ? task : t);
+  } else {
+    // Create new task
+    const newTaskWithId = {
+      ...task,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      createdBy: 'coach'
+    };
+    updatedTasks = [...allTasks, newTaskWithId];
+  }
+
+  localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+  window.dispatchEvent(new Event('storage'));
+  return task.id ? task : { ...task, id: Date.now().toString() };
+};
+
+const deleteTask = (taskId) => {
+  const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+  const updatedTasks = allTasks.filter(task => task.id !== taskId);
+  localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+  window.dispatchEvent(new Event('storage'));
+};
+
+const markAsContacted = (taskId) => {
+  const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+  const updatedTasks = allTasks.map(task => 
+    task.id === taskId 
+      ? { ...task, contacted: true, contactedAt: new Date().toISOString() }
+      : task
+  );
+  localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+  window.dispatchEvent(new Event('storage'));
+};
+
 // Kompakte StatCard
 const StatCard = ({ title, value, icon, to, colorClass }) => {
   return (
@@ -173,16 +224,37 @@ export default function Dashboard() {
   const { 
     sessions = [], 
     coachees = [], 
-    tasks = [], 
     packages = []
   } = state;
   const { 
-    updateTask,
     getSharedJournalEntries = () => [] // Fallback-Funktion
   } = actions;
   
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    assignedTo: 'me',
+    dueDate: new Date().toISOString().split('T')[0],
+    status: 'open'
+  });
+  const [taskUpdateTrigger, setTaskUpdateTrigger] = useState(0);
+
+  const { toast } = useToast();
+
+  // Force re-render when tasks change
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setTaskUpdateTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Geteilte Journal-Einträge temporär deaktiviert bis Funktion repariert ist
   const sharedEntries = useMemo(() => {
@@ -205,27 +277,30 @@ export default function Dashboard() {
       .slice(0, 5);
   }, [sessions]);
 
-  // Persönliche Tasks für heute (neue Struktur)
+  // Persönliche Tasks für heute (zentrales System)
   const todaysTasks = useMemo(() => {
-    if (!tasks) return [];
+    const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
     const today = new Date().toDateString();
-    return tasks.filter(task => {
-      if (!task.faelligkeitsdatum) return false;
-      const taskDate = new Date(task.faelligkeitsdatum).toDateString();
-      return taskDate === today && !task.abgeschlossen && !task.zugewiesenAn;
+    return allTasks.filter(task => {
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate).toDateString();
+      return taskDate === today && task.assignedTo === 'me';
     });
-  }, [tasks]);
+  }, [taskUpdateTrigger]);
 
-  // Coachee-Deadlines für heute (neue Struktur)
+  // Coachee-Deadlines für heute (zentrales System) - OHNE kontaktierte  
   const coacheeDeadlines = useMemo(() => {
-    if (!tasks) return [];
+    const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
     const today = new Date().toDateString();
-    return tasks.filter(task => {
-      if (!task.faelligkeitsdatum) return false;
-      const taskDate = new Date(task.faelligkeitsdatum).toDateString();
-      return taskDate === today && task.zugewiesenAn && !task.abgeschlossen;
+    return allTasks.filter(task => {
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate).toDateString();
+      return taskDate === today && 
+             task.assignedTo !== 'me' && 
+             task.status !== 'completed' && 
+             !task.contacted; // Neue Bedingung: nicht kontaktiert
     });
-  }, [tasks]);
+  }, [taskUpdateTrigger]);
 
   // Statistiken berechnen
   const activeCoachees = coachees?.filter(c => c.status === 'active').length || 0;
@@ -240,55 +315,82 @@ export default function Dashboard() {
   const activePackages = packages?.filter(p => p.status === 'active').length || 0;
 
   const toggleTask = (taskId) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      updateTask(taskId, { abgeschlossen: !task.abgeschlossen });
+    const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+    const updatedTasks = allTasks.map(task => 
+      task.id === taskId 
+        ? { ...task, status: task.status === 'completed' ? 'open' : 'completed' }
+        : task
+    );
+    localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+    setTaskUpdateTrigger(prev => prev + 1);
+  };
+
+  const handleCreateTask = () => {
+    if (!newTask.title.trim()) {
+      toast({
+        title: "Fehler",
+        description: "Bitte gib einen Titel für die Aufgabe ein.",
+        variant: "destructive"
+      });
+      return;
     }
+
+    saveTask(newTask);
+    
+    setNewTask({
+      title: '',
+      description: '',
+      priority: 'medium',
+      assignedTo: 'me',
+      dueDate: new Date().toISOString().split('T')[0],
+      status: 'open'
+    });
+    
+    setShowNewTaskDialog(false);
+    setEditingTask(null);
+    setTaskUpdateTrigger(prev => prev + 1);
+    
+    toast({
+      title: "Aufgabe erstellt",
+      description: `Neue Aufgabe wurde ${newTask.assignedTo === 'me' ? 'dir' : 'einem Coachee'} zugewiesen.`
+    });
+  };
+
+  const handleEditTask = (task) => {
+    setEditingTask(task);
+    setNewTask({
+      ...task,
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    });
+    setShowNewTaskDialog(true);
+  };
+
+  const handleDeleteTask = (taskId) => {
+    deleteTask(taskId);
+    setTaskUpdateTrigger(prev => prev + 1);
+    toast({
+      title: "Aufgabe gelöscht",
+      description: "Die Aufgabe wurde erfolgreich entfernt."
+    });
+  };
+
+  const handleNachfassen = (coachee, task) => {
+    // Send email
+    sendEmail(coachee, 'nachfassen', task);
+    
+    // Mark as contacted so it disappears from deadline list
+    markAsContacted(task.id);
+    setTaskUpdateTrigger(prev => prev + 1);
+    
+    toast({
+      title: "Nachfass-E-Mail gesendet",
+      description: `E-Mail an ${coachee.firstName} wurde geöffnet. Aufgabe als kontaktiert markiert.`
+    });
   };
 
   const openEntryDetail = (entry) => {
     setSelectedEntry(entry);
     setIsDetailOpen(true);
-  };
-
-  // Quick Action Buttons für häufige Coach-Aktionen - Vereinfacht für kontextuelle Nutzung
-  const sendMahnung = (coachee) => {
-    const template = emailTemplates.mahnen(coachee);
-    const email = coachee.email || coachee.emailAddress;
-    
-    if (!email) {
-      alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
-      return;
-    }
-    
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
-    window.open(mailtoUrl);
-  };
-
-  const sendGratulation = (coachee, occasion = 'Geburtstag') => {
-    const template = {
-      subject: `Herzlichen Glückwunsch zum ${occasion}!`,
-      body: `Hallo ${coachee.firstName},
-
-herzlichen Glückwunsch zu deinem ${occasion}! 🎉
-
-Ich wünsche dir alles Gute, viel Freude und dass alle deine Wünsche in Erfüllung gehen.
-
-Genieße deinen besonderen Tag!
-
-Herzliche Grüße,
-[Dein Name]`
-    };
-    
-    const email = coachee.email || coachee.emailAddress;
-    
-    if (!email) {
-      alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
-      return;
-    }
-    
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
-    window.open(mailtoUrl);
   };
 
   return (
@@ -297,6 +399,104 @@ Herzliche Grüße,
         <title>Dashboard - Coaching Plattform</title>
         <meta name="description" content="Übersicht über Ihre Coaching-Aktivitäten" />
       </Helmet>
+
+      {/* New Task Dialog */}
+      <Dialog open={showNewTaskDialog} onOpenChange={setShowNewTaskDialog}>
+        <DialogContent className="glass-card border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editingTask ? 'Aufgabe bearbeiten' : 'Neue persönliche Aufgabe'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-2 block">
+                Titel *
+              </label>
+              <Input
+                value={newTask.title}
+                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                placeholder="Aufgabentitel eingeben..."
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-2 block">
+                Beschreibung
+              </label>
+              <Textarea
+                value={newTask.description}
+                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                placeholder="Weitere Details zur Aufgabe..."
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-300 mb-2 block">
+                  Priorität
+                </label>
+                <Select 
+                  value={newTask.priority} 
+                  onValueChange={(value) => setNewTask({...newTask, priority: value})}
+                >
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-700 border-slate-600">
+                    <SelectItem value="low" className="text-white">Niedrig</SelectItem>
+                    <SelectItem value="medium" className="text-white">Mittel</SelectItem>
+                    <SelectItem value="high" className="text-white">Hoch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-slate-300 mb-2 block">
+                  Fälligkeitsdatum
+                </label>
+                <Input
+                  type="date"
+                  value={newTask.dueDate}
+                  onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                  className="bg-slate-700 border-slate-600 text-white"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <Button 
+                onClick={handleCreateTask}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                {editingTask ? 'Aktualisieren' : 'Erstellen'}
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowNewTaskDialog(false);
+                  setEditingTask(null);
+                  setNewTask({
+                    title: '',
+                    description: '',
+                    priority: 'medium',
+                    assignedTo: 'me',
+                    dueDate: new Date().toISOString().split('T')[0],
+                    status: 'open'
+                  });
+                }}
+                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              >
+                Abbrechen
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Entry Detail Modal */}
       {isDetailOpen && selectedEntry && (
@@ -367,51 +567,92 @@ Herzliche Grüße,
 
         {/* To-Do Bereich - separate Cards */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Persönliche Tasks */}
+          {/* Persönliche Tasks - ERWEITERT */}
           <Card className="glass-card-enhanced">
             <CardHeader>
-              <CardTitle className="flex items-center text-foreground text-lg">
-                <CheckCircle2 className="mr-3 h-6 w-6 text-green-500" />
-                Meine Aufgaben heute ({todaysTasks.length})
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center text-foreground text-lg">
+                  <CheckCircle2 className="mr-3 h-6 w-6 text-green-500" />
+                  Meine Aufgaben heute ({todaysTasks.length})
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  onClick={() => setShowNewTaskDialog(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Neue Aufgabe
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {todaysTasks.length > 0 ? (
                 <div className="space-y-3">
-                  {todaysTasks.slice(0, 5).map((task) => (
+                  {todaysTasks.map((task) => (
                     <div key={task.id} className="flex items-center space-x-3 p-3 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors group">
                       <CheckCircle2 
-                        className="h-5 w-5 text-muted-foreground cursor-pointer hover:text-green-500 transition-colors" 
+                        className={`h-5 w-5 cursor-pointer transition-colors ${
+                          task.status === 'completed' 
+                            ? 'text-green-500' 
+                            : 'text-muted-foreground hover:text-green-500'
+                        }`}
                         onClick={() => toggleTask(task.id)}
                       />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                          {task.titel || 'Unbenannte Aufgabe'}
+                        <p className={`text-sm font-medium transition-colors ${
+                          task.status === 'completed' 
+                            ? 'text-muted-foreground line-through' 
+                            : 'text-foreground group-hover:text-primary'
+                        }`}>
+                          {task.title || 'Unbenannte Aufgabe'}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {task.thema && <span className="font-medium">{task.thema}</span>}
-                          {task.thema && task.konkretesToDo && ' • '}
-                          {task.konkretesToDo}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end space-y-1">
-                        <Badge variant="outline" className="text-xs">
-                          {task.prioritaet || 'Normal'}
-                        </Badge>
-                        {task.schaetzung && (
-                          <span className="text-xs text-muted-foreground">{task.schaetzung}</span>
+                        {task.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
                         )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="text-xs">
+                          {task.priority === 'high' ? 'Hoch' : 
+                           task.priority === 'medium' ? 'Mittel' : 'Niedrig'}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditTask(task)}
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-center py-6">Keine Aufgaben für heute.</p>
+                <div className="text-center py-8">
+                  <Target className="mx-auto h-12 w-12 text-slate-500 mb-4" />
+                  <p className="text-muted-foreground mb-4">Keine Aufgaben für heute.</p>
+                  <Button 
+                    onClick={() => setShowNewTaskDialog(true)}
+                    variant="outline"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Erste Aufgabe erstellen
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Coachee Deadlines - nur Nachfassen */}
+          {/* Coachee Deadlines - MIT AUTO-VERSCHWINDEN */}
           <Card className="glass-card-enhanced">
             <CardHeader>
               <CardTitle className="flex items-center text-foreground text-lg">
@@ -423,24 +664,24 @@ Herzliche Grüße,
               {coacheeDeadlines.length > 0 ? (
                 <div className="space-y-3">
                   {coacheeDeadlines.slice(0, 5).map((task) => {
-                    const coachee = coachees?.find(c => c.id === task.zugewiesenAn);
-                    const isOverdue = new Date(task.faelligkeitsdatum) < new Date();
+                    const coachee = coachees?.find(c => c.id.toString() === task.assignedTo.toString());
+                    const isOverdue = new Date(task.dueDate) < new Date();
                     return (
                       <div key={task.id} className="flex items-center space-x-3 p-3 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={coachee?.avatarUrl} />
                           <AvatarFallback className="text-xs">
-                            {coachee ? `${coachee.firstName[0]}${coachee.lastName[0]}` : '?'}
+                            {coachee ? `${coachee.firstName?.[0] || coachee.name?.[0] || ''}${coachee.lastName?.[0] || ''}` : '?'}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{task.titel}</p>
+                          <p className="text-sm font-medium text-foreground">{task.title}</p>
                           <p className="text-xs text-muted-foreground">
-                            {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}
-                            {task.thema && ` • ${task.thema}`}
+                            {coachee ? (coachee.firstName ? `${coachee.firstName} ${coachee.lastName}` : coachee.name) : 'Unbekannt'}
+                            {task.category && ` • ${task.category}`}
                           </p>
-                          {task.konkretesToDo && (
-                            <p className="text-xs text-muted-foreground mt-1">{task.konkretesToDo}</p>
+                          {task.description && (
+                            <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
                           )}
                         </div>
                         <div className="text-right space-y-2">
@@ -452,7 +693,7 @@ Herzliche Grüße,
                               size="sm" 
                               variant="outline" 
                               className="text-xs h-7 w-full hover:bg-blue-50 hover:border-blue-300"
-                              onClick={() => sendEmail(coachee, 'nachfassen', task)}
+                              onClick={() => handleNachfassen(coachee, task)}
                             >
                               <MessageCircle className="h-3 w-3 mr-1" />
                               Nachfassen
@@ -468,16 +709,6 @@ Herzliche Grüße,
               )}
             </CardContent>
           </Card>
-        </div>
-
-        {/* Link zu vollständigem Aufgaben-Manager */}
-        <div className="text-center">
-          <Link to="/tasks">
-            <Button variant="outline" size="lg" className="bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-primary/20">
-              <ClipboardCheck className="mr-2 h-5 w-5" />
-              Alle Aufgaben verwalten
-            </Button>
-          </Link>
         </div>
 
         {/* Sekundärer Bereich */}

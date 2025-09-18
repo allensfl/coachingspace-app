@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -24,7 +24,9 @@ import {
   Mail,
   DollarSign,
   PartyPopper,
-  CalendarPlus
+  CalendarPlus,
+  Share2,
+  Eye
 } from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
 import OpenInvoices from './OpenInvoices';
@@ -121,26 +123,26 @@ const sendEmail = (coachee, templateType, task = null) => {
   window.open(mailtoUrl);
 };
 
-// StatCard mit Akzentfarben für Icons und Rand
+// Kompakte StatCard
 const StatCard = ({ title, value, icon, to, colorClass }) => {
   return (
     <motion.div
-      whileHover={{ y: -8, scale: 1.03 }}
+      whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       className="h-full"
     >
-      <Card className="relative overflow-hidden h-full flex flex-col justify-between glass-card-enhanced hover:shadow-2xl transition-all duration-500 group">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-300">{title}</CardTitle>
-          <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-all duration-300">
-            {React.cloneElement(icon, { className: 'h-5 w-5 text-primary group-hover:scale-110 transition-transform duration-300' })}
+      <Card className="relative overflow-hidden h-full flex flex-col justify-between glass-card-enhanced hover:shadow-lg transition-all duration-300 group">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+          <CardTitle className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-300">{title}</CardTitle>
+          <div className="p-1.5 rounded-md bg-primary/10 group-hover:bg-primary/20 transition-all duration-300">
+            {React.cloneElement(icon, { className: 'h-3 w-3 text-primary group-hover:scale-110 transition-transform duration-300' })}
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">{value}</div>
+        <CardContent className="pt-0">
+          <div className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">{value}</div>
           {to && (
-            <Link to={to} className="text-xs text-primary hover:text-primary/80 mt-2 flex items-center group-hover:translate-x-1 transition-all duration-300">
-              Details anzeigen <ArrowUpRight className="h-4 w-4 ml-1 group-hover:scale-110 transition-transform duration-300" />
+            <Link to={to} className="text-xs text-primary hover:text-primary/80 mt-1 flex items-center group-hover:translate-x-1 transition-all duration-300">
+              Details <ArrowUpRight className="h-3 w-3 ml-1 group-hover:scale-110 transition-transform duration-300" />
             </Link>
           )}
         </CardContent>
@@ -167,13 +169,25 @@ const formatDate = (dateString) => {
 };
 
 export default function Dashboard() {
+  const { state, actions } = useAppStateContext();
   const { 
     sessions = [], 
     coachees = [], 
     tasks = [], 
-    updateTask,
     packages = []
-  } = useAppStateContext();
+  } = state;
+  const { 
+    updateTask,
+    getSharedJournalEntries = () => [] // Fallback-Funktion
+  } = actions;
+  
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // Geteilte Journal-Einträge temporär deaktiviert bis Funktion repariert ist
+  const sharedEntries = useMemo(() => {
+    return []; // Temporär deaktiviert
+  }, []);
 
   // Sessions für die nächsten 3 Tage
   const upcomingSessions = useMemo(() => {
@@ -232,6 +246,11 @@ export default function Dashboard() {
     }
   };
 
+  const openEntryDetail = (entry) => {
+    setSelectedEntry(entry);
+    setIsDetailOpen(true);
+  };
+
   // Quick Action Buttons für häufige Coach-Aktionen - Vereinfacht für kontextuelle Nutzung
   const sendMahnung = (coachee) => {
     const template = emailTemplates.mahnen(coachee);
@@ -279,9 +298,33 @@ Herzliche Grüße,
         <meta name="description" content="Übersicht über Ihre Coaching-Aktivitäten" />
       </Helmet>
 
-      <div className="container mx-auto p-6 space-y-8">
+      {/* Entry Detail Modal */}
+      {isDetailOpen && selectedEntry && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">{selectedEntry.title || 'Geteilter Eintrag'}</h2>
+                  <p className="text-slate-400 text-sm">
+                    Von {selectedEntry.sharedBy} • {selectedEntry.date ? new Date(selectedEntry.date).toLocaleDateString('de-DE') : 'Kein Datum'}
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setIsDetailOpen(false)}>
+                  ✕
+                </Button>
+              </div>
+              <div className="prose prose-invert max-w-none">
+                <div className="text-slate-200 whitespace-pre-wrap">{selectedEntry.content || 'Kein Inhalt verfügbar'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent mb-2">
             Dashboard
           </h1>
@@ -290,8 +333,8 @@ Herzliche Grüße,
           </p>
         </div>
 
-        {/* Statistik-Karten */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* Kompakte Statistik-Karten */}
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Aktive Coachees"
             value={activeCoachees}
@@ -445,13 +488,6 @@ Herzliche Grüße,
           {/* Weitere Bereiche in der oberen Zeile */}
           <div className="grid gap-6 lg:grid-cols-2 lg:col-span-2">
             <OpenInvoices />
-            <EventsAndBirthdays />
-          </div>
-        </div>
-
-        {/* Quick Actions - volle Breite aber kleiner */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
             <QuickActions />
           </div>
         </div>

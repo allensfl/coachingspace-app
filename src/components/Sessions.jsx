@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -109,8 +108,19 @@ const Sessions = () => {
   };
 
   const handleCardClick = (session) => {
-  navigate(`/sessions/${session.id}/prepare`);
-};
+    navigate(`/sessions/${session.id}/prepare`);
+  };
+
+  // NEU: Direkter Start ohne Vorbereitung
+  const handleDirectStart = (session) => {
+    // Direkt zum CoachingRoom mit korrekter Session-ID
+    navigate(`/coaching-room/${session.id}`);
+    toast({ 
+      title: "Session gestartet!", 
+      description: `Direktstart mit ${session.coacheeName} - Session "${session.topic}"`,
+      className: "bg-green-600 text-white" 
+    });
+  };
   
   const handleToggleArchive = (sessionId) => {
     const sessionToToggle = sessions.find(s => s.id === sessionId);
@@ -194,6 +204,7 @@ const Sessions = () => {
               <SessionListView 
                 sessions={filteredActiveSessions}
                 onCardClick={handleCardClick}
+                onDirectStart={handleDirectStart} // NEU: Direktstart-Handler
                 onToggleArchive={handleToggleArchive}
                 onStatusChange={handleSessionStatusChange}
                 onCreateInvoice={handleCreateInvoiceFromSession}
@@ -214,6 +225,7 @@ const Sessions = () => {
              <SessionListView 
                 sessions={archivedSessions}
                 onCardClick={handleCardClick}
+                onDirectStart={handleDirectStart} // NEU: Auch im Archiv verfügbar
                 onToggleArchive={handleToggleArchive}
                 onStatusChange={handleSessionStatusChange}
                 onCreateInvoice={handleCreateInvoiceFromSession}
