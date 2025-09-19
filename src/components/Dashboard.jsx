@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,181 +42,90 @@ import OpenInvoices from './OpenInvoices';
 import EventsAndBirthdays from './EventsAndBirthdays';
 import QuickActions from './QuickActions';
 import CalendarOverview from './CalendarOverview';
+import { SubscriptionOverviewWidget } from '../components/SubscriptionOverviewWidget';
 
-// E-Mail Template Funktionen
-const emailTemplates = {
-  nachfassen: (coachee, task) => ({
-    subject: `Nachfassen: ${task.title}`,
-    body: `Hallo ${coachee.firstName},
-
-ich wollte kurz nachfragen, wie es mit deiner Aufgabe "${task.title}" läuft.
-
-Deadline war heute - wie ist der Stand? Brauchst du Unterstützung oder haben sich neue Herausforderungen ergeben?
-
-Lass uns gerne kurz telefonieren oder in der nächsten Session darüber sprechen.
-
-Beste Grüße,
-[Dein Name]`
-  }),
-
-  mahnen: (coachee) => ({
-    subject: `Zahlungserinnerung - Coaching Sessions`,
-    body: `Hallo ${coachee.firstName},
-
-ich hoffe, es geht dir gut! 
-
-Mir ist aufgefallen, dass eine Rechnung noch offen ist. Könntest du bitte einen Blick darauf werfen?
-
-Falls es Fragen gibt oder sich etwas geändert hat, melde dich gerne bei mir.
-
-Vielen Dank und beste Grüße,
-[Dein Name]`
-  }),
-
-  gratulieren: (coachee, task) => ({
-    subject: `Herzlichen Glückwunsch - ${task.title} erfolgreich abgeschlossen!`,
-    body: `Hallo ${coachee.firstName},
-
-ich freue mich riesig mit dir! Du hast dein Ziel "${task.title}" erfolgreich erreicht. 🎉
-
-Das zeigt wieder einmal, was für eine starke und zielstrebige Person du bist. Ich bin stolz auf deinen Fortschritt!
-
-Lass uns in der nächsten Session gemeinsam reflektieren und den nächsten Schritt planen.
-
-Herzliche Glückwünsche,
-[Dein Name]`
-  }),
-
-  terminieren: (coachee) => ({
-    subject: `Terminfindung für unsere nächste Coaching Session`,
-    body: `Hallo ${coachee.firstName},
-
-es ist Zeit für unsere nächste Session! 
-
-Wann passt es dir in den nächsten 1-2 Wochen am besten? Ich habe folgende Zeiten frei:
-- [Datum/Zeit 1]
-- [Datum/Zeit 2] 
-- [Datum/Zeit 3]
-
-Oder schlage gerne eigene Zeiten vor. Wir können wie gewohnt [online/in meinem Büro] treffen.
-
-Freue mich auf unser Gespräch!
-
-Beste Grüße,
-[Dein Name]`
-  }),
-
-  kontaktieren: (coachee) => ({
-    subject: `Kurzes Check-in`,
-    body: `Hallo ${coachee.firstName},
-
-ich wollte mich kurz bei dir melden und fragen, wie es dir geht.
-
-Falls du Fragen hast oder einfach mal sprechen möchtest, melde dich gerne.
-
-Beste Grüße,
-[Dein Name]`
-  })
-};
-
-const sendEmail = (coachee, templateType, task = null) => {
-  if (!coachee?.email && !coachee?.emailAddress) {
-    alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
-    return;
-  }
-
-  const email = coachee.email || coachee.emailAddress;
-  const template = emailTemplates[templateType](coachee, task);
-  
-  const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
-  window.open(mailtoUrl);
-};
-
-// Task Management Functions
-const saveTask = (task) => {
-  const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-  let updatedTasks;
-
-  if (task.id) {
-    // Update existing task
-    updatedTasks = allTasks.map(t => t.id === task.id ? task : t);
-  } else {
-    // Create new task
-    const newTaskWithId = {
-      ...task,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      createdBy: 'coach'
-    };
-    updatedTasks = [...allTasks, newTaskWithId];
-  }
-
-  localStorage.setItem('tasks', JSON.stringify(updatedTasks));
-  window.dispatchEvent(new Event('storage'));
-  return task.id ? task : { ...task, id: Date.now().toString() };
-};
-
-const deleteTask = (taskId) => {
-  const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-  const updatedTasks = allTasks.filter(task => task.id !== taskId);
-  localStorage.setItem('tasks', JSON.stringify(updatedTasks));
-  window.dispatchEvent(new Event('storage'));
-};
-
-const markAsContacted = (taskId) => {
-  const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-  const updatedTasks = allTasks.map(task => 
-    task.id === taskId 
-      ? { ...task, contacted: true, contactedAt: new Date().toISOString() }
-      : task
-  );
-  localStorage.setItem('tasks', JSON.stringify(updatedTasks));
-  window.dispatchEvent(new Event('storage'));
-};
-
-// Kompakte StatCard
-const StatCard = ({ title, value, icon, to, colorClass }) => {
-  return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      className="h-full"
-    >
-      <Card className="relative overflow-hidden h-full flex flex-col justify-between glass-card-enhanced hover:shadow-lg transition-all duration-300 group">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-          <CardTitle className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-300">{title}</CardTitle>
-          <div className="p-1.5 rounded-md bg-primary/10 group-hover:bg-primary/20 transition-all duration-300">
-            {React.cloneElement(icon, { className: 'h-3 w-3 text-primary group-hover:scale-110 transition-transform duration-300' })}
+// Statistik-Card Komponente
+const StatCard = ({ title, value, icon, to, colorClass = "text-blue-500" }) => (
+  <Card className="glass-card-enhanced transition-all duration-300 hover:scale-105 cursor-pointer group">
+    <Link to={to} className="block">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+              {title}
+            </p>
+            <p className="text-2xl font-bold">{value}</p>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">{value}</div>
-          {to && (
-            <Link to={to} className="text-xs text-primary hover:text-primary/80 mt-1 flex items-center group-hover:translate-x-1 transition-all duration-300">
-              Details <ArrowUpRight className="h-3 w-3 ml-1 group-hover:scale-110 transition-transform duration-300" />
-            </Link>
-          )}
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-};
+          <div className={`${colorClass} opacity-70 group-hover:opacity-100 transition-opacity`}>
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Link>
+  </Card>
+);
 
-// Formatdatum-Helfer
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  
-  if (date.toDateString() === today.toDateString()) {
-    return 'Heute';
-  } else if (date.toDateString() === tomorrow.toDateString()) {
-    return 'Morgen';
-  } else {
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-  }
+// Task Komponente für bessere Organisation
+const TaskItem = ({ task, onComplete, onEdit, onDelete, overdue = false }) => {
+  const priorityColors = {
+    high: 'border-l-red-500 bg-red-50/10',
+    medium: 'border-l-yellow-500 bg-yellow-50/10',
+    low: 'border-l-green-500 bg-green-50/10'
+  };
+
+  const priorityLabels = {
+    high: 'Hoch',
+    medium: 'Mittel', 
+    low: 'Niedrig'
+  };
+
+  return (
+    <div className={`p-3 rounded-lg border-l-4 transition-all hover:shadow-md ${priorityColors[task.priority] || 'border-l-gray-500 bg-gray-50/10'} ${task.completed ? 'opacity-60' : ''} ${overdue ? 'ring-2 ring-red-500/30' : ''}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <button
+              onClick={() => onComplete(task.id)}
+              className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                task.completed 
+                  ? 'bg-green-500 border-green-500 text-white' 
+                  : 'border-gray-300 hover:border-green-500'
+              }`}
+            >
+              {task.completed && <CheckCircle2 className="w-3 h-3" />}
+            </button>
+            <h4 className={`font-medium truncate ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+              {task.title}
+            </h4>
+            {overdue && (
+              <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+            {task.description}
+          </p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline" className="text-xs">
+              {priorityLabels[task.priority]}
+            </Badge>
+            {task.dueDate && (
+              <span className={overdue ? 'text-red-500 font-medium' : ''}>
+                {new Date(task.dueDate).toLocaleDateString('de-DE')}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => onEdit(task)}>
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onDelete(task.id)}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default function Dashboard() {
@@ -224,174 +133,284 @@ export default function Dashboard() {
   const { 
     sessions = [], 
     coachees = [], 
-    packages = []
+    packages = [],
+    recurringInvoices = [],
+    serviceRates = []
   } = state;
-  const { 
-    getSharedJournalEntries = () => [] // Fallback-Funktion
-  } = actions;
   
-  const [selectedEntry, setSelectedEntry] = useState(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Task-Management State
+  const [tasks, setTasks] = useState([
+    {
+      id: 1,
+      title: "Session-Notes für Maria Müller fertigstellen",
+      description: "Notizen von der letzten Session strukturieren und wichtige Erkenntnisse dokumentieren",
+      priority: "high",
+      dueDate: "2024-12-28",
+      completed: false,
+      category: "documentation"
+    },
+    {
+      id: 2,
+      title: "Neue Coaching-Materialien vorbereiten",
+      description: "Übungen für Stressbewältigung und Zeitmanagement erstellen",
+      priority: "medium",
+      dueDate: "2024-12-30",
+      completed: false,
+      category: "preparation"
+    },
+    {
+      id: 3,
+      title: "Feedback von letzter Woche einarbeiten",
+      description: "Coachee-Feedback analysieren und Verbesserungen ableiten",
+      priority: "low",
+      dueDate: "2025-01-02",
+      completed: false,
+      category: "improvement"
+    }
+  ]);
+
+  const [coacheeDeadlines, setCoacheeDeadlines] = useState([
+    {
+      id: 1,
+      coacheeId: 2,
+      title: "Karriereplan bis Jahresende",
+      description: "Finalisierung des 5-Jahres-Karriereplans",
+      dueDate: "2024-12-31",
+      category: "goal",
+      completed: false
+    },
+    {
+      id: 2,
+      coacheeId: 1,
+      title: "Präsentation für Beförderung",
+      description: "Vorbereitung der Präsentation für das Management",
+      dueDate: "2025-01-05",
+      category: "presentation",
+      completed: false
+    }
+  ]);
+
+  // Task Dialog States
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [newTask, setNewTask] = useState({
+  const [taskForm, setTaskForm] = useState({
     title: '',
     description: '',
     priority: 'medium',
-    assignedTo: 'me',
-    dueDate: new Date().toISOString().split('T')[0],
-    status: 'open'
+    dueDate: '',
+    category: 'general'
   });
-  const [taskUpdateTrigger, setTaskUpdateTrigger] = useState(0);
 
-  const { toast } = useToast();
+  // Coachee Deadline Dialog States
+  const [showDeadlineDialog, setShowDeadlineDialog] = useState(false);
+  const [editingDeadline, setEditingDeadline] = useState(null);
+  const [deadlineForm, setDeadlineForm] = useState({
+    coacheeId: '',
+    title: '',
+    description: '',
+    dueDate: '',
+    category: 'goal'
+  });
 
-  // Force re-render when tasks change
-  useEffect(() => {
-    const handleStorageChange = () => {
-      setTaskUpdateTrigger(prev => prev + 1);
-    };
+  // Berechnete Werte
+  const activeCoachees = useMemo(() => {
+    return coachees.filter(coachee => coachee.status === 'active').length;
+  }, [coachees]);
+
+  const sessionsThisWeek = useMemo(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const endOfWeek = new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000);
     
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    return sessions.filter(session => {
+      const sessionDate = new Date(session.date);
+      return sessionDate >= startOfWeek && sessionDate <= endOfWeek;
+    }).length;
+  }, [sessions]);
 
-  // Geteilte Journal-Einträge temporär deaktiviert bis Funktion repariert ist
-  const sharedEntries = useMemo(() => {
-    return []; // Temporär deaktiviert
-  }, []);
+  const activePackages = useMemo(() => {
+    return packages.filter(pkg => pkg.status === 'active').length;
+  }, [packages]);
 
-  // Sessions für die nächsten 3 Tage
   const upcomingSessions = useMemo(() => {
-    if (!sessions) return [];
-    const today = new Date();
-    const threeDaysLater = new Date(today);
-    threeDaysLater.setDate(today.getDate() + 3);
-    
+    const now = new Date();
     return sessions
-      .filter(session => {
-        const sessionDate = new Date(session.date);
-        return sessionDate >= today && sessionDate <= threeDaysLater;
-      })
+      .filter(session => new Date(session.date) >= now)
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 5);
   }, [sessions]);
 
-  // Persönliche Tasks für heute (zentrales System)
-  const todaysTasks = useMemo(() => {
-    const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-    const today = new Date().toDateString();
-    return allTasks.filter(task => {
-      if (!task.dueDate) return false;
-      const taskDate = new Date(task.dueDate).toDateString();
-      return taskDate === today && task.assignedTo === 'me';
-    });
-  }, [taskUpdateTrigger]);
-
-  // Coachee-Deadlines für heute (zentrales System) - OHNE kontaktierte  
-  const coacheeDeadlines = useMemo(() => {
-    const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-    const today = new Date().toDateString();
-    return allTasks.filter(task => {
-      if (!task.dueDate) return false;
-      const taskDate = new Date(task.dueDate).toDateString();
-      return taskDate === today && 
-             task.assignedTo !== 'me' && 
-             task.status !== 'completed' && 
-             !task.contacted; // Neue Bedingung: nicht kontaktiert
-    });
-  }, [taskUpdateTrigger]);
-
-  // Statistiken berechnen
-  const activeCoachees = coachees?.filter(c => c.status === 'active').length || 0;
-  const sessionsThisWeek = sessions?.filter(s => {
-    const sessionDate = new Date(s.date);
-    const today = new Date();
-    const weekStart = new Date(today.setDate(today.getDate() - today.getDay()));
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    return sessionDate >= weekStart && sessionDate <= weekEnd;
-  }).length || 0;
-  const activePackages = packages?.filter(p => p.status === 'active').length || 0;
-
-  const toggleTask = (taskId) => {
-    const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-    const updatedTasks = allTasks.map(task => 
-      task.id === taskId 
-        ? { ...task, status: task.status === 'completed' ? 'open' : 'completed' }
-        : task
+  const overdueTasks = useMemo(() => {
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    return tasks.filter(task => 
+      !task.completed && 
+      task.dueDate && 
+      new Date(task.dueDate) < now
     );
-    localStorage.setItem('tasks', JSON.stringify(updatedTasks));
-    setTaskUpdateTrigger(prev => prev + 1);
+  }, [tasks]);
+
+  const overdueDeadlines = useMemo(() => {
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    return coacheeDeadlines.filter(deadline => 
+      !deadline.completed && 
+      new Date(deadline.dueDate) < now
+    );
+  }, [coacheeDeadlines]);
+
+  // Task Management Functions
+  const handleTaskComplete = (taskId) => {
+    setTasks(prev => prev.map(task => 
+      task.id === taskId 
+        ? { ...task, completed: !task.completed }
+        : task
+    ));
   };
 
-  const handleCreateTask = () => {
-    if (!newTask.title.trim()) {
+  const handleTaskEdit = (task) => {
+    setEditingTask(task);
+    setTaskForm({
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      dueDate: task.dueDate,
+      category: task.category
+    });
+    setShowTaskDialog(true);
+  };
+
+  const handleTaskDelete = (taskId) => {
+    setTasks(prev => prev.filter(task => task.id !== taskId));
+    toast({
+      title: "Task gelöscht",
+      description: "Der Task wurde erfolgreich entfernt.",
+    });
+  };
+
+  const handleTaskSave = () => {
+    if (!taskForm.title.trim()) return;
+
+    if (editingTask) {
+      setTasks(prev => prev.map(task =>
+        task.id === editingTask.id
+          ? { ...task, ...taskForm }
+          : task
+      ));
       toast({
-        title: "Fehler",
-        description: "Bitte gib einen Titel für die Aufgabe ein.",
-        variant: "destructive"
+        title: "Task aktualisiert",
+        description: "Der Task wurde erfolgreich bearbeitet.",
       });
-      return;
+    } else {
+      const newTask = {
+        ...taskForm,
+        id: Date.now(),
+        completed: false
+      };
+      setTasks(prev => [...prev, newTask]);
+      toast({
+        title: "Task erstellt",
+        description: "Der neue Task wurde erfolgreich hinzugefügt.",
+      });
     }
 
-    saveTask(newTask);
-    
-    setNewTask({
+    setShowTaskDialog(false);
+    setEditingTask(null);
+    setTaskForm({
       title: '',
       description: '',
       priority: 'medium',
-      assignedTo: 'me',
-      dueDate: new Date().toISOString().split('T')[0],
-      status: 'open'
+      dueDate: '',
+      category: 'general'
     });
-    
-    setShowNewTaskDialog(false);
-    setEditingTask(null);
-    setTaskUpdateTrigger(prev => prev + 1);
-    
+  };
+
+  // Coachee Deadline Functions
+  const handleDeadlineComplete = (deadlineId) => {
+    setCoacheeDeadlines(prev => prev.map(deadline => 
+      deadline.id === deadlineId 
+        ? { ...deadline, completed: !deadline.completed }
+        : deadline
+    ));
+  };
+
+  const handleDeadlineEdit = (deadline) => {
+    setEditingDeadline(deadline);
+    setDeadlineForm({
+      coacheeId: deadline.coacheeId,
+      title: deadline.title,
+      description: deadline.description,
+      dueDate: deadline.dueDate,
+      category: deadline.category
+    });
+    setShowDeadlineDialog(true);
+  };
+
+  const handleDeadlineDelete = (deadlineId) => {
+    setCoacheeDeadlines(prev => prev.filter(deadline => deadline.id !== deadlineId));
     toast({
-      title: "Aufgabe erstellt",
-      description: `Neue Aufgabe wurde ${newTask.assignedTo === 'me' ? 'dir' : 'einem Coachee'} zugewiesen.`
+      title: "Coachee-Deadline gelöscht",
+      description: "Die Deadline wurde erfolgreich entfernt.",
     });
   };
 
-  const handleEditTask = (task) => {
-    setEditingTask(task);
-    setNewTask({
-      ...task,
-      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+  const handleDeadlineSave = () => {
+    if (!deadlineForm.title.trim() || !deadlineForm.coacheeId) return;
+
+    const coachee = coachees.find(c => c.id.toString() === deadlineForm.coacheeId);
+    if (!coachee) return;
+
+    if (editingDeadline) {
+      setCoacheeDeadlines(prev => prev.map(deadline =>
+        deadline.id === editingDeadline.id
+          ? { ...deadline, ...deadlineForm, coacheeId: parseInt(deadlineForm.coacheeId) }
+          : deadline
+      ));
+      toast({
+        title: "Coachee-Deadline aktualisiert",
+        description: "Die Deadline wurde erfolgreich bearbeitet.",
+      });
+    } else {
+      const newDeadline = {
+        ...deadlineForm,
+        id: Date.now(),
+        coacheeId: parseInt(deadlineForm.coacheeId),
+        completed: false
+      };
+      setCoacheeDeadlines(prev => [...prev, newDeadline]);
+      toast({
+        title: "Coachee-Deadline erstellt",
+        description: "Die neue Deadline wurde erfolgreich hinzugefügt.",
+      });
+    }
+
+    setShowDeadlineDialog(false);
+    setEditingDeadline(null);
+    setDeadlineForm({
+      coacheeId: '',
+      title: '',
+      description: '',
+      dueDate: '',
+      category: 'goal'
     });
-    setShowNewTaskDialog(true);
   };
 
-  const handleDeleteTask = (taskId) => {
-    deleteTask(taskId);
-    setTaskUpdateTrigger(prev => prev + 1);
-    toast({
-      title: "Aufgabe gelöscht",
-      description: "Die Aufgabe wurde erfolgreich entfernt."
-    });
-  };
-
-  const handleNachfassen = (coachee, task) => {
-    // Send email
-    sendEmail(coachee, 'nachfassen', task);
+  // Auto-Hide überfällige Deadlines nach 7 Tagen
+  useEffect(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
-    // Mark as contacted so it disappears from deadline list
-    markAsContacted(task.id);
-    setTaskUpdateTrigger(prev => prev + 1);
-    
-    toast({
-      title: "Nachfass-E-Mail gesendet",
-      description: `E-Mail an ${coachee.firstName} wurde geöffnet. Aufgabe als kontaktiert markiert.`
-    });
-  };
-
-  const openEntryDetail = (entry) => {
-    setSelectedEntry(entry);
-    setIsDetailOpen(true);
-  };
+    setCoacheeDeadlines(prev => 
+      prev.filter(deadline => {
+        if (deadline.completed) return true;
+        const dueDate = new Date(deadline.dueDate);
+        return dueDate >= sevenDaysAgo;
+      })
+    );
+  }, []);
 
   return (
     <>
@@ -400,127 +419,133 @@ export default function Dashboard() {
         <meta name="description" content="Übersicht über Ihre Coaching-Aktivitäten" />
       </Helmet>
 
-      {/* New Task Dialog */}
-      <Dialog open={showNewTaskDialog} onOpenChange={setShowNewTaskDialog}>
-        <DialogContent className="glass-card border-slate-700">
+      {/* Task Dialog */}
+      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
+        <DialogContent className="bg-gray-900 border-gray-700">
           <DialogHeader>
             <DialogTitle className="text-white">
-              {editingTask ? 'Aufgabe bearbeiten' : 'Neue persönliche Aufgabe'}
+              {editingTask ? 'Task bearbeiten' : 'Neuen Task erstellen'}
             </DialogTitle>
           </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
+          <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-slate-300 mb-2 block">
-                Titel *
-              </label>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Titel</label>
               <Input
-                value={newTask.title}
-                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                placeholder="Aufgabentitel eingeben..."
-                className="bg-slate-700 border-slate-600 text-white"
+                value={taskForm.title}
+                onChange={(e) => setTaskForm(prev => ({...prev, title: e.target.value}))}
+                placeholder="Task-Titel"
+                className="bg-gray-800 border-gray-600 text-white"
               />
             </div>
-            
             <div>
-              <label className="text-sm font-medium text-slate-300 mb-2 block">
-                Beschreibung
-              </label>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Beschreibung</label>
               <Textarea
-                value={newTask.description}
-                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                placeholder="Weitere Details zur Aufgabe..."
-                className="bg-slate-700 border-slate-600 text-white"
+                value={taskForm.description}
+                onChange={(e) => setTaskForm(prev => ({...prev, description: e.target.value}))}
+                placeholder="Beschreibung des Tasks"
+                className="bg-gray-800 border-gray-600 text-white"
+                rows={3}
               />
             </div>
-            
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-300 mb-2 block">
-                  Priorität
-                </label>
-                <Select 
-                  value={newTask.priority} 
-                  onValueChange={(value) => setNewTask({...newTask, priority: value})}
-                >
-                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                <label className="text-sm font-medium text-gray-300 mb-2 block">Priorität</label>
+                <Select value={taskForm.priority} onValueChange={(value) => setTaskForm(prev => ({...prev, priority: value}))}>
+                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-700 border-slate-600">
-                    <SelectItem value="low" className="text-white">Niedrig</SelectItem>
-                    <SelectItem value="medium" className="text-white">Mittel</SelectItem>
-                    <SelectItem value="high" className="text-white">Hoch</SelectItem>
+                  <SelectContent className="bg-gray-800 border-gray-600">
+                    <SelectItem value="low">Niedrig</SelectItem>
+                    <SelectItem value="medium">Mittel</SelectItem>
+                    <SelectItem value="high">Hoch</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
               <div>
-                <label className="text-sm font-medium text-slate-300 mb-2 block">
-                  Fälligkeitsdatum
-                </label>
+                <label className="text-sm font-medium text-gray-300 mb-2 block">Fälligkeitsdatum</label>
                 <Input
                   type="date"
-                  value={newTask.dueDate}
-                  onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
-                  className="bg-slate-700 border-slate-600 text-white"
+                  value={taskForm.dueDate}
+                  onChange={(e) => setTaskForm(prev => ({...prev, dueDate: e.target.value}))}
+                  className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
             </div>
-            
-            <div className="flex gap-3 pt-4">
-              <Button 
-                onClick={handleCreateTask}
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
-              >
-                {editingTask ? 'Aktualisieren' : 'Erstellen'}
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowNewTaskDialog(false);
-                  setEditingTask(null);
-                  setNewTask({
-                    title: '',
-                    description: '',
-                    priority: 'medium',
-                    assignedTo: 'me',
-                    dueDate: new Date().toISOString().split('T')[0],
-                    status: 'open'
-                  });
-                }}
-                className="border-slate-600 text-slate-300 hover:bg-slate-700"
-              >
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowTaskDialog(false)}>
                 Abbrechen
+              </Button>
+              <Button onClick={handleTaskSave}>
+                {editingTask ? 'Aktualisieren' : 'Erstellen'}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Entry Detail Modal */}
-      {isDetailOpen && selectedEntry && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">{selectedEntry.title || 'Geteilter Eintrag'}</h2>
-                  <p className="text-slate-400 text-sm">
-                    Von {selectedEntry.sharedBy} • {selectedEntry.date ? new Date(selectedEntry.date).toLocaleDateString('de-DE') : 'Kein Datum'}
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setIsDetailOpen(false)}>
-                  ✕
-                </Button>
-              </div>
-              <div className="prose prose-invert max-w-none">
-                <div className="text-slate-200 whitespace-pre-wrap">{selectedEntry.content || 'Kein Inhalt verfügbar'}</div>
-              </div>
+      {/* Coachee Deadline Dialog */}
+      <Dialog open={showDeadlineDialog} onOpenChange={setShowDeadlineDialog}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editingDeadline ? 'Coachee-Deadline bearbeiten' : 'Neue Coachee-Deadline erstellen'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Coachee</label>
+              <Select value={deadlineForm.coacheeId} onValueChange={(value) => setDeadlineForm(prev => ({...prev, coacheeId: value}))}>
+                <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                  <SelectValue placeholder="Coachee auswählen" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-600">
+                  {coachees.map(coachee => (
+                    <SelectItem key={coachee.id} value={coachee.id.toString()}>
+                      {coachee.firstName} {coachee.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Titel</label>
+              <Input
+                value={deadlineForm.title}
+                onChange={(e) => setDeadlineForm(prev => ({...prev, title: e.target.value}))}
+                placeholder="Deadline-Titel"
+                className="bg-gray-800 border-gray-600 text-white"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Beschreibung</label>
+              <Textarea
+                value={deadlineForm.description}
+                onChange={(e) => setDeadlineForm(prev => ({...prev, description: e.target.value}))}
+                placeholder="Beschreibung der Deadline"
+                className="bg-gray-800 border-gray-600 text-white"
+                rows={3}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Fälligkeitsdatum</label>
+              <Input
+                type="date"
+                value={deadlineForm.dueDate}
+                onChange={(e) => setDeadlineForm(prev => ({...prev, dueDate: e.target.value}))}
+                className="bg-gray-800 border-gray-600 text-white"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowDeadlineDialog(false)}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleDeadlineSave}>
+                {editingDeadline ? 'Aktualisieren' : 'Erstellen'}
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
@@ -565,87 +590,89 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* To-Do Bereich - separate Cards */}
+        {/* Abonnement-Übersicht Widget */}
+        <SubscriptionOverviewWidget
+          recurringInvoices={recurringInvoices}
+          serviceRates={serviceRates}
+          coachees={coachees}
+          onNavigateToSubscriptions={() => navigate('/recurring-invoices')}
+        />
+
+        {/* Primärer Bereich - Tasks und Deadlines */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Persönliche Tasks - ERWEITERT */}
           <Card className="glass-card-enhanced">
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center text-foreground text-lg">
-                  <CheckCircle2 className="mr-3 h-6 w-6 text-green-500" />
-                  Meine Aufgaben heute ({todaysTasks.length})
-                </CardTitle>
-                <Button 
-                  size="sm" 
-                  onClick={() => setShowNewTaskDialog(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Neue Aufgabe
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Meine Tasks</CardTitle>
+                  {overdueTasks.length > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      {overdueTasks.length} überfällig
+                    </Badge>
+                  )}
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        setEditingTask(null);
+                        setTaskForm({
+                          title: '',
+                          description: '',
+                          priority: 'medium',
+                          dueDate: '',
+                          category: 'general'
+                        });
+                        setShowTaskDialog(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Task
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
               </div>
             </CardHeader>
-            <CardContent>
-              {todaysTasks.length > 0 ? (
-                <div className="space-y-3">
-                  {todaysTasks.map((task) => (
-                    <div key={task.id} className="flex items-center space-x-3 p-3 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors group">
-                      <CheckCircle2 
-                        className={`h-5 w-5 cursor-pointer transition-colors ${
-                          task.status === 'completed' 
-                            ? 'text-green-500' 
-                            : 'text-muted-foreground hover:text-green-500'
-                        }`}
-                        onClick={() => toggleTask(task.id)}
-                      />
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium transition-colors ${
-                          task.status === 'completed' 
-                            ? 'text-muted-foreground line-through' 
-                            : 'text-foreground group-hover:text-primary'
-                        }`}>
-                          {task.title || 'Unbenannte Aufgabe'}
-                        </p>
-                        {task.description && (
-                          <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline" className="text-xs">
-                          {task.priority === 'high' ? 'Hoch' : 
-                           task.priority === 'medium' ? 'Mittel' : 'Niedrig'}
-                        </Badge>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEditTask(task)}
-                          className="h-6 w-6 p-0 text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="h-6 w-6 p-0 text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+            <CardContent className="space-y-3">
+              {tasks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ClipboardCheck className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                  <p>Keine Tasks vorhanden</p>
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Target className="mx-auto h-12 w-12 text-slate-500 mb-4" />
-                  <p className="text-muted-foreground mb-4">Keine Aufgaben für heute.</p>
-                  <Button 
-                    onClick={() => setShowNewTaskDialog(true)}
-                    variant="outline"
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Erste Aufgabe erstellen
+                <>
+                  {/* Überfällige Tasks zuerst */}
+                  {overdueTasks.map(task => (
+                    <TaskItem
+                      key={task.id}
+                      task={task}
+                      overdue={true}
+                      onComplete={handleTaskComplete}
+                      onEdit={handleTaskEdit}
+                      onDelete={handleTaskDelete}
+                    />
+                  ))}
+                  {/* Normale Tasks */}
+                  {tasks.filter(task => 
+                    !overdueTasks.some(overdueTask => overdueTask.id === task.id)
+                  ).slice(0, 5).map(task => (
+                    <TaskItem
+                      key={task.id}
+                      task={task}
+                      onComplete={handleTaskComplete}
+                      onEdit={handleTaskEdit}
+                      onDelete={handleTaskDelete}
+                    />
+                  ))}
+                </>
+              )}
+              {tasks.length > 5 && (
+                <div className="text-center pt-2">
+                  <Button variant="ghost" size="sm">
+                    Alle {tasks.length} Tasks anzeigen
                   </Button>
                 </div>
               )}
@@ -654,58 +681,114 @@ export default function Dashboard() {
 
           {/* Coachee Deadlines - MIT AUTO-VERSCHWINDEN */}
           <Card className="glass-card-enhanced">
-            <CardHeader>
-              <CardTitle className="flex items-center text-foreground text-lg">
-                <AlertTriangle className="mr-3 h-6 w-6 text-orange-500" />
-                Coachee-Deadlines heute ({coacheeDeadlines.length})
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  <CardTitle className="text-lg">Coachee Deadlines</CardTitle>
+                  {overdueDeadlines.length > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      {overdueDeadlines.length} überfällig
+                    </Badge>
+                  )}
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      size="sm"
+                      onClick={() => {
+                        setEditingDeadline(null);
+                        setDeadlineForm({
+                          coacheeId: '',
+                          title: '',
+                          description: '',
+                          dueDate: '',
+                          category: 'goal'
+                        });
+                        setShowDeadlineDialog(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Deadline
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
             </CardHeader>
-            <CardContent>
-              {coacheeDeadlines.length > 0 ? (
-                <div className="space-y-3">
-                  {coacheeDeadlines.slice(0, 5).map((task) => {
-                    const coachee = coachees?.find(c => c.id.toString() === task.assignedTo.toString());
-                    const isOverdue = new Date(task.dueDate) < new Date();
-                    return (
-                      <div key={task.id} className="flex items-center space-x-3 p-3 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={coachee?.avatarUrl} />
-                          <AvatarFallback className="text-xs">
-                            {coachee ? `${coachee.firstName?.[0] || coachee.name?.[0] || ''}${coachee.lastName?.[0] || ''}` : '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{task.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {coachee ? (coachee.firstName ? `${coachee.firstName} ${coachee.lastName}` : coachee.name) : 'Unbekannt'}
-                            {task.category && ` • ${task.category}`}
-                          </p>
-                          {task.description && (
-                            <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
-                          )}
-                        </div>
-                        <div className="text-right space-y-2">
-                          <Badge variant={isOverdue ? "destructive" : "default"} className="text-xs">
-                            {isOverdue ? 'Überfällig' : 'Fällig heute'}
-                          </Badge>
-                          {coachee && (
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="text-xs h-7 w-full hover:bg-blue-50 hover:border-blue-300"
-                              onClick={() => handleNachfassen(coachee, task)}
-                            >
-                              <MessageCircle className="h-3 w-3 mr-1" />
-                              Nachfassen
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
+            <CardContent className="space-y-3">
+              {coacheeDeadlines.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                  <p>Keine Coachee-Deadlines vorhanden</p>
                 </div>
               ) : (
-                <p className="text-muted-foreground text-center py-6">Keine Deadlines heute.</p>
+                <>
+                  {coacheeDeadlines.map(deadline => {
+                    const coachee = coachees.find(c => c.id === deadline.coacheeId);
+                    const isOverdue = !deadline.completed && new Date(deadline.dueDate) < new Date();
+                    
+                    return (
+                      <div 
+                        key={deadline.id} 
+                        className={`p-3 rounded-lg border transition-all hover:shadow-md ${
+                          deadline.completed 
+                            ? 'border-gray-200 bg-gray-50/50 opacity-60' 
+                            : isOverdue 
+                              ? 'border-red-200 bg-red-50/10 ring-2 ring-red-500/20' 
+                              : 'border-gray-200 bg-white/50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <button
+                                onClick={() => handleDeadlineComplete(deadline.id)}
+                                className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                  deadline.completed 
+                                    ? 'bg-green-500 border-green-500 text-white' 
+                                    : 'border-gray-300 hover:border-green-500'
+                                }`}
+                              >
+                                {deadline.completed && <CheckCircle2 className="w-3 h-3" />}
+                              </button>
+                              <h4 className={`font-medium truncate ${deadline.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                {deadline.title}
+                              </h4>
+                              {isOverdue && (
+                                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                              {deadline.description}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="font-medium">
+                                {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}
+                              </span>
+                              <span>•</span>
+                              <span className={isOverdue ? 'text-red-500 font-medium' : ''}>
+                                {new Date(deadline.dueDate).toLocaleDateString('de-DE')}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleDeadlineEdit(deadline)}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeadlineDelete(deadline.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+              {coacheeDeadlines.length > 0 && (
+                <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+                  💡 Überfällige Deadlines verschwinden automatisch nach 7 Tagen
+                </div>
               )}
             </CardContent>
           </Card>
@@ -713,10 +796,10 @@ export default function Dashboard() {
 
         {/* Sekundärer Bereich */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Kalender - kombiniert Sessions + Termine */}
+          {/* Kalender - Sessions + Termine kombiniert */}
           <CalendarOverview sessions={upcomingSessions} coachees={coachees} />
           
-          {/* Weitere Bereiche in der oberen Zeile */}
+          {/* Weitere Bereiche */}
           <div className="grid gap-6 lg:grid-cols-2 lg:col-span-2">
             <OpenInvoices />
             <QuickActions />

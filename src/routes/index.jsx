@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import InvalidLinkPage from '@/components/InvalidLinkPage';
 import CoachingRoom from '@/components/CoachingRoom';
 import ToolPresenter from '@/components/ToolPresenter';
-
+import Documents from '@/components/Documents'; // Direkter Import statt lazy
 const Dashboard = lazy(() => import('@/components/Dashboard'));
 const Coachees = lazy(() => import('@/components/Coachees'));
 const CoacheeDetail = lazy(() => import('@/components/CoacheeDetail'));
@@ -12,7 +12,6 @@ const Sessions = lazy(() => import('@/components/Sessions'));
 const SessionPreparation = lazy(() => import('@/components/sessions/SessionPreparation'));
 const Invoices = lazy(() => import('@/components/Invoices'));
 const InvoiceCreator = lazy(() => import('@/components/invoice-creator/InvoiceCreator'));
-const Documents = lazy(() => import('@/components/Documents'));
 const Settings = lazy(() => import('@/components/Settings'));
 const AiCoaching = lazy(() => import('@/components/AiCoaching'));
 const AiCoachingShared = lazy(() => import('@/components/AiCoachingShared'));
