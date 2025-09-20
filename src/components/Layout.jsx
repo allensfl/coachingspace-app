@@ -16,7 +16,7 @@ const navItems = [
     { icon: FileText, label: 'Rechnungen', path: '/invoices', color: 'text-rose-500' },
     { icon: Bot, label: 'KI-Assistent', path: '/ai-coaching', color: 'text-fuchsia-500' },
     { icon: Wrench, label: 'Toolbox', path: '/toolbox', color: 'text-pink-500' },
-    { icon: Store, label: 'Store', path: '/store', color: 'text-yellow-500' },
+    //{ icon: Store, label: 'Store', path: '/store', color: 'text-yellow-500' },
 ];
 
 const bottomNavItems = [

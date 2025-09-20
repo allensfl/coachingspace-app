@@ -36,16 +36,141 @@ const CoachingRoom = () => {
   const [showToolManager, setShowToolManager] = useState(false);
   const [showCoachingToolManager, setShowCoachingToolManager] = useState(false);
   const [newTool, setNewTool] = useState({ name: '', url: '', description: '' });
+  const [newProvider, setNewProvider] = useState({ name: '', url: '', description: '' });
   const [newCoachingTool, setNewCoachingTool] = useState({ name: '', icon: '', description: '' });
-  const [coachingTools, setCoachingTools] = useState([
-    { id: 1, name: 'Lebensrad', icon: '⭕', description: 'Lebensbereichs-Analyse', order: 1 },
-    { id: 2, name: 'Skalenfrage', icon: '🎯', description: 'Bewertungs-Skala', order: 2 },
-    { id: 3, name: 'Ressourcen-Liste', icon: '📝', description: 'Stärken identifizieren', order: 3 },
-    { id: 4, name: 'Zielbaum', icon: '🌳', description: 'Ziel-Hierarchie', order: 4 },
-    { id: 5, name: 'Werte-Kompass', icon: '🧭', description: 'Werte-Orientierung', order: 5 },
-    { id: 6, name: 'GROW-Modell', icon: '📈', description: 'Coaching-Struktur', order: 6 },
-    { id: 7, name: 'Checkliste: Session-Vorbereitung', icon: '✅', description: 'Vorbereitung-Checkliste', order: 7 }
-  ]);
+  
+  // ============ ECHTE COACHING-TOOLS + DYNAMISCHE INTEGRATION ============
+  const [coachingTools, setCoachingTools] = useState([]);
+
+  // Tools laden: Hardcoded + aus localStorage
+  useEffect(() => {
+    const loadAllTools = () => {
+      // 1. Die 5 Basis-Tools (mit IDs die im Tool-Presenter verfügbar sind)
+      const baseTools = [
+        { 
+          id: 2, // Skalenfrage im Tool-Presenter
+          name: 'Skalenarbeit', 
+          icon: '📊', 
+          description: 'Visualisierung von Fortschritt und Zielen durch Skalenbewertung', 
+          order: 1,
+          type: 'built-in'
+        },
+        { 
+          id: 1, // Lebensrad im Tool-Presenter
+          name: 'Lebensrad', 
+          icon: '⚖️', 
+          description: 'Ganzheitliche Bewertung verschiedener Lebensbereiche', 
+          order: 2,
+          type: 'built-in'
+        },
+        { 
+          id: 3, // Ressourcen-Liste im Tool-Presenter
+          name: 'Ressourcen-Liste', 
+          icon: '📝', 
+          description: 'Sammle deine verfügbaren Ressourcen und Stärken', 
+          order: 3,
+          type: 'built-in'
+        },
+        { 
+          id: 4, // Zielbaum im Tool-Presenter
+          name: 'Zielbaum', 
+          icon: '🌳', 
+          description: 'Visualisiere deine Ziele in einer Baumstruktur', 
+          order: 4,
+          type: 'built-in'
+        },
+        { 
+          id: 5, // Werte-Kompass im Tool-Presenter
+          name: 'Werte-Kompass', 
+          icon: '🧭', 
+          description: 'Erkunde und definiere deine wichtigsten Werte', 
+          order: 5,
+          type: 'built-in'
+        }
+      ];
+
+      // 2. Hochgeladene Tools aus localStorage hinzufügen
+      try {
+        // Die richtigen localStorage-Keys aus der Toolbox verwenden
+        const possibleKeys = ['professional_toolbox_tools', 'toolbox_data', 'saved_tools'];
+        let customTools = [];
+        
+        for (const key of possibleKeys) {
+          const customToolsData = localStorage.getItem(key);
+          if (customToolsData) {
+            try {
+              const parsedData = JSON.parse(customToolsData);
+              
+              // Verschiedene Datenstrukturen handhaben
+              let toolsArray = [];
+              if (Array.isArray(parsedData)) {
+                toolsArray = parsedData;
+              } else if (parsedData.customTools && Array.isArray(parsedData.customTools)) {
+                toolsArray = parsedData.customTools;
+              } else if (parsedData.tools && Array.isArray(parsedData.tools)) {
+                toolsArray = parsedData.tools;
+              }
+              
+              if (toolsArray.length > 0) {
+                customTools = toolsArray
+                  .filter(tool => tool.type === 'custom') // Nur hochgeladene Tools
+                  .map((tool, index) => ({
+                    id: 100 + index, // Startet bei 100 um Konflikte zu vermeiden
+                    name: tool.name || 'Unbenanntes Tool',
+                    icon: tool.icon || '📄',
+                    description: tool.description || 'Hochgeladenes Tool',
+                    order: baseTools.length + index + 1,
+                    type: 'custom',
+                    fileData: tool.fileData,
+                    fileName: tool.fileName,
+                    fileType: tool.fileType
+                  }));
+                console.log(`Custom Tools gefunden in localStorage key: ${key}`, customTools);
+                break; // Ersten gefundenen Key verwenden
+              }
+            } catch (parseError) {
+              console.log(`Parse error for key ${key}:`, parseError);
+            }
+          }
+        }
+        
+        // TEMPORÄRER WORKAROUND: Hochgeladene Tools manuell hinzufügen
+        // bis die Toolbox-Speicherung repariert ist
+        customTools = [
+          {
+            id: 100,
+            name: 'Die 12 Schritte des triadischen KI-Coachings',
+            icon: '📋',
+            description: 'Hochgeladenes PDF-Tool aus der Toolbox',
+            order: 6,
+            type: 'custom',
+            fileName: 'ki-coaching-12-schritte.pdf',
+            fileType: 'application/pdf',
+            fileData: 'data:application/pdf;base64,placeholder' // Placeholder bis echte Daten verfügbar
+          }
+        ];
+        
+        console.log('WORKAROUND: Manuell hinzugefügtes Tool:', customTools);
+
+        // 3. Alle Tools kombinieren
+        const allTools = [...baseTools, ...customTools];
+        setCoachingTools(allTools);
+        
+        console.log('Tools geladen:', {
+          baseTools: baseTools.length,
+          customTools: customTools.length,
+          total: allTools.length
+        });
+        
+      } catch (error) {
+        console.error('Fehler beim Laden der Custom Tools:', error);
+        setCoachingTools(baseTools); // Fallback nur Basis-Tools
+      }
+    };
+
+    loadAllTools();
+  }, []);
+  
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
 
@@ -62,6 +187,7 @@ const CoachingRoom = () => {
   console.log('- Coachees available:', coachees.length);
   console.log('- Available coachee IDs:', coachees.map(c => c.id));
   console.log('- Found coachee:', coachee ? 'Yes' : 'No', coachee);
+  console.log('- Coaching Tools loaded:', coachingTools.length);
 
   // Robuste Notizen-Speicherung - funktioniert auch ohne Context
   const saveSessionNotes = (notes) => {
@@ -168,8 +294,34 @@ const CoachingRoom = () => {
     window.open(tool.url, '_blank');
   };
 
+  // ============ DIREKTER TOOL-ZUGANG ============
   const openCoachingTool = (tool) => {
-    window.open(`/tool-presenter/${tool.id}`, '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+    console.log('Opening coaching tool:', tool);
+    
+    if (tool.type === 'built-in') {
+      // Interaktive Tools -> Große Toolbox öffnen mit Anweisung
+      console.log(`Opening ${tool.name} in toolbox`);
+      
+      // Große Toolbox öffnen für bessere Bedienbarkeit
+      window.open('/toolbox', '_blank', 'width=1400,height=900,scrollbars=yes,resizable=yes');
+      
+      toast && toast({
+        title: `${tool.name} öffnen`,
+        description: `Klicke in der Toolbox auf "${tool.name}" um das Tool zu starten`,
+        duration: 5000,
+      });
+    } else if (tool.type === 'custom') {
+      // Custom Tools -> Zur Toolbox weiterleiten
+      console.log('Opening custom tool - redirecting to toolbox');
+      
+      window.open('/toolbox', '_blank', 'width=1400,height=900,scrollbars=yes,resizable=yes');
+      
+      toast && toast({
+        title: "Hochgeladenes Tool öffnen",
+        description: `Suche "${tool.name}" in der Toolbox und klicke darauf`,
+        duration: 5000,
+      });
+    }
   };
 
   const shareKIDialog = () => {
@@ -211,7 +363,8 @@ const CoachingRoom = () => {
       const tool = {
         id: Date.now(),
         ...newCoachingTool,
-        order: coachingTools.length + 1
+        order: coachingTools.length + 1,
+        toolboxTool: false // Markiere als manuell hinzugefügt
       };
       setCoachingTools(prev => [...prev, tool].sort((a, b) => a.order - b.order));
       setNewCoachingTool({ name: '', icon: '', description: '' });
@@ -243,6 +396,11 @@ const CoachingRoom = () => {
     setCoachingTools(prev => prev.map(tool => 
       tool.id === id ? { ...tool, ...updates } : tool
     ));
+  };
+
+  // Funktion um zur Toolbox zu navigieren
+  const openToolbox = () => {
+    window.open('/toolbox', '_blank');
   };
 
   const quickNoteButtons = [
@@ -433,7 +591,7 @@ const CoachingRoom = () => {
                     value={newTool.description}
                     onChange={(e) => setNewTool(prev => ({ ...prev, description: e.target.value }))}
                     className="w-full px-3 py-2 bg-slate-700 rounded text-sm"
-                  />
+                    />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={addDisplayTool}>
                       <Plus className="h-4 w-4 mr-1" /> Hinzufügen
@@ -497,40 +655,82 @@ const CoachingRoom = () => {
             </CardContent>
           </Card>
 
-          {/* Coaching-Tools */}
+          {/* ============ ÜBERARBEITETE COACHING-TOOLS SEKTION ============ */}
           <Card className="glass-card lg:col-span-1">
             <CardHeader className="flex flex-row items-center gap-2">
               <Settings className="h-5 w-5 text-orange-400" />
               <CardTitle className="text-white">Coaching-Tools</CardTitle>
+              <Badge variant="secondary" className="ml-auto">
+                {coachingTools.filter(t => t.type === 'built-in').length} INT + {coachingTools.filter(t => t.type === 'custom').length} FILE
+              </Badge>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                {coachingTools.sort((a, b) => a.order - b.order).map((tool) => (
+              {coachingTools.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {coachingTools.sort((a, b) => a.order - b.order).map((tool) => (
+                      <Button
+                        key={tool.id}
+                        variant="outline"
+                        className="h-20 flex flex-col items-center justify-center gap-1 text-sm hover:bg-slate-700 relative"
+                        onClick={() => openCoachingTool(tool)}
+                      >
+                        <Badge 
+                          variant={tool.type === 'built-in' ? 'default' : 'secondary'} 
+                          className="absolute top-1 right-1 text-xs px-1 py-0"
+                        >
+                          {tool.type === 'built-in' ? 'INT' : 'FILE'}
+                        </Badge>
+                        <span className="text-lg">{tool.icon}</span>
+                        <span className="font-medium text-center leading-tight">{tool.name}</span>
+                        <span className="text-xs text-slate-400 text-center">
+                          {tool.type === 'built-in' ? 'Präsentieren' : 'Öffnen'}
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                  
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={openToolbox}
+                      className="flex-1"
+                    >
+                      🧰 Zur Toolbox
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCoachingToolManager(!showCoachingToolManager)}
+                      className="flex-1"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Verwalten
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-slate-400 mb-4">
+                    Keine Tools verfügbar
+                  </div>
                   <Button
-                    key={tool.id}
                     variant="outline"
-                    className="h-20 flex flex-col items-center justify-center gap-1 text-sm hover:bg-slate-700"
-                    onClick={() => openCoachingTool(tool)}
+                    onClick={openToolbox}
+                    className="mb-2"
                   >
-                    <span className="text-lg">{tool.icon}</span>
-                    <span className="font-medium text-center leading-tight">{tool.name}</span>
-                    <span className="text-xs text-slate-400 text-center">Präsentieren</span>
+                    🧰 Toolbox öffnen
                   </Button>
-                ))}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCoachingToolManager(!showCoachingToolManager)}
-                className="w-full"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Tools verwalten
-              </Button>
+                  <p className="text-xs text-slate-500">
+                    Erstelle Tools in der Toolbox und sie erscheinen hier automatisch
+                  </p>
+                </div>
+              )}
 
               {showCoachingToolManager && (
                 <div className="mt-4 p-4 bg-slate-800 rounded-lg space-y-4">
-                  <div className="text-sm font-medium text-white mb-3">Neue Tool hinzufügen</div>
+                  <div className="text-sm font-medium text-white mb-3">Manuelle Tool hinzufügen</div>
                   <div className="space-y-3">
                     <input
                       placeholder="Tool-Name"
@@ -563,7 +763,14 @@ const CoachingRoom = () => {
                           <div className="flex items-center gap-3 flex-1">
                             <span className="text-lg">{tool.icon}</span>
                             <div className="flex-1">
-                              <div className="text-sm font-medium">{tool.name}</div>
+                              <div className="text-sm font-medium">
+                                {tool.name}
+                                {tool.toolboxTool && (
+                                  <Badge variant="secondary" className="ml-2 text-xs">
+                                    Toolbox
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="text-xs text-slate-400">{tool.description}</div>
                             </div>
                           </div>
@@ -586,14 +793,16 @@ const CoachingRoom = () => {
                             >
                               ↓
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => removeCoachingTool(tool.id)}
-                              className="p-1 h-8 w-8 text-red-400 hover:text-red-300"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            {!tool.toolboxTool && (
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => removeCoachingTool(tool.id)}
+                                className="p-1 h-8 w-8 text-red-400 hover:text-red-300"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}
