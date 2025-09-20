@@ -2,6 +2,7 @@ import React from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { AppStateProvider, useAppStateContext } from '@/context/AppStateContext';
 import { ThemeProvider } from '@/hooks/use-theme';
+import { AuthProvider } from './components/auth/AuthProvider';
 import { Loader2 } from 'lucide-react';
 import { AppRoutes } from '@/routes';
 import { GlobalCommand } from '@/components/GlobalCommand';
@@ -14,7 +15,7 @@ const AppContent = () => {
   if (isLoading) {
     const logoUrl = settings?.company?.logoUrl;
     const companyName = settings?.company?.name || 'Coachingspace';
-
+    
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
         {logoUrl ? (
@@ -28,7 +29,7 @@ const AppContent = () => {
       </div>
     );
   }
-  
+
   const allDocs = [
     ...(getAllCoacheeDocuments() || []),
     ...(generalDocuments || []),
@@ -36,8 +37,8 @@ const AppContent = () => {
   ];
 
   const allInvoices = [
-    ...(invoices || []), 
-    ...(recurringInvoices || []), 
+    ...(invoices || []),
+    ...(recurringInvoices || []),
     ...(activePackages || [])
   ];
 
@@ -61,11 +62,13 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
-    <AppStateProvider>
-      <AppContent />
-    </AppStateProvider>
-  </ThemeProvider>
+  <AuthProvider>
+    <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
+      <AppStateProvider>
+        <AppContent />
+      </AppStateProvider>
+    </ThemeProvider>
+  </AuthProvider>
 );
 
 export default App;
