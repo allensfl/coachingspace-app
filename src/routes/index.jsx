@@ -5,6 +5,8 @@ import InvalidLinkPage from '@/components/InvalidLinkPage';
 import CoachingRoom from '@/components/CoachingRoom';
 import ToolPresenter from '@/components/ToolPresenter';
 import Documents from '@/components/Documents'; // Direkter Import statt lazy
+import LandingPage from '@/pages/LandingPage'; // Neue Landing Page
+
 const Dashboard = lazy(() => import('@/components/Dashboard'));
 const Coachees = lazy(() => import('@/components/Coachees'));
 const CoacheeDetail = lazy(() => import('@/components/CoacheeDetail'));
@@ -30,12 +32,18 @@ const Profile = lazy(() => import('@/components/Profile'));
 
 export const AppRoutes = () => (
   <Routes>
+    {/* Neue Landing Page Route - OHNE Layout */}
+    <Route path="/landing" element={<LandingPage />} />
+    
+    {/* Bestehende externe Routes */}
     <Route path="/portal/:token" element={<CoacheePortal />} />
     <Route path="/consent/:coacheeId" element={<ConsentPage />} />
     <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
     <Route path="/invalid-link" element={<InvalidLinkPage />} />
     <Route path="/ai-coaching/shared" element={<AiCoachingShared />} />
     <Route path="/tool-presenter/:toolId" element={<ToolPresenter />} />
+    
+    {/* Bestehende App-Routes MIT Layout */}
     <Route path="/" element={<Layout />}>
       <Route index element={<Dashboard />} />
       <Route path="coachees" element={<Coachees />} />

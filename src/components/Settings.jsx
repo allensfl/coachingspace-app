@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { Save, Download, Palette, Building, FileText, Calendar, Share, Bot, Upload, X, Eye, EyeOff, Copy } from 'lucide-react';
+import { Save, Download, Palette, Building, FileText, Calendar, Share, Bot, Upload, X, Eye, EyeOff, Copy, Users } from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
 import * as ics from 'ics';
 import { saveAs } from 'file-saver';
@@ -301,7 +301,12 @@ export default function SettingsComponent() {
     setLocalSettings(prev => {
       let newSettings = JSON.parse(JSON.stringify(prev));
       let current = newSettings;
+      
+      // Stelle sicher, dass verschachtelte Objekte existieren
       for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) {
+          current[keys[i]] = {};
+        }
         current = current[keys[i]];
       }
       current[keys[keys.length - 1]] = value;
@@ -315,6 +320,9 @@ export default function SettingsComponent() {
       let newSettings = JSON.parse(JSON.stringify(prev));
       let current = newSettings;
       for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) {
+          current[keys[i]] = {};
+        }
         current = current[keys[i]];
       }
       current[keys[keys.length - 1]] = checked;
@@ -421,7 +429,7 @@ export default function SettingsComponent() {
               {/* Logo - kompakte Version */}
               <div className="space-y-3">
                 <Label>Logo</Label>
-                {localSettings.company.logoUrl && (
+                {localSettings.company?.logoUrl && (
                   <div className="relative inline-block p-2 bg-white rounded border">
                     <img src={localSettings.company.logoUrl} alt="Logo" className="h-8 max-w-24 object-contain" />
                     <Button
@@ -436,7 +444,7 @@ export default function SettingsComponent() {
                 )}
                 <Input
                   placeholder="Logo-URL"
-                  value={localSettings.company.logoUrl}
+                  value={localSettings.company?.logoUrl || ''}
                   onChange={(e) => handleLogoChange(e.target.value)}
                   className="text-sm"
                 />
@@ -450,7 +458,7 @@ export default function SettingsComponent() {
                     <button
                       key={preset.name}
                       className={`p-2 rounded border cursor-pointer transition-all hover:scale-105 ${
-                        localSettings.theme.primaryColor.hex === preset.primary 
+                        localSettings.theme?.primaryColor?.hex === preset.primary 
                           ? 'border-primary ring-2 ring-primary/30' 
                           : 'border-gray-600'
                       }`}
@@ -471,14 +479,14 @@ export default function SettingsComponent() {
                 <Label>Anpassungen</Label>
                 <div className="flex gap-2">
                   <Input
-                    value={localSettings.theme.primaryColor.hex}
+                    value={localSettings.theme?.primaryColor?.hex || '#3B82F6'}
                     onChange={(e) => handleColorChange(e.target.value)}
                     placeholder="#3B82F6"
                     className="flex-1 text-sm"
                   />
                   <input
                     type="color"
-                    value={localSettings.theme.primaryColor.hex}
+                    value={localSettings.theme?.primaryColor?.hex || '#3B82F6'}
                     onChange={(e) => handleColorChange(e.target.value)}
                     className="w-10 h-10 rounded border border-gray-600 cursor-pointer"
                   />
@@ -487,7 +495,7 @@ export default function SettingsComponent() {
                   <Label htmlFor="darkMode" className="text-sm">Dark Mode</Label>
                   <Switch 
                     id="darkMode" 
-                    checked={localSettings.darkMode} 
+                    checked={localSettings.darkMode || false} 
                     onCheckedChange={(checked) => handleSwitchChange('darkMode', checked)} 
                   />
                 </div>
@@ -495,80 +503,114 @@ export default function SettingsComponent() {
             </div>
           </SettingsCard>
 
-          {/* Zwei-Spalten Layout für den Rest */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Drei-Spalten Layout für den Rest */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Persönliche Daten - NEUE SEKTION */}
+            <SettingsCard icon={<Users className="text-primary" />} title="Persönliche Daten">
+              <div className="space-y-3 text-sm">
+                <div>
+                  <Label htmlFor="personal.firstName">Vorname</Label>
+                  <Input 
+                    id="personal.firstName" 
+                    value={localSettings.personal?.firstName || ''} 
+                    onChange={handleInputChange} 
+                    placeholder="Dein Vorname"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="personal.lastName">Nachname</Label>
+                  <Input 
+                    id="personal.lastName" 
+                    value={localSettings.personal?.lastName || ''} 
+                    onChange={handleInputChange} 
+                    placeholder="Dein Nachname"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="personal.title">Titel/Bezeichnung</Label>
+                  <Input 
+                    id="personal.title" 
+                    value={localSettings.personal?.title || ''} 
+                    onChange={handleInputChange} 
+                    placeholder="z.B. Coach, Berater, Mentor"
+                  />
+                </div>
+              </div>
+            </SettingsCard>
+
             {/* Unternehmensdaten - kompakter */}
             <SettingsCard icon={<Building className="text-primary" />} title="Unternehmensdaten">
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="space-y-3 text-sm">
                 <div>
                   <Label htmlFor="company.name">Firma</Label>
-                  <Input id="company.name" value={localSettings.company.name} onChange={handleInputChange} />
+                  <Input id="company.name" value={localSettings.company?.name || ''} onChange={handleInputChange} />
                 </div>
                 <div>
                   <Label htmlFor="company.owner">Inhaber</Label>
-                  <Input id="company.owner" value={localSettings.company.owner} onChange={handleInputChange} />
+                  <Input id="company.owner" value={localSettings.company?.owner || ''} onChange={handleInputChange} />
                 </div>
                 <div>
                   <Label htmlFor="company.street">Straße & Nr.</Label>
-                  <Input id="company.street" value={localSettings.company.street} onChange={handleInputChange} />
+                  <Input id="company.street" value={localSettings.company?.street || ''} onChange={handleInputChange} />
                 </div>
-                <div>
-                  <Label htmlFor="company.zip">PLZ</Label>
-                  <Input id="company.zip" value={localSettings.company.zip} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <Label htmlFor="company.city">Stadt</Label>
-                  <Input id="company.city" value={localSettings.company.city} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <Label htmlFor="company.country">Land</Label>
-                  <Input id="company.country" value={localSettings.company.country} onChange={handleInputChange} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label htmlFor="company.zip">PLZ</Label>
+                    <Input id="company.zip" value={localSettings.company?.zip || ''} onChange={handleInputChange} />
+                  </div>
+                  <div>
+                    <Label htmlFor="company.city">Stadt</Label>
+                    <Input id="company.city" value={localSettings.company?.city || ''} onChange={handleInputChange} />
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="company.phone">Telefon</Label>
-                  <Input id="company.phone" value={localSettings.company.phone} onChange={handleInputChange} />
+                  <Input id="company.phone" value={localSettings.company?.phone || ''} onChange={handleInputChange} />
                 </div>
                 <div>
                   <Label htmlFor="company.email">E-Mail</Label>
-                  <Input id="company.email" type="email" value={localSettings.company.email} onChange={handleInputChange} />
+                  <Input id="company.email" type="email" value={localSettings.company?.email || ''} onChange={handleInputChange} />
                 </div>
-                <div className="col-span-2">
-                  <Label htmlFor="company.website">Website</Label>
-                  <Input id="company.website" value={localSettings.company.website} onChange={handleInputChange} />
-                </div>
-                <div className="col-span-2">
+                <div>
                   <Label htmlFor="company.taxId">Steuernummer</Label>
-                  <Input id="company.taxId" value={localSettings.company.taxId} onChange={handleInputChange} />
+                  <Input id="company.taxId" value={localSettings.company?.taxId || ''} onChange={handleInputChange} />
                 </div>
               </div>
             </SettingsCard>
 
             {/* Finanzen - kompakter */}
             <SettingsCard icon={<FileText className="text-primary" />} title="Rechnungen & Finanzen">
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="space-y-3 text-sm">
                 <div>
                   <Label htmlFor="company.bankName">Bank</Label>
-                  <Input id="company.bankName" value={localSettings.company.bankName} onChange={handleInputChange} />
+                  <Input id="company.bankName" value={localSettings.company?.bankName || ''} onChange={handleInputChange} />
                 </div>
                 <div>
                   <Label htmlFor="company.iban">IBAN</Label>
-                  <Input id="company.iban" value={localSettings.company.iban} onChange={handleInputChange} />
+                  <Input id="company.iban" value={localSettings.company?.iban || ''} onChange={handleInputChange} />
                 </div>
                 <div>
                   <Label htmlFor="company.paymentDeadlineDays">Zahlungsfrist (Tage)</Label>
-                  <Input id="company.paymentDeadlineDays" type="number" value={localSettings.company.paymentDeadlineDays} onChange={handleInputChange} />
+                  <Input id="company.paymentDeadlineDays" type="number" value={localSettings.company?.paymentDeadlineDays || 14} onChange={handleInputChange} />
                 </div>
                 <div>
                   <Label htmlFor="company.defaultTaxRate">Steuersatz (%)</Label>
-                  <Input id="company.defaultTaxRate" type="number" value={localSettings.company.defaultTaxRate} onChange={handleInputChange} />
+                  <Input id="company.defaultTaxRate" type="number" value={localSettings.company?.defaultTaxRate || 19} onChange={handleInputChange} />
                 </div>
-                <div className="col-span-2 flex items-center justify-between pt-2 border-t border-gray-700">
+                <div className="flex items-center justify-between pt-2 border-t border-gray-700">
                   <Label htmlFor="company.showBankDetailsOnInvoice" className="text-sm">Bankdaten auf Rechnungen</Label>
-                  <Switch id="company.showBankDetailsOnInvoice" checked={localSettings.company.showBankDetailsOnInvoice} onCheckedChange={(checked) => handleSwitchChange('company.showBankDetailsOnInvoice', checked)} />
+                  <Switch 
+                    id="company.showBankDetailsOnInvoice" 
+                    checked={localSettings.company?.showBankDetailsOnInvoice || false} 
+                    onCheckedChange={(checked) => handleSwitchChange('company.showBankDetailsOnInvoice', checked)} 
+                  />
                 </div>
               </div>
             </SettingsCard>
+          </div>
 
+          {/* Weitere Bereiche - Zwei-Spalten */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Kalender Export - kompakt */}
             <SettingsCard icon={<Calendar className="text-primary" />} title="Kalender Export">
               <p className="text-sm text-slate-400 mb-3">Sessions als .ics für externe Kalender exportieren</p>

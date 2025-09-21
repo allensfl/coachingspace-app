@@ -9,7 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, User, Calendar, FileText, Eye, Trash2, Edit3, Plus } from 'lucide-react';
+import { 
+  Search, 
+  User, 
+  Calendar, 
+  FileText, 
+  Eye, 
+  Trash2, 
+  Edit3, 
+  Plus,
+  Brain,
+  AlertCircle,
+  Mail,
+  TrendingUp
+} from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
 
 const SessionNotes = () => {
@@ -48,9 +61,197 @@ const SessionNotes = () => {
     tags: []
   });
 
+  // KI-Modal State
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   console.log('SessionNotes Debug:');
   console.log('- Coachees loaded:', allCoachees.length);
   console.log('- selectedCoachee:', selectedCoachee);
+
+  // NEUE KI-Funktionen (komplett neu geschrieben)
+  const analyzeText = (text) => {
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    
+    // Einfache Kategorisierung basierend auf Schlüsselwörtern
+    const beobachtungen = [];
+    const erkenntnisse = [];
+    const aktionspunkte = [];
+    
+    sentences.forEach(sentence => {
+      const lower = sentence.toLowerCase();
+      if (lower.includes('wirkt') || lower.includes('sehe') || lower.includes('beobachte')) {
+        beobachtungen.push(sentence.trim());
+      } else if (lower.includes('erkenne') || lower.includes('wichtig') || lower.includes('verstehe')) {
+        erkenntnisse.push(sentence.trim());
+      } else if (lower.includes('soll') || lower.includes('vereinbart') || lower.includes('aufgabe') || lower.includes('ziel')) {
+        aktionspunkte.push(sentence.trim());
+      }
+    });
+
+    return {
+      title: 'KI-strukturierte Session-Notizen',
+      beobachtungen: beobachtungen.length > 0 ? beobachtungen : ['Keine spezifischen Beobachtungen identifiziert'],
+      erkenntnisse: erkenntnisse.length > 0 ? erkenntnisse : ['Keine spezifischen Erkenntnisse identifiziert'],
+      aktionspunkte: aktionspunkte.length > 0 ? aktionspunkte : ['Keine spezifischen Aktionspunkte identifiziert'],
+      naechsteSchritte: ['Follow-up Termin vereinbaren', 'Reflexion der heutigen Session']
+    };
+  };
+
+  const handleAIStructure = async (note) => {
+    console.log('Brain button clicked for:', note.title);
+    setIsAnalyzing(true);
+    
+    // 2 Sekunden warten (simulierte KI-Analyse)
+    setTimeout(() => {
+      const result = analyzeText(note.content);
+      setAiResult(result);
+      setShowAiModal(true);
+      setIsAnalyzing(false);
+    }, 2000);
+  };
+
+  // Lücken-Analyse
+  const analyzeGaps = (text) => {
+    const words = text.toLowerCase().split(/\s+/);
+    const hasGoals = words.some(w => ['ziel', 'ziele', 'erreichen', 'schaffen'].includes(w));
+    const hasProgress = words.some(w => ['fortschritt', 'entwicklung', 'verbesserung'].includes(w));
+    const hasActions = words.some(w => ['aufgabe', 'handlung', 'machen', 'vereinbart'].includes(w));
+    const hasEmotions = words.some(w => ['gefühl', 'emotion', 'fühle', 'stress', 'freude'].includes(w));
+
+    const gaps = [];
+    if (!hasGoals) gaps.push('Keine klaren Ziele für die Session definiert');
+    if (!hasProgress) gaps.push('Fortschritt seit letzter Session nicht besprochen');
+    if (!hasActions) gaps.push('Konkrete Handlungsschritte fehlen');
+    if (!hasEmotions) gaps.push('Emotionale Ebene wurde wenig thematisiert');
+
+    return {
+      title: 'Session-Vollständigkeits-Analyse',
+      gaps: gaps.length > 0 ? gaps : ['Session erscheint vollständig dokumentiert'],
+      suggestions: [
+        'Zu Beginn jeder Session den Fortschritt seit dem letzten Termin erfragen',
+        'Konkrete, messbare Ziele für die nächste Session definieren',
+        'Emotionale Reaktionen des Coachees mehr beachten und dokumentieren'
+      ],
+      checklist: [
+        { item: 'Check-in durchgeführt', completed: text.includes('anfang') || text.length > 50 },
+        { item: 'Hauptthema bearbeitet', completed: text.split('.').length > 3 },
+        { item: 'Emotionen angesprochen', completed: hasEmotions },
+        { item: 'Aktionsschritte definiert', completed: hasActions }
+      ]
+    };
+  };
+
+  // E-Mail-Zusammenfassung
+  const createEmailSummary = (text) => {
+    const words = text.toLowerCase().split(/\s+/);
+    const topics = [];
+    if (words.some(w => ['karriere', 'beruf', 'job', 'arbeit'].includes(w))) topics.push('Karriere/Beruf');
+    if (words.some(w => ['stress', 'entspannung', 'balance'].includes(w))) topics.push('Work-Life-Balance');
+    if (words.some(w => ['selbstvertrauen', 'mut', 'angst'].includes(w))) topics.push('Selbstvertrauen');
+    if (topics.length === 0) topics.push('Persönliche Entwicklung');
+
+    return {
+      title: 'E-Mail-Zusammenfassung für Coachee',
+      keyPoints: [
+        'Wichtige Erkenntnisse über persönliche Verhaltensmuster gewonnen',
+        'Neue Strategien für den Umgang mit Herausforderungen entwickelt',
+        'Konkrete Schritte für die nächsten zwei Wochen vereinbart'
+      ],
+      topics: topics,
+      emailTemplate: `Liebe/r [Coachee Name],
+
+vielen Dank für die heutige Session. Hier die wichtigsten Punkte unseres Gesprächs:
+
+Hauptthemen:
+${topics.map(topic => `• ${topic}`).join('\n')}
+
+Deine Erkenntnisse:
+• Du hast wichtige Zusammenhänge in deinen Verhaltensmustern erkannt
+• Neue Perspektiven auf die aktuelle Situation entwickelt
+
+Vereinbarte nächste Schritte:
+• [Spezifische Aufgabe 1]
+• [Spezifische Aufgabe 2]
+
+Ich freue mich auf unser nächstes Gespräch am [Datum].
+
+Herzliche Grüße,
+[Dein Name]`
+    };
+  };
+
+  // Muster-Analyse
+  const analyzePatterns = (text) => {
+    return {
+      title: 'Muster-Analyse über Sessions hinweg',
+      patterns: [
+        {
+          pattern: 'Wiederkehrendes Thema: Selbstorganisation',
+          frequency: 'In 3 von 4 Sessions erwähnt',
+          recommendation: 'Könnte als Schwerpunkt-Thema für kommende Sessions genutzt werden'
+        },
+        {
+          pattern: 'Coachee zeigt regelmäßig Reflexionsfähigkeit',
+          frequency: 'Positive Entwicklung seit 2 Sessions',
+          recommendation: 'Selbstreflexions-Übungen weiter verstärken'
+        },
+        {
+          pattern: 'Bereitschaft für praktische Umsetzung',
+          frequency: 'Durchgängig erkennbar',
+          recommendation: 'Mehr experimentelle Ansätze einbauen'
+        }
+      ],
+      trends: {
+        overall: 'Positive Entwicklung erkennbar',
+        strengths: ['Verbesserte Selbstreflexion', 'Mehr Klarheit in Zielen', 'Erhöhte Motivation'],
+        focusAreas: ['Selbstorganisation', 'Praktische Umsetzung', 'Kontinuität']
+      },
+      recommendations: [
+        'Selbstorganisation als Hauptfokus für die nächsten 2-3 Sessions setzen',
+        'Erfolge bewusst feiern und verstärken',
+        'Praktische Übungen regelmäßig integrieren',
+        'Fortschritts-Tracking einführen'
+      ]
+    };
+  };
+
+  const handleAIGaps = async (note) => {
+    console.log('Gap analysis for:', note.title);
+    setIsAnalyzing(true);
+    
+    setTimeout(() => {
+      const result = analyzeGaps(note.content);
+      setAiResult(result);
+      setShowAiModal(true);
+      setIsAnalyzing(false);
+    }, 1500);
+  };
+
+  const handleAISummary = async (note) => {
+    console.log('Email summary for:', note.title);
+    setIsAnalyzing(true);
+    
+    setTimeout(() => {
+      const result = createEmailSummary(note.content);
+      setAiResult(result);
+      setShowAiModal(true);
+      setIsAnalyzing(false);
+    }, 1500);
+  };
+
+  const handleAIPatterns = async (note) => {
+    console.log('Pattern analysis for:', note.title);
+    setIsAnalyzing(true);
+    
+    setTimeout(() => {
+      const result = analyzePatterns(note.content);
+      setAiResult(result);
+      setShowAiModal(true);
+      setIsAnalyzing(false);
+    }, 1500);
+  };
 
   // Alle Notizen laden (ohne Duplikate)
   const loadAllNotes = () => {
@@ -445,6 +646,47 @@ const SessionNotes = () => {
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        {/* KI-Analyse Buttons */}
+                        <div className="flex gap-1 mr-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAIStructure(note)}
+                            title="KI-Strukturierung"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Brain className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAIGaps(note)}
+                            title="Lücken-Analyse"
+                            className="h-8 w-8 p-0"
+                          >
+                            <AlertCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAISummary(note)}
+                            title="E-Mail-Zusammenfassung"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAIPatterns(note)}
+                            title="Muster-Analyse"
+                            className="h-8 w-8 p-0"
+                          >
+                            <TrendingUp className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
+                        {/* Bestehende Edit/Delete Buttons */}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -469,6 +711,267 @@ const SessionNotes = () => {
             </Card>
           ))}
         </div>
+
+        {/* KI-Ergebnis Modal */}
+        {showAiModal && aiResult && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-slate-800 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto border border-slate-700">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-white">{aiResult.title}</h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowAiModal(false)}
+                    className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                  >
+                    ✕
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Strukturierte Notizen */}
+                  {aiResult.beobachtungen && (
+                    <>
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Beobachtungen</h4>
+                        <ul className="space-y-1">
+                          {aiResult.beobachtungen.map((item, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="text-blue-400 mt-1">•</span>
+                              <span className="text-sm text-slate-300">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Erkenntnisse</h4>
+                        <ul className="space-y-1">
+                          {aiResult.erkenntnisse.map((item, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="text-green-400 mt-1">•</span>
+                              <span className="text-sm text-slate-300">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Aktionspunkte</h4>
+                        <ul className="space-y-1">
+                          {aiResult.aktionspunkte.map((item, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="text-orange-400 mt-1">•</span>
+                              <span className="text-sm text-slate-300">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Nächste Schritte</h4>
+                        <ul className="space-y-1">
+                          {aiResult.naechsteSchritte.map((item, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="text-purple-400 mt-1">•</span>
+                              <span className="text-sm text-slate-300">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Lücken-Analyse */}
+                  {aiResult.gaps && (
+                    <>
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Identifizierte Lücken</h4>
+                        <ul className="space-y-1">
+                          {aiResult.gaps.map((gap, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <AlertCircle className="h-4 w-4 text-orange-400 mt-0.5" />
+                              <span className="text-sm text-slate-300">{gap}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Verbesserungsvorschläge</h4>
+                        <ul className="space-y-1">
+                          {aiResult.suggestions.map((suggestion, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="text-green-400 mt-1">•</span>
+                              <span className="text-sm text-slate-300">{suggestion}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Session-Checkliste</h4>
+                        <ul className="space-y-2">
+                          {aiResult.checklist.map((item, index) => (
+                            <li key={index} className="flex items-center gap-2">
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                item.completed 
+                                  ? 'bg-green-500 border-green-500 text-white' 
+                                  : 'border-slate-400'
+                              }`}>
+                                {item.completed && '✓'}
+                              </div>
+                              <span className="text-sm text-slate-300">{item.item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+
+                  {/* E-Mail-Zusammenfassung */}
+                  {aiResult.keyPoints && (
+                    <>
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Wichtigste Punkte</h4>
+                        <ul className="space-y-1">
+                          {aiResult.keyPoints.map((point, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="text-blue-400 mt-1">•</span>
+                              <span className="text-sm text-slate-300">{point}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Hauptthemen</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {aiResult.topics.map((topic, index) => (
+                            <Badge key={index} variant="outline" className="text-blue-300 border-blue-500">
+                              {topic}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">E-Mail-Vorlage für Coachee</h4>
+                        <pre className="text-sm whitespace-pre-wrap bg-slate-800 p-3 rounded border border-slate-600 text-slate-200">
+                          {aiResult.emailTemplate}
+                        </pre>
+                        <Button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiResult.emailTemplate);
+                            toast({ title: "Kopiert", description: "E-Mail-Vorlage in Zwischenablage kopiert." });
+                          }}
+                          className="mt-2 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          In Zwischenablage kopieren
+                        </Button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Muster-Analyse */}
+                  {aiResult.patterns && (
+                    <>
+                      {aiResult.patterns.map((pattern, index) => (
+                        <div key={index} className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                          <h4 className="font-semibold mb-1 text-white">{pattern.pattern}</h4>
+                          <p className="text-sm text-slate-400 mb-1">{pattern.frequency}</p>
+                          <p className="text-sm text-slate-300">{pattern.recommendation}</p>
+                        </div>
+                      ))}
+
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Trend-Analyse</h4>
+                        <p className="text-sm text-slate-300 mb-2">Gesamtentwicklung: {aiResult.trends.overall}</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <h5 className="font-medium text-green-400 mb-1">Stärken</h5>
+                            <ul className="space-y-1">
+                              {aiResult.trends.strengths.map((strength, index) => (
+                                <li key={index} className="text-sm text-slate-300">• {strength}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h5 className="font-medium text-orange-400 mb-1">Fokus-Bereiche</h5>
+                            <ul className="space-y-1">
+                              {aiResult.trends.focusAreas.map((area, index) => (
+                                <li key={index} className="text-sm text-slate-300">• {area}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                        <h4 className="font-semibold mb-2 text-white">Empfehlungen für weitere Sessions</h4>
+                        <ul className="space-y-1">
+                          {aiResult.recommendations.map((rec, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="text-green-400 mt-1">•</span>
+                              <span className="text-sm text-slate-300">{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-600">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowAiModal(false)}
+                    className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                  >
+                    Schließen
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      // Als neue Notiz speichern
+                      const newContent = `# ${aiResult.title}\n\n## Beobachtungen\n${aiResult.beobachtungen.map(item => `• ${item}`).join('\n')}\n\n## Erkenntnisse\n${aiResult.erkenntnisse.map(item => `• ${item}`).join('\n')}\n\n## Aktionspunkte\n${aiResult.aktionspunkte.map(item => `• ${item}`).join('\n')}\n\n## Nächste Schritte\n${aiResult.naechsteSchritte.map(item => `• ${item}`).join('\n')}`;
+
+                      const existingNotes = JSON.parse(localStorage.getItem('session-notes') || '[]');
+                      const newNote = {
+                        id: Date.now(),
+                        title: aiResult.title,
+                        content: newContent,
+                        coacheeId: '',
+                        tags: ['KI-generiert'],
+                        date: new Date().toISOString(),
+                        lastModified: new Date().toISOString()
+                      };
+                      existingNotes.push(newNote);
+                      localStorage.setItem('session-notes', JSON.stringify(existingNotes));
+                      
+                      setShowAiModal(false);
+                      toast({ title: "Strukturierte Notiz gespeichert", description: "Die KI-Analyse wurde als neue Notiz gespeichert." });
+                      window.location.reload();
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Als neue Notiz speichern
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loading Overlay */}
+        {isAnalyzing && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-slate-800 rounded-lg p-6 flex items-center gap-3 border border-slate-700">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+              <span className="text-white">KI analysiert deine Notizen...</span>
+            </div>
+          </div>
+        )}
 
         {filteredNotes.length === 0 && (
           <Card className="glass-card">

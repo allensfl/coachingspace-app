@@ -47,7 +47,7 @@ const checkPasswordStrength = (password) => {
   
   const score = Object.values(checks).filter(Boolean).length;
   const strength = score < 3 ? 'schwach' : score < 4 ? 'mittel' : 'stark';
-  const color = score < 3 ? 'text-red-500' : score < 4 ? 'text-yellow-500' : 'text-green-500';
+  const color = score < 3 ? 'text-red-400' : score < 4 ? 'text-yellow-400' : 'text-green-400';
   
   return { checks, score, strength, color };
 };
@@ -91,31 +91,31 @@ Generiert am: ${new Date().toLocaleDateString('de-DE')}`;
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50">
+      <div className="bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-slate-700">
         <div className="flex items-center mb-4">
-          <Shield className="w-6 h-6 text-blue-600 mr-2" />
-          <h2 className="text-xl font-bold text-gray-900">Backup-Codes generiert</h2>
+          <Shield className="w-6 h-6 text-blue-400 mr-2" />
+          <h2 className="text-xl font-bold text-white">Backup-Codes generiert</h2>
         </div>
         
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+        <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-4 mb-4">
           <div className="flex items-start">
-            <AlertTriangle className="w-5 h-5 text-red-500 mr-2 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-red-400 mr-2 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-red-800">Wichtig!</h3>
-              <p className="text-sm text-red-700">
+              <h3 className="font-semibold text-red-300">Wichtig!</h3>
+              <p className="text-sm text-red-200">
                 Diese Codes ermöglichen Passwort-Reset. Verwahren Sie sie sicher und NICHT digital.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-4 mb-4">
-          <h3 className="font-semibold mb-2">Ihre Backup-Codes:</h3>
+        <div className="bg-slate-700/50 rounded-lg p-4 mb-4">
+          <h3 className="font-semibold mb-2 text-white">Ihre Backup-Codes:</h3>
           <div className="space-y-1 font-mono text-sm">
             {codes.map((code, i) => (
-              <div key={i} className="flex justify-between items-center bg-white p-2 rounded border">
-                <span>{i + 1}. {code}</span>
+              <div key={i} className="flex justify-between items-center bg-slate-600/50 p-2 rounded border border-slate-500">
+                <span className="text-gray-200">{i + 1}. {code}</span>
               </div>
             ))}
           </div>
@@ -132,14 +132,14 @@ Generiert am: ${new Date().toLocaleDateString('de-DE')}`;
 
           <button
             onClick={copyToClipboard}
-            className="w-full flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="w-full flex items-center justify-center px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
           >
             {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
             {copied ? 'Kopiert!' : 'In Zwischenablage kopieren'}
           </button>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-sm text-yellow-800">
+          <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-3">
+            <p className="text-sm text-yellow-200">
               <strong>Nächste Schritte:</strong> Drucken Sie die Codes aus und verwahren Sie sie an einem sicheren Ort. 
               Digital gespeicherte Codes sind ein Sicherheitsrisiko.
             </p>
@@ -151,7 +151,7 @@ Generiert am: ${new Date().toLocaleDateString('de-DE')}`;
             className={`w-full px-4 py-2 rounded-lg transition-colors ${
               downloaded
                 ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
             }`}
           >
             {downloaded ? 'Codes gesichert - Weiter zur App' : 'Bitte zuerst herunterladen'}
@@ -197,20 +197,20 @@ const BackupCodeInput = ({ onSuccess, onCancel }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50">
+      <div className="bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-slate-700">
         <div className="flex items-center mb-4">
-          <Shield className="w-6 h-6 text-blue-600 mr-2" />
-          <h2 className="text-xl font-bold text-gray-900">Passwort mit Backup-Code zurücksetzen</h2>
+          <Shield className="w-6 h-6 text-blue-400 mr-2" />
+          <h2 className="text-xl font-bold text-white">Passwort mit Backup-Code zurücksetzen</h2>
         </div>
         
         <div className="mb-4">
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-300 mb-4">
             Geben Sie einen Ihrer 5 Backup-Codes ein, um ein neues Passwort zu setzen.
           </p>
           
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-            <p className="text-sm text-yellow-800">
+          <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-3 mb-4">
+            <p className="text-sm text-yellow-200">
               <strong>Hinweis:</strong> Jeder Code kann nur einmal verwendet werden.
             </p>
           </div>
@@ -220,19 +220,19 @@ const BackupCodeInput = ({ onSuccess, onCancel }) => {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="COACH-XXXX-XXXX"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             autoFocus
           />
           
           {error && (
-            <p className="text-red-500 text-sm mt-2">{error}</p>
+            <p className="text-red-400 text-sm mt-2">{error}</p>
           )}
         </div>
 
         <div className="flex space-x-3">
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-2 border border-slate-600 text-gray-300 rounded-lg hover:bg-slate-700 transition-colors"
           >
             Abbrechen
           </button>
@@ -385,8 +385,8 @@ export const AuthProvider = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -413,19 +413,19 @@ export const AuthProvider = ({ children }) => {
     const strength = checkPasswordStrength(password);
     
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-8 border border-slate-700">
           <div className="text-center mb-6">
-            <Lock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900">Coaching-App einrichten</h1>
-            <p className="text-gray-600 mt-2">
+            <Lock className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-white">Coaching-App einrichten</h1>
+            <p className="text-gray-300 mt-2">
               Erstellen Sie ein sicheres Passwort für Ihre Coaching-Daten
             </p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Neues Passwort
               </label>
               <div className="relative">
@@ -433,13 +433,13 @@ export const AuthProvider = ({ children }) => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
                   placeholder="Mindestens 8 Zeichen"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -449,7 +449,7 @@ export const AuthProvider = ({ children }) => {
                   <div className={`text-sm ${strength.color}`}>
                     Passwort-Stärke: {strength.strength}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-xs text-gray-400 mt-1">
                     {!strength.checks.length && '• Mindestens 8 Zeichen'}
                     {!strength.checks.uppercase && '• Großbuchstabe'}
                     {!strength.checks.lowercase && '• Kleinbuchstabe'}
@@ -461,30 +461,30 @@ export const AuthProvider = ({ children }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Passwort bestätigen
               </label>
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Passwort wiederholen"
               />
             </div>
 
             {error && (
-              <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+              <div className="text-red-400 text-sm bg-red-900/30 border border-red-500/30 p-3 rounded-lg">
                 {error}
               </div>
             )}
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-4">
               <div className="flex items-start">
-                <Shield className="w-5 h-5 text-blue-500 mr-2 mt-0.5" />
+                <Shield className="w-5 h-5 text-blue-400 mr-2 mt-0.5" />
                 <div>
-                  <h3 className="font-semibold text-blue-800">Backup-Codes</h3>
-                  <p className="text-sm text-blue-700">
+                  <h3 className="font-semibold text-blue-300">Backup-Codes</h3>
+                  <p className="text-sm text-blue-200">
                     Sie erhalten 5 Backup-Codes für den Notfall. Diese ermöglichen Passwort-Reset bei Vergessen.
                   </p>
                 </div>
@@ -506,19 +506,19 @@ export const AuthProvider = ({ children }) => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-8 border border-slate-700">
           <div className="text-center mb-6">
-            <Lock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900">Coaching-App</h1>
-            <p className="text-gray-600 mt-2">
+            <Lock className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-white">Coaching-App</h1>
+            <p className="text-gray-300 mt-2">
               Geben Sie Ihr Passwort ein, um fortzufahren
             </p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Passwort
               </label>
               <div className="relative">
@@ -527,14 +527,14 @@ export const AuthProvider = ({ children }) => {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && login()}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
                   placeholder="Ihr Passwort eingeben"
                   autoFocus
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -542,7 +542,7 @@ export const AuthProvider = ({ children }) => {
             </div>
 
             {error && (
-              <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+              <div className="text-red-400 text-sm bg-red-900/30 border border-red-500/30 p-3 rounded-lg">
                 {error}
               </div>
             )}
@@ -557,7 +557,7 @@ export const AuthProvider = ({ children }) => {
             <div className="text-center">
               <button
                 onClick={() => setShowBackupCodeInput(true)}
-                className="text-sm text-blue-600 hover:text-blue-800 underline"
+                className="text-sm text-blue-400 hover:text-blue-300 underline"
               >
                 Passwort vergessen? Mit Backup-Code zurücksetzen
               </button>

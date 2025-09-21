@@ -135,11 +135,33 @@ export default function Dashboard() {
     coachees = [], 
     packages = [],
     recurringInvoices = [],
-    serviceRates = []
+    serviceRates = [],
+    settings = {}
   } = state;
   
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Personalisierungs-Daten
+  const userData = useMemo(() => {
+    const companyData = settings?.company || {};
+    const personalData = settings?.personal || {};
+    
+    return {
+      firstName: personalData.firstName || "Coach",
+      lastName: personalData.lastName || "",
+      companyName: companyData.name || personalData.firstName ? `${personalData.firstName}s Coaching` : "Dein Coaching Business",
+      logoUrl: companyData.logoUrl || "https://via.placeholder.com/120x40/3B82F6/FFFFFF?text=CC", // Fallback Logo
+      primaryColor: companyData.primaryColor || "#3B82F6"
+    };
+  }, [settings]);
+
+  const currentTime = new Date().getHours();
+  const getGreeting = () => {
+    if (currentTime < 12) return "Guten Morgen";
+    if (currentTime < 18) return "Guten Tag";
+    return "Guten Abend";
+  };
 
   // Task-Management State
   const [tasks, setTasks] = useState([
@@ -415,8 +437,8 @@ export default function Dashboard() {
   return (
     <>
       <Helmet>
-        <title>Dashboard - Coaching Plattform</title>
-        <meta name="description" content="Übersicht über Ihre Coaching-Aktivitäten" />
+        <title>Dashboard - {userData.companyName}</title>
+        <meta name="description" content="Übersicht über deine Coaching-Aktivitäten" />
       </Helmet>
 
       {/* Task Dialog */}
@@ -548,13 +570,13 @@ export default function Dashboard() {
       </Dialog>
 
       <div className="container mx-auto p-6 space-y-6">
-        {/* Header */}
+        {/* Personalisierter Header */}
         <div className="mb-6">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent mb-2">
-            Dashboard
+            {getGreeting()}, {userData.firstName}! 👋
           </h1>
           <p className="text-muted-foreground text-lg">
-            Willkommen zurück! Hier ist Ihre Übersicht für heute.
+            Hier ist deine Übersicht für heute.
           </p>
         </div>
 
@@ -600,13 +622,13 @@ export default function Dashboard() {
 
         {/* Primärer Bereich - Tasks und Deadlines */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Persönliche Tasks - ERWEITERT */}
+          {/* Deine Tasks - ERWEITERT */}
           <Card className="glass-card-enhanced">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Target className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Meine Tasks</CardTitle>
+                  <CardTitle className="text-lg">Deine Tasks</CardTitle>
                   {overdueTasks.length > 0 && (
                     <Badge variant="destructive" className="text-xs">
                       {overdueTasks.length} überfällig
