@@ -2,18 +2,30 @@ import React, { useState } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, User, Mail, ShieldCheck, ShieldOff, ClipboardCopy, Send, Calendar } from 'lucide-react';
+import { Plus, Search, User, Mail, ShieldCheck, ShieldOff, ClipboardCopy, Send, Calendar, Trash2, AlertTriangle, Users, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { CoacheeStatus } from '@/types';
 import { useAppStateContext } from '@/context/AppStateContext';
+import { supabase } from '@/supabaseConfig';
 
 const CustomFieldInput = ({ field, value, onChange }) => {
   const commonProps = {
@@ -44,7 +56,7 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
     email: '',
     phone: '',
     pronouns: '',
-    birthDate: '', // ✅ GEBURTSTAG-FELD HINZUGEFÜGT
+    birthDate: '',
     status: CoacheeStatus.POTENTIAL,
     mainTopic: '',
     tags: '',
@@ -53,7 +65,6 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
 
   const handleChange = (e) => {
     const { id, value } = e.target;
-    console.log(`Form-Feld geändert: ${id} = ${value}`); // Debug-Log
     setFormData(prev => ({ ...prev, [id]: value }));
   };
 
@@ -97,18 +108,17 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
       }
     };
 
-    console.log('Neuer Coachee wird erstellt:', newCoacheeData); // Debug-Log
     addCoachee(newCoacheeData);
     
     toast({
-      title: "✅ Coachee erstellt!",
+      title: "Coachee erstellt",
       description: `${formData.firstName} ${formData.lastName} wurde erfolgreich angelegt.`,
+      className: "bg-green-600 text-white"
     });
     
-    // ✅ FORM-RESET MIT GEBURTSTAG-FELD
     setFormData({
       firstName: '', lastName: '', email: '', phone: '', pronouns: '', 
-      birthDate: '', // ✅ GEBURTSTAG WIRD AUCH ZURÜCKGESETZT
+      birthDate: '',
       status: CoacheeStatus.POTENTIAL, mainTopic: '', tags: '', customData: {}
     });
     onOpenChange(false);
@@ -116,43 +126,43 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl glass-card">
+      <DialogContent className="sm:max-w-2xl bg-slate-800 border-slate-700 backdrop-blur-xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Neuen Coachee anlegen</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-2xl text-white">Neuen Coachee anlegen</DialogTitle>
+          <DialogDescription className="text-slate-400">
             Fülle die Informationen aus, um einen neuen Klienten zu deinem System hinzuzufügen.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
-            {/* Name Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="firstName">Vorname</Label>
+                <Label htmlFor="firstName" className="text-slate-300">Vorname</Label>
                 <Input 
                   id="firstName" 
                   value={formData.firstName} 
                   onChange={handleChange} 
                   placeholder="Max" 
                   required 
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="lastName">Nachname</Label>
+                <Label htmlFor="lastName" className="text-slate-300">Nachname</Label>
                 <Input 
                   id="lastName" 
                   value={formData.lastName} 
                   onChange={handleChange} 
                   placeholder="Mustermann" 
                   required 
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
                 />
               </div>
             </div>
 
-            {/* Contact Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="email">E-Mail</Label>
+                <Label htmlFor="email" className="text-slate-300">E-Mail</Label>
                 <Input 
                   id="email" 
                   type="email" 
@@ -160,33 +170,34 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
                   onChange={handleChange} 
                   placeholder="max@example.com" 
                   required 
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="phone">Telefon</Label>
+                <Label htmlFor="phone" className="text-slate-300">Telefon</Label>
                 <Input 
                   id="phone" 
                   value={formData.phone} 
                   onChange={handleChange} 
                   placeholder="+49 123 456789" 
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
                 />
               </div>
             </div>
 
-            {/* Pronouns & Birthday */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="pronouns">Anrede/Pronomen</Label>
+                <Label htmlFor="pronouns" className="text-slate-300">Anrede/Pronomen</Label>
                 <Input 
                   id="pronouns" 
                   value={formData.pronouns} 
                   onChange={handleChange} 
                   placeholder="Er/Ihm" 
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
                 />
               </div>
-              {/* ✅ GEBURTSTAG-FELD HINZUGEFÜGT */}
               <div className="grid gap-2">
-                <Label htmlFor="birthDate" className="flex items-center gap-2">
+                <Label htmlFor="birthDate" className="flex items-center gap-2 text-slate-300">
                   <Calendar className="w-4 h-4" />
                   Geburtstag
                 </Label>
@@ -195,20 +206,19 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
                   type="date"
                   value={formData.birthDate} 
                   onChange={handleChange}
-                  className="text-white"
+                  className="bg-slate-700 border-slate-600 text-white"
                 />
               </div>
             </div>
 
-            {/* Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status" className="text-slate-300">Status</Label>
                 <Select value={formData.status} onValueChange={handleSelectChange}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                     <SelectValue placeholder="Status auswählen" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-slate-800 border-slate-700">
                     <SelectItem value={CoacheeStatus.POTENTIAL}>Potenziell</SelectItem>
                     <SelectItem value={CoacheeStatus.ACTIVE}>Aktiv</SelectItem>
                     <SelectItem value={CoacheeStatus.PAUSED}>Pausiert</SelectItem>
@@ -216,40 +226,38 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
                   </SelectContent>
                 </Select>
               </div>
-              {/* Platzhalter für symmetrisches Layout */}
               <div></div>
             </div>
 
-            {/* Main Topic */}
             <div className="grid gap-2">
-              <Label htmlFor="mainTopic">Hauptthema/Anliegen</Label>
+              <Label htmlFor="mainTopic" className="text-slate-300">Hauptthema/Anliegen</Label>
               <Textarea 
                 id="mainTopic" 
                 value={formData.mainTopic} 
                 onChange={handleChange} 
                 placeholder="Beschreibe das Hauptanliegen des Coachees..." 
+                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
               />
             </div>
 
-            {/* Tags */}
             <div className="grid gap-2">
-              <Label htmlFor="tags">Tags (kommagetrennt)</Label>
+              <Label htmlFor="tags" className="text-slate-300">Tags (kommagetrennt)</Label>
               <Input 
                 id="tags" 
                 value={formData.tags} 
                 onChange={handleChange} 
                 placeholder="Führungskraft, Karriere, Startup" 
+                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
               />
             </div>
             
-            {/* Custom Fields */}
             {customFields && customFields.length > 0 && (
               <div className="pt-4 border-t border-slate-700">
                 <h3 className="text-lg font-semibold text-white mb-2">Zusätzliche Informationen</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {customFields.map(field => (
                     <div key={field.id} className="grid gap-2">
-                      <Label htmlFor={field.id}>{field.label}</Label>
+                      <Label htmlFor={field.id} className="text-slate-300">{field.label}</Label>
                       <CustomFieldInput 
                         field={field} 
                         value={formData.customData[field.id]} 
@@ -261,11 +269,13 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline">Abbrechen</Button>
+              <Button type="button" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                Abbrechen
+              </Button>
             </DialogClose>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+            <Button type="submit" className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
               Coachee speichern
             </Button>
           </DialogFooter>
@@ -279,17 +289,86 @@ export default function Coachees() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [isNewCoacheeDialogOpen, setIsNewCoacheeDialogOpen] = useState(false);
+  const [deletingCoacheeId, setDeletingCoacheeId] = useState(null);
+  
   const { toast } = useToast();
   const { state, actions } = useAppStateContext();
   const { coachees, settings } = state;
-  const { addCoachee } = actions;
+  const { addCoachee, removeCoachee } = actions;
+
+  // Coachee löschen mit allen verknüpften Daten
+  const handleDeleteCoachee = async (coacheeId) => {
+    const coachee = coachees.find(c => c.id === coacheeId);
+    if (!coachee) return;
+    
+    setDeletingCoacheeId(coacheeId);
+    
+    try {
+      // Tasks aus localStorage löschen
+      const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const filteredTasks = allTasks.filter(task => 
+        task.coacheeId !== coacheeId && 
+        task.assignedTo !== coacheeId
+      );
+      localStorage.setItem('tasks', JSON.stringify(filteredTasks));
+
+      // Supabase pushed_tasks löschen
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          await supabase
+            .from('pushed_tasks')
+            .delete()
+            .eq('coachee_id', coacheeId)
+            .eq('coach_id', userData.user.id);
+          
+          await supabase
+            .from('tasks')
+            .delete()
+            .eq('coachee_id', coacheeId)
+            .eq('user_id', userData.user.id);
+        }
+      } catch (supabaseError) {
+        console.log('Supabase Tasks konnten nicht gelöscht werden:', supabaseError);
+      }
+
+      // Sessions und Rechnungen löschen
+      const allSessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+      const filteredSessions = allSessions.filter(session => session.coacheeId !== coacheeId);
+      localStorage.setItem('sessions', JSON.stringify(filteredSessions));
+
+      const allInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+      const filteredInvoices = allInvoices.filter(invoice => invoice.coacheeId !== coacheeId);
+      localStorage.setItem('invoices', JSON.stringify(filteredInvoices));
+
+      // Coachee aus AppStateContext entfernen
+      removeCoachee(coacheeId);
+
+      toast({
+        title: "Coachee gelöscht",
+        description: `${coachee.firstName} ${coachee.lastName} und alle verknüpften Daten wurden gelöscht.`,
+        className: "bg-red-600 text-white"
+      });
+      
+    } catch (error) {
+      console.error('Fehler beim Löschen des Coachees:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Löschen",
+        description: "Der Coachee konnte nicht gelöscht werden. Versuche es erneut."
+      });
+    } finally {
+      setDeletingCoacheeId(null);
+    }
+  };
 
   const handleCopyConsentLink = (coacheeId) => {
     const consentLink = `${window.location.origin}/consent/${coacheeId}`;
     navigator.clipboard.writeText(consentLink);
     toast({
-      title: "✅ Link kopiert!",
-      description: "Der Einladungslink wurde in die Zwischenablage kopiert. Sende ihn jetzt an deinen Coachee!",
+      title: "Link kopiert",
+      description: "Der Einladungslink wurde in die Zwischenablage kopiert.",
+      className: "bg-blue-600 text-white"
     });
   };
 
@@ -303,11 +382,11 @@ export default function Coachees() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case CoacheeStatus.ACTIVE: return 'status-active';
+      case CoacheeStatus.ACTIVE: return 'bg-green-500/20 text-green-400 border-green-500/30';
       case CoacheeStatus.COMPLETED: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
       case CoacheeStatus.PAUSED: return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case CoacheeStatus.POTENTIAL: return 'status-pending';
-      default: return 'status-inactive';
+      case CoacheeStatus.POTENTIAL: return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
     }
   };
 
@@ -322,15 +401,15 @@ export default function Coachees() {
   };
 
   const statusFilters = [
-    { value: 'all', label: 'Alle' },
-    { value: CoacheeStatus.ACTIVE, label: 'Aktiv' },
-    { value: CoacheeStatus.POTENTIAL, label: 'Potenziell' },
-    { value: CoacheeStatus.PAUSED, label: 'Pausiert' },
-    { value: CoacheeStatus.COMPLETED, label: 'Abgeschlossen' },
+    { value: 'all', label: 'Alle', count: coachees?.length || 0 },
+    { value: CoacheeStatus.ACTIVE, label: 'Aktiv', count: coachees?.filter(c => c.status === CoacheeStatus.ACTIVE).length || 0 },
+    { value: CoacheeStatus.POTENTIAL, label: 'Potenziell', count: coachees?.filter(c => c.status === CoacheeStatus.POTENTIAL).length || 0 },
+    { value: CoacheeStatus.PAUSED, label: 'Pausiert', count: coachees?.filter(c => c.status === CoacheeStatus.PAUSED).length || 0 },
+    { value: CoacheeStatus.COMPLETED, label: 'Abgeschlossen', count: coachees?.filter(c => c.status === CoacheeStatus.COMPLETED).length || 0 },
   ];
 
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <Helmet>
         <title>Coachees - Coachingspace</title>
         <meta name="description" content="Verwalte deine Coaching-Klienten, behalte den Überblick über Sessions und Fortschritte." />
@@ -343,46 +422,69 @@ export default function Coachees() {
         customFields={settings.coacheeFields}
       />
 
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-bold text-white">Coachees</h1>
-            <p className="text-slate-400">Verwalte deine Coaching-Klienten</p>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-400 bg-clip-text text-transparent">
+              Coachees
+            </h1>
+            <p className="text-slate-400 text-lg mt-2">Verwalte deine Coaching-Klienten</p>
           </div>
-          <Button onClick={() => setIsNewCoacheeDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="mr-2 h-4 w-4" />
+          <Button 
+            onClick={() => setIsNewCoacheeDialogOpen(true)} 
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 text-lg"
+          >
+            <Plus className="mr-2 h-5 w-5" />
             Neuer Coachee
           </Button>
         </div>
 
-        <Card className="glass-card">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Coachees suchen..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+        {/* Filter und Suche */}
+        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 shadow-2xl">
+          <div className="flex flex-col gap-6">
+            {/* Suchfeld */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <Input
+                placeholder="Coachees durchsuchen..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 h-12 text-lg"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-slate-300">
+                <Filter className="h-5 w-5" />
+                <span className="font-medium">Status:</span>
               </div>
               <div className="flex gap-2 flex-wrap">
                 {statusFilters.map(filter => (
-                   <Button
+                  <Button
                     key={filter.value}
                     variant={filterStatus === filter.value ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setFilterStatus(filter.value)}
+                    className={`${
+                      filterStatus === filter.value 
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white' 
+                        : 'border-slate-600 text-slate-300 hover:bg-slate-700'
+                    } px-4 py-2`}
                   >
                     {filter.label}
+                    <Badge variant="secondary" className="ml-2 bg-slate-600/50 text-slate-200">
+                      {filter.count}
+                    </Badge>
                   </Button>
                 ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
+        {/* Coachees Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCoachees.map((coachee, index) => (
             <motion.div
@@ -392,92 +494,194 @@ export default function Coachees() {
               transition={{ duration: 0.3, delay: index * 0.1 }}
               className="h-full"
             >
-              <Card className="glass-card hover:bg-slate-800/50 transition-all duration-300 group h-full flex flex-col">
-                <CardHeader className="pb-3">
-                   <Link to={`/coachees/${coachee.id}`} className="block">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                            <span className="text-white font-semibold text-sm">{coachee.firstName[0]}{coachee.lastName[0]}</span>
-                          </div>
-                          <div>
-                            <CardTitle className="text-white group-hover:text-blue-400 transition-colors text-lg">
-                              {coachee.firstName} {coachee.lastName}
-                            </CardTitle>
-                            <Badge className={`text-xs ${getStatusColor(coachee.status)}`}>
-                              {getStatusText(coachee.status)}
-                            </Badge>
-                          </div>
+              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl hover:bg-slate-800/70 transition-all duration-300 group h-full flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="p-6 border-b border-slate-700/50">
+                  <Link to={`/coachees/${coachee.id}`} className="block">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <span className="text-white font-bold text-lg">
+                            {coachee.firstName[0]}{coachee.lastName[0]}
+                          </span>
                         </div>
-                        {coachee.consents?.gdpr ? (
-                          <ShieldCheck className="h-5 w-5 text-green-400 flex-shrink-0" title="DSGVO-Zustimmung erteilt" />
-                        ) : (
-                          <ShieldOff className="h-5 w-5 text-red-400 flex-shrink-0" title="DSGVO-Zustimmung fehlt" />
-                        )}
+                        <div>
+                          <h3 className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">
+                            {coachee.firstName} {coachee.lastName}
+                          </h3>
+                          <Badge className={`text-xs ${getStatusColor(coachee.status)} mt-1`}>
+                            {getStatusText(coachee.status)}
+                          </Badge>
+                        </div>
                       </div>
-                   </Link>
-                </CardHeader>
-                <CardContent className="flex-grow flex flex-col justify-between">
-                  <Link to={`/coachees/${coachee.id}`} className="block flex-grow">
-                      <div className="space-y-3">
-                        <div className="flex items-center text-sm text-slate-400">
-                          <Mail className="mr-2 h-4 w-4" />
-                          {coachee.email}
-                        </div>
-                        <p className="text-sm text-slate-300 line-clamp-2">{coachee.mainTopic}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {coachee.tags?.map((tag, tagIndex) => (
-                            <Badge key={tagIndex} variant="outline" className="text-xs">
+                      <div className="flex items-center gap-2">
+                        {coachee.consents?.gdpr ? (
+                          <div className="p-1 bg-green-500/20 rounded-lg">
+                            <ShieldCheck className="h-5 w-5 text-green-400" title="DSGVO-Zustimmung erteilt" />
+                          </div>
+                        ) : (
+                          <div className="p-1 bg-red-500/20 rounded-lg">
+                            <ShieldOff className="h-5 w-5 text-red-400" title="DSGVO-Zustimmung fehlt" />
+                          </div>
+                        )}
+                        
+                        {/* Löschen-Button */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-400 hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
+                              onClick={(e) => e.preventDefault()}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="bg-slate-800 border-slate-700 backdrop-blur-xl">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-white flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-red-400" />
+                                Coachee löschen?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription className="text-slate-400 space-y-3">
+                                <p>
+                                  Möchtest du <strong className="text-white">{coachee.firstName} {coachee.lastName}</strong> wirklich dauerhaft löschen?
+                                </p>
+                                <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-3">
+                                  <p className="text-red-400 font-medium mb-2">Folgende Daten werden unwiderruflich gelöscht:</p>
+                                  <ul className="text-sm text-red-300 space-y-1">
+                                    <li>• Alle persönlichen Daten und Ziele</li>
+                                    <li>• Alle Aufgaben und Deadlines</li>
+                                    <li>• Alle Sessions mit diesem Coachee</li>
+                                    <li>• Alle Rechnungen</li>
+                                    <li>• Portal-Zugang und geteilte Tasks</li>
+                                  </ul>
+                                </div>
+                                <p className="text-sm">
+                                  Diese Aktion kann nicht rückgängig gemacht werden.
+                                </p>
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600">
+                                Abbrechen
+                              </AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteCoachee(coachee.id)}
+                                disabled={deletingCoacheeId === coachee.id}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                {deletingCoacheeId === coachee.id ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2" />
+                                    Lösche...
+                                  </>
+                                ) : (
+                                  'Ja, dauerhaft löschen'
+                                )}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+
+                {/* Content */}
+                <Link to={`/coachees/${coachee.id}`} className="flex-grow flex flex-col">
+                  <div className="p-6 flex-grow">
+                    <div className="space-y-4">
+                      <div className="flex items-center text-slate-400">
+                        <Mail className="mr-3 h-4 w-4" />
+                        <span className="text-sm">{coachee.email}</span>
+                      </div>
+                      
+                      {coachee.mainTopic && (
+                        <p className="text-slate-300 text-sm line-clamp-3 leading-relaxed">
+                          {coachee.mainTopic}
+                        </p>
+                      )}
+                      
+                      {coachee.tags && coachee.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {coachee.tags.slice(0, 3).map((tag, tagIndex) => (
+                            <Badge 
+                              key={tagIndex} 
+                              variant="outline" 
+                              className="text-xs bg-slate-700/50 border-slate-600 text-slate-300"
+                            >
                               {tag}
                             </Badge>
                           ))}
+                          {coachee.tags.length > 3 && (
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs bg-slate-700/50 border-slate-600 text-slate-400"
+                            >
+                              +{coachee.tags.length - 3}
+                            </Badge>
+                          )}
                         </div>
-                      </div>
-                  </Link>
-                  <div className="pt-3 mt-auto">
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="p-6 pt-0">
                     {!coachee.consents?.gdpr ? (
                       <Button 
                         size="sm" 
-                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
-                        onClick={(e) => { e.stopPropagation(); handleCopyConsentLink(coachee.id); }}
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                        onClick={(e) => { 
+                          e.preventDefault(); 
+                          e.stopPropagation(); 
+                          handleCopyConsentLink(coachee.id); 
+                        }}
                       >
                         <Send className="mr-2 h-4 w-4" />
-                        Einladung zur DSGVO senden
+                        DSGVO-Einladung senden
                       </Button>
                     ) : (
-                      <div className="flex justify-between text-xs text-slate-500 pt-3 border-t border-slate-700">
+                      <div className="flex justify-between text-xs text-slate-500 pt-3 border-t border-slate-700/50">
                         <span>{coachee.sessions?.length || 0} Sessions</span>
                         <span>Seit {new Date(coachee.coachingStartDate).toLocaleDateString('de-DE')}</span>
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </Link>
+              </div>
             </motion.div>
           ))}
         </div>
 
+        {/* Empty State */}
         {filteredCoachees.length === 0 && (
-          <Card className="glass-card">
-            <CardContent className="p-12 text-center">
-              <User className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">Keine Coachees gefunden</h3>
-              <p className="text-slate-400 mb-4">
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl">
+            <div className="p-12 text-center">
+              <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Users className="h-10 w-10 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Keine Coachees gefunden</h3>
+              <p className="text-slate-400 mb-6 text-lg">
                 {searchTerm || filterStatus !== 'all' 
                   ? 'Versuche andere Suchbegriffe oder Filter.'
                   : 'Füge deinen ersten Coachee hinzu, um zu beginnen.'
                 }
               </p>
               {!searchTerm && filterStatus === 'all' && (
-                <Button onClick={() => setIsNewCoacheeDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                  <Plus className="mr-2 h-4 w-4" />
+                <Button 
+                  onClick={() => setIsNewCoacheeDialogOpen(true)} 
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 text-lg"
+                >
+                  <Plus className="mr-2 h-5 w-5" />
                   Ersten Coachee hinzufügen
                 </Button>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

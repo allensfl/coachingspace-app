@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit, Save, X, Plus, Target, CheckSquare, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import ProfileCard from "./coachee-detail/ProfileCard";
 import { useAppStateContext } from '@/context/AppStateContext';
+import { supabase } from '@/supabaseConfig';
+
+// Lazy import für TasksTab
+import TasksTab from "./coachee-detail/TasksTab.jsx";
 
 export default function CoacheeDetail() {
   const { id } = useParams();
@@ -25,11 +29,9 @@ export default function CoacheeDetail() {
   const [newGoal, setNewGoal] = useState('');
   const [editingGoal, setEditingGoal] = useState(null);
 
-  // Aufgaben State
-  const [tasks, setTasks] = useState([]);
-  const [newTask, setNewTask] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState('medium');
-  const [newTaskDueDate, setNewTaskDueDate] = useState('');
+  // Task Count für Tab-Anzeige
+  const [taskCount, setTaskCount] = useState(0);
+  const [supabaseTasks, setSupabaseTasks] = useState([]);
 
   useEffect(() => {
     console.log('Loading coachee with ID:', id);
@@ -40,15 +42,117 @@ export default function CoacheeDetail() {
         console.log('Coachee from AppStateContext:', realCoachee);
         setCoachee(realCoachee);
         
-        // Lade bestehende Ziele und Aufgaben
+        // Lade bestehende Ziele
         setGoals(realCoachee.goals || []);
-        setTasks(realCoachee.tasks || []);
+        
+        // Migriere bestehende Aufgaben zum zentralen System (einmalig)
+        migrateTasksToGlobalSystem(realCoachee);
       } else {
         console.log('Coachee nicht gefunden mit ID:', id);
         setCoachee(null);
       }
     }
   }, [id, getCoacheeById]);
+
+  // Task Count laden - MIT SUPABASE INTEGRATION
+  useEffect(() => {
+    const loadTaskCount = async () => {
+      try {
+        // localStorage Tasks
+        const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        const localTasks = allTasks.filter(task => 
+          task.assignedTo === coachee?.id || 
+          task.assignedTo === 'me' ||
+          task.coacheeId === coachee?.id
+        );
+
+        // Supabase Tasks
+        let supabaseTasks = [];
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user) {
+            const { data } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('user_id', userData.user.id)
+              .eq('coachee_id', coachee.id);
+            supabaseTasks = data || [];
+            console.log(`Loaded ${supabaseTasks.length} Supabase tasks for coachee ${coachee.id}`);
+          }
+        } catch (error) {
+          console.log('Supabase tasks loading failed:', error);
+        }
+
+        const totalCount = localTasks.length + supabaseTasks.length;
+        console.log(`Total tasks for coachee ${coachee.id}: ${totalCount} (${localTasks.length} local + ${supabaseTasks.length} supabase)`);
+        setTaskCount(totalCount);
+        setSupabaseTasks(supabaseTasks); // Speichere Supabase-Tasks für TasksTab
+      } catch (error) {
+        console.error('Error loading task count:', error);
+      }
+    };
+
+    if (coachee) {
+      loadTaskCount();
+      
+      // Bei localStorage-Änderungen aktualisieren
+      const handleStorageChange = () => loadTaskCount();
+      window.addEventListener('storage', handleStorageChange);
+      
+      return () => window.removeEventListener('storage', handleStorageChange);
+    }
+  }, [coachee?.id]);
+
+  // Migriere bestehende Coachee-Aufgaben zum zentralen System
+  const migrateTasksToGlobalSystem = (coachee) => {
+    if (!coachee.tasks || coachee.tasks.length === 0) return;
+
+    try {
+      const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      
+      // Prüfe ob bereits migriert
+      const existingTaskIds = allTasks.map(t => t.oldTaskId).filter(Boolean);
+      const hasUnmigratedTasks = coachee.tasks.some(task => !existingTaskIds.includes(task.id));
+      
+      if (hasUnmigratedTasks) {
+        const migratedTasks = coachee.tasks.map(task => ({
+          id: Date.now() + Math.random(), // Neue ID
+          oldTaskId: task.id, // Referenz zur alten ID
+          title: task.title,
+          description: '', // War nicht im alten Format
+          priority: task.priority || 'normal',
+          dueDate: task.dueDate || '',
+          estimatedTime: '',
+          category: '',
+          notes: '',
+          status: task.completed ? 'completed' : 'open',
+          assignedTo: coachee.id,
+          coacheeId: coachee.id,
+          coacheeName: `${coachee.firstName} ${coachee.lastName}`,
+          createdAt: task.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          completedAt: task.completedAt || null
+        }));
+
+        const updatedTasks = [...allTasks, ...migratedTasks];
+        localStorage.setItem('tasks', JSON.stringify(updatedTasks));
+        
+        console.log(`${migratedTasks.length} Aufgaben von ${coachee.firstName} zum zentralen System migriert`);
+        
+        // Entferne migrierte Aufgaben vom Coachee-Objekt
+        const updatedCoachee = { ...coachee };
+        delete updatedCoachee.tasks;
+        updateCoachee(updatedCoachee);
+        
+        toast({
+          title: "Aufgaben migriert",
+          description: `${migratedTasks.length} bestehende Aufgaben wurden zum neuen System migriert.`
+        });
+      }
+    } catch (error) {
+      console.error('Error migrating tasks:', error);
+    }
+  };
 
   if (!coachee) {
     return (
@@ -152,90 +256,6 @@ export default function CoacheeDetail() {
     });
   };
 
-  // AUFGABEN-FUNKTIONEN
-  const saveTasksToCoachee = (updatedTasks) => {
-    const updatedCoachee = { ...coachee, tasks: updatedTasks };
-    updateCoachee(updatedCoachee);
-    setCoachee(updatedCoachee);
-  };
-
-  const addTask = () => {
-    if (!newTask.trim()) return;
-
-    const task = {
-      id: Date.now(),
-      title: newTask.trim(),
-      completed: false,
-      priority: newTaskPriority,
-      dueDate: newTaskDueDate || null,
-      createdAt: new Date().toISOString(),
-      completedAt: null
-    };
-
-    const updatedTasks = [...tasks, task];
-    setTasks(updatedTasks);
-    saveTasksToCoachee(updatedTasks);
-    
-    setNewTask('');
-    setNewTaskPriority('medium');
-    setNewTaskDueDate('');
-
-    toast({
-      title: "Aufgabe hinzugefügt",
-      description: `Neue Aufgabe "${task.title}" wurde erstellt.`
-    });
-  };
-
-  const toggleTask = (taskId) => {
-    const task = tasks.find(t => t.id === taskId);
-    const updatedTasks = tasks.map(task => 
-      task.id === taskId 
-        ? { 
-            ...task, 
-            completed: !task.completed,
-            completedAt: !task.completed ? new Date().toISOString() : null
-          } 
-        : task
-    );
-    setTasks(updatedTasks);
-    saveTasksToCoachee(updatedTasks);
-
-    toast({
-      title: !task.completed ? "Aufgabe erledigt!" : "Aufgabe reaktiviert",
-      description: `"${task.title}" wurde als ${!task.completed ? 'erledigt' : 'offen'} markiert.`
-    });
-  };
-
-  const deleteTask = (taskId) => {
-    const task = tasks.find(t => t.id === taskId);
-    const updatedTasks = tasks.filter(task => task.id !== taskId);
-    setTasks(updatedTasks);
-    saveTasksToCoachee(updatedTasks);
-
-    toast({
-      title: "Aufgabe gelöscht",
-      description: `Aufgabe "${task?.title}" wurde entfernt.`
-    });
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high': return 'bg-red-600';
-      case 'medium': return 'bg-yellow-600';
-      case 'low': return 'bg-green-600';
-      default: return 'bg-gray-600';
-    }
-  };
-
-  const getPriorityText = (priority) => {
-    switch (priority) {
-      case 'high': return 'Hoch';
-      case 'medium': return 'Mittel';
-      case 'low': return 'Niedrig';
-      default: return 'Normal';
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-900">
       <div className="max-w-7xl mx-auto p-6">
@@ -303,7 +323,7 @@ export default function CoacheeDetail() {
                 value="aufgaben" 
                 className="flex-1 py-4 text-slate-400 data-[state=active]:bg-slate-800 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 rounded-none"
               >
-                Aufgaben ({tasks.filter(t => !t.completed).length})
+                Aufgaben ({taskCount})
               </TabsTrigger>
               <TabsTrigger 
                 value="verlauf" 
@@ -375,7 +395,7 @@ export default function CoacheeDetail() {
               </div>
             </TabsContent>
 
-            {/* ZIELE TAB - VOLLSTÄNDIG FUNKTIONAL */}
+            {/* ZIELE TAB */}
             <TabsContent value="ziele" className="p-6 bg-slate-800">
               <div className="space-y-6">
                 <Card className="bg-slate-900 border-slate-700">
@@ -531,135 +551,15 @@ export default function CoacheeDetail() {
               </div>
             </TabsContent>
 
-            {/* AUFGABEN TAB - VOLLSTÄNDIG FUNKTIONAL */}
+            {/* AUFGABEN TAB - Mit lazy TasksTab */}
             <TabsContent value="aufgaben" className="p-6 bg-slate-800">
-              <div className="space-y-6">
-                <Card className="bg-slate-900 border-slate-700">
-                  <CardHeader>
-                    <CardTitle className="text-slate-200 flex items-center gap-2">
-                      <CheckSquare className="h-5 w-5 text-blue-400" />
-                      Neue Aufgabe hinzufügen
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                      <Input
-                        value={newTask}
-                        onChange={(e) => setNewTask(e.target.value)}
-                        placeholder="Aufgabe eingeben"
-                        className="md:col-span-2 bg-slate-800 border-slate-600 text-white"
-                        onKeyPress={(e) => e.key === 'Enter' && addTask()}
-                      />
-                      <select
-                        value={newTaskPriority}
-                        onChange={(e) => setNewTaskPriority(e.target.value)}
-                        className="px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white text-sm"
-                      >
-                        <option value="low">Niedrig</option>
-                        <option value="medium">Mittel</option>
-                        <option value="high">Hoch</option>
-                      </select>
-                      <Button 
-                        onClick={addTask}
-                        className="bg-blue-600 hover:bg-blue-700"
-                        disabled={!newTask.trim()}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <Input
-                      type="date"
-                      value={newTaskDueDate}
-                      onChange={(e) => setNewTaskDueDate(e.target.value)}
-                      className="bg-slate-800 border-slate-600 text-white max-w-xs"
-                      placeholder="Fälligkeitsdatum (optional)"
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Aufgaben Liste */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-200">
-                      Aufgaben ({tasks.length})
-                    </h3>
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="text-green-400 border-green-400">
-                        {tasks.filter(t => t.completed).length} erledigt
-                      </Badge>
-                      <Badge variant="outline" className="text-red-400 border-red-400">
-                        {tasks.filter(t => !t.completed).length} offen
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {tasks.length === 0 ? (
-                    <Card className="bg-slate-900 border-slate-700">
-                      <CardContent className="p-8 text-center">
-                        <CheckSquare className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                        <p className="text-slate-400">Noch keine Aufgaben erstellt.</p>
-                        <p className="text-slate-500 text-sm mt-2">
-                          Fügen Sie die erste Aufgabe für {coachee.firstName} hinzu.
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="grid gap-3">
-                      {tasks.map(task => (
-                        <Card 
-                          key={task.id} 
-                          className={`bg-slate-900 border-slate-700 ${task.completed ? 'opacity-75' : ''}`}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3 flex-1">
-                                <input
-                                  type="checkbox"
-                                  checked={task.completed}
-                                  onChange={() => toggleTask(task.id)}
-                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                                />
-                                <div className="flex-1">
-                                  <h4 className={`font-medium ${task.completed ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
-                                    {task.title}
-                                  </h4>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <Badge 
-                                      variant="outline" 
-                                      className={`text-xs ${getPriorityColor(task.priority)} text-white border-transparent`}
-                                    >
-                                      {getPriorityText(task.priority)}
-                                    </Badge>
-                                    {task.dueDate && (
-                                      <Badge variant="outline" className="text-xs text-slate-400 border-slate-400">
-                                        Fällig: {new Date(task.dueDate).toLocaleDateString('de-DE')}
-                                      </Badge>
-                                    )}
-                                    <span className="text-slate-500 text-xs">
-                                      {task.completed 
-                                        ? `Erledigt am ${new Date(task.completedAt).toLocaleDateString('de-DE')}`
-                                        : `Erstellt am ${new Date(task.createdAt).toLocaleDateString('de-DE')}`
-                                      }
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => deleteTask(task.id)}
-                                className="border-red-600 text-red-400 hover:bg-red-900/20 ml-4"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
+              <Suspense fallback={
+                <div className="text-center py-8">
+                  <div className="text-slate-400 text-lg">Lade Aufgaben...</div>
                 </div>
-              </div>
+              }>
+                <TasksTab coachee={coachee} supabaseTasks={supabaseTasks} />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="verlauf" className="p-6 bg-slate-800">
@@ -691,9 +591,9 @@ export default function CoacheeDetail() {
                   <Card className="bg-slate-800 border-slate-600">
                     <CardContent className="p-4 text-center">
                       <div className="text-2xl font-bold text-purple-400">
-                        {tasks.filter(t => t.completed).length}
+                        {taskCount}
                       </div>
-                      <div className="text-sm text-slate-400">Aufgaben erledigt</div>
+                      <div className="text-sm text-slate-400">Aufgaben verwaltet</div>
                     </CardContent>
                   </Card>
                 </div>

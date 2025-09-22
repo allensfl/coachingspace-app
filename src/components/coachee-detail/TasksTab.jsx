@@ -25,7 +25,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
-const TasksTab = ({ coachee }) => {
+const TasksTab = ({ coachee, supabaseTasks = [] }) => {
   const [tasks, setTasks] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
   const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
@@ -43,26 +43,60 @@ const TasksTab = ({ coachee }) => {
 
   const { toast } = useToast();
 
-  // Load tasks from localStorage
+  // Load tasks from localStorage AND Supabase
   useEffect(() => {
     if (!coachee?.id) return;
 
+    console.log('TasksTab: Loading tasks for coachee', coachee.id);
+    console.log('TasksTab: Received supabaseTasks:', supabaseTasks);
+
     const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
     
-    // Tasks assigned TO this coachee
-    const coacheeTasks = allTasks.filter(task => task.assignedTo === coachee.id);
+    // Tasks assigned TO this coachee from localStorage
+    const localCoacheeTasks = allTasks.filter(task => task.assignedTo === coachee.id);
     
-    // My tasks ABOUT this coachee 
-    const relatedTasks = allTasks.filter(task => 
+    // My tasks ABOUT this coachee from localStorage
+    const localRelatedTasks = allTasks.filter(task => 
       task.assignedTo === 'me' && 
       task.relatedCoachee === coachee.id
     );
 
-    setTasks(coacheeTasks);
-    setMyTasks(relatedTasks);
-  }, [coachee?.id]);
+    // Convert Supabase tasks to display format
+    const supabaseCoacheeTasks = supabaseTasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority || 'medium',
+      assignedTo: coachee.id,
+      dueDate: task.due_date,
+      category: task.category || 'general',
+      estimatedTime: '',
+      status: task.completed ? 'completed' : 'open',
+      createdAt: task.created_at,
+      isSupabaseTask: true // Mark as Supabase task
+    }));
+
+    // Combine localStorage and Supabase tasks
+    const combinedCoacheeTasks = [...localCoacheeTasks, ...supabaseCoacheeTasks];
+    
+    console.log('TasksTab: Combined coachee tasks:', combinedCoacheeTasks.length);
+    console.log('TasksTab: Local tasks:', localCoacheeTasks.length, 'Supabase tasks:', supabaseCoacheeTasks.length);
+    
+    setTasks(combinedCoacheeTasks);
+    setMyTasks(localRelatedTasks);
+  }, [coachee?.id, supabaseTasks]);
 
   const saveTask = (task) => {
+    // Only save to localStorage (Supabase tasks are managed elsewhere)
+    if (task.isSupabaseTask) {
+      toast({
+        title: "Info",
+        description: "Supabase-Tasks können nur im Dashboard bearbeitet werden.",
+        variant: "default"
+      });
+      return;
+    }
+
     const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
     let updatedTasks;
 
@@ -82,31 +116,74 @@ const TasksTab = ({ coachee }) => {
 
     localStorage.setItem('tasks', JSON.stringify(updatedTasks));
     
-    // Reload tasks
-    const coacheeTasks = updatedTasks.filter(task => task.assignedTo === coachee.id);
-    const relatedTasks = updatedTasks.filter(task => 
+    // Reload tasks (keep Supabase tasks)
+    const localCoacheeTasks = updatedTasks.filter(task => task.assignedTo === coachee.id);
+    const localRelatedTasks = updatedTasks.filter(task => 
       task.assignedTo === 'me' && 
       task.relatedCoachee === coachee.id
     );
     
-    setTasks(coacheeTasks);
-    setMyTasks(relatedTasks);
+    const supabaseCoacheeTasks = supabaseTasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority || 'medium',
+      assignedTo: coachee.id,
+      dueDate: task.due_date,
+      category: task.category || 'general',
+      estimatedTime: '',
+      status: task.completed ? 'completed' : 'open',
+      createdAt: task.created_at,
+      isSupabaseTask: true
+    }));
+
+    const combinedCoacheeTasks = [...localCoacheeTasks, ...supabaseCoacheeTasks];
+    
+    setTasks(combinedCoacheeTasks);
+    setMyTasks(localRelatedTasks);
   };
 
   const deleteTask = (taskId) => {
+    const taskToDelete = tasks.find(t => t.id === taskId);
+    
+    if (taskToDelete?.isSupabaseTask) {
+      toast({
+        title: "Info",
+        description: "Supabase-Tasks können nur im Dashboard gelöscht werden.",
+        variant: "default"
+      });
+      return;
+    }
+
     const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
     const updatedTasks = allTasks.filter(task => task.id !== taskId);
     localStorage.setItem('tasks', JSON.stringify(updatedTasks));
     
-    // Reload tasks
-    const coacheeTasks = updatedTasks.filter(task => task.assignedTo === coachee.id);
-    const relatedTasks = updatedTasks.filter(task => 
+    // Reload tasks (keep Supabase tasks)
+    const localCoacheeTasks = updatedTasks.filter(task => task.assignedTo === coachee.id);
+    const localRelatedTasks = updatedTasks.filter(task => 
       task.assignedTo === 'me' && 
       task.relatedCoachee === coachee.id
     );
     
-    setTasks(coacheeTasks);
-    setMyTasks(relatedTasks);
+    const supabaseCoacheeTasks = supabaseTasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority || 'medium',
+      assignedTo: coachee.id,
+      dueDate: task.due_date,
+      category: task.category || 'general',
+      estimatedTime: '',
+      status: task.completed ? 'completed' : 'open',
+      createdAt: task.created_at,
+      isSupabaseTask: true
+    }));
+
+    const combinedCoacheeTasks = [...localCoacheeTasks, ...supabaseCoacheeTasks];
+    
+    setTasks(combinedCoacheeTasks);
+    setMyTasks(localRelatedTasks);
 
     toast({
       title: "Aufgabe gelöscht",
@@ -115,6 +192,17 @@ const TasksTab = ({ coachee }) => {
   };
 
   const updateTaskStatus = (taskId, newStatus) => {
+    const taskToUpdate = tasks.find(t => t.id === taskId);
+    
+    if (taskToUpdate?.isSupabaseTask) {
+      toast({
+        title: "Info",
+        description: "Supabase-Tasks können nur im Dashboard bearbeitet werden.",
+        variant: "default"
+      });
+      return;
+    }
+
     const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
     const updatedTasks = allTasks.map(task => 
       task.id === taskId 
@@ -124,15 +212,31 @@ const TasksTab = ({ coachee }) => {
     
     localStorage.setItem('tasks', JSON.stringify(updatedTasks));
     
-    // Reload tasks
-    const coacheeTasks = updatedTasks.filter(task => task.assignedTo === coachee.id);
-    const relatedTasks = updatedTasks.filter(task => 
+    // Reload tasks (keep Supabase tasks)
+    const localCoacheeTasks = updatedTasks.filter(task => task.assignedTo === coachee.id);
+    const localRelatedTasks = updatedTasks.filter(task => 
       task.assignedTo === 'me' && 
       task.relatedCoachee === coachee.id
     );
     
-    setTasks(coacheeTasks);
-    setMyTasks(relatedTasks);
+    const supabaseCoacheeTasks = supabaseTasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority || 'medium',
+      assignedTo: coachee.id,
+      dueDate: task.due_date,
+      category: task.category || 'general',
+      estimatedTime: '',
+      status: task.completed ? 'completed' : 'open',
+      createdAt: task.created_at,
+      isSupabaseTask: true
+    }));
+
+    const combinedCoacheeTasks = [...localCoacheeTasks, ...supabaseCoacheeTasks];
+    
+    setTasks(combinedCoacheeTasks);
+    setMyTasks(localRelatedTasks);
   };
 
   const handleCreateTask = () => {
@@ -167,13 +271,13 @@ const TasksTab = ({ coachee }) => {
     
     toast({
       title: "Aufgabe erstellt",
-      description: `Neue Aufgabe wurde ${newTask.assignedTo === 'me' ? 'dir' : coachee?.name} zugewiesen.`
+      description: `Neue Aufgabe wurde ${newTask.assignedTo === 'me' ? 'dir' : coachee?.firstName || coachee?.name} zugewiesen.`
     });
   };
 
   const generateShareLink = () => {
     const token = btoa(`${coachee.id}-${Date.now()}`);
-    const shareUrl = `${window.location.origin}/coachee-tasks/${coachee.name.toLowerCase().replace(/\s+/g, '-')}-${token}`;
+    const shareUrl = `${window.location.origin}/coachee-tasks/${(coachee.firstName || coachee.name || '').toLowerCase().replace(/\s+/g, '-')}-${token}`;
     
     navigator.clipboard.writeText(shareUrl);
     toast({
@@ -201,15 +305,30 @@ const TasksTab = ({ coachee }) => {
   };
 
   const TaskCard = ({ task, isMyTask = false }) => (
-    <Card className="glass-card border-slate-700/50">
+    <Card className={`glass-card border-slate-700/50 ${task.isSupabaseTask ? 'ring-1 ring-blue-500/30' : ''}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
-          <h4 className="font-medium text-white">{task.title}</h4>
+          <div className="flex-1">
+            <h4 className="font-medium text-white">{task.title}</h4>
+            {task.isSupabaseTask && (
+              <Badge className="mt-1 bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                Dashboard
+              </Badge>
+            )}
+          </div>
           <div className="flex gap-1">
             <Button
               size="sm"
               variant="ghost"
               onClick={() => {
+                if (task.isSupabaseTask) {
+                  toast({
+                    title: "Info",
+                    description: "Dashboard-Tasks können nur im Dashboard bearbeitet werden.",
+                    variant: "default"
+                  });
+                  return;
+                }
                 setEditingTask(task);
                 setNewTask(task);
                 setShowNewTaskDialog(true);
@@ -256,10 +375,20 @@ const TasksTab = ({ coachee }) => {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => updateTaskStatus(task.id, 
-              task.status === 'completed' ? 'open' : 
-              task.status === 'open' ? 'in-progress' : 'completed'
-            )}
+            onClick={() => {
+              if (task.isSupabaseTask) {
+                toast({
+                  title: "Info",
+                  description: "Dashboard-Tasks können nur im Dashboard bearbeitet werden.",
+                  variant: "default"
+                });
+                return;
+              }
+              updateTaskStatus(task.id, 
+                task.status === 'completed' ? 'open' : 
+                task.status === 'open' ? 'in-progress' : 'completed'
+              )
+            }}
             className="flex-1"
           >
             {task.status === 'completed' ? (
@@ -289,6 +418,8 @@ const TasksTab = ({ coachee }) => {
   const completedTasks = [...tasks, ...myTasks].filter(t => t.status === 'completed').length;
   const inProgressTasks = [...tasks, ...myTasks].filter(t => t.status === 'in-progress').length;
   const openTasks = [...tasks, ...myTasks].filter(t => t.status === 'open').length;
+
+  const coacheeName = coachee?.firstName || coachee?.lastName || coachee?.name || 'Coachee';
 
   return (
     <div className="space-y-6">
@@ -389,7 +520,7 @@ const TasksTab = ({ coachee }) => {
                       <SelectItem value={coachee?.id} className="text-white">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4" />
-                          {coachee?.name}
+                          {coacheeName}
                         </div>
                       </SelectItem>
                       <SelectItem value="me" className="text-white">
@@ -502,7 +633,7 @@ const TasksTab = ({ coachee }) => {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Aufgaben für {coachee?.name} ({tasks.length})
+                Aufgaben für {coacheeName} ({tasks.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -513,7 +644,7 @@ const TasksTab = ({ coachee }) => {
               ) : (
                 <div className="text-center py-8">
                   <AlertCircle className="mx-auto h-12 w-12 text-slate-500 mb-4" />
-                  <p className="text-slate-400">Keine Aufgaben für {coachee?.name} vorhanden</p>
+                  <p className="text-slate-400">Keine Aufgaben für {coacheeName} vorhanden</p>
                 </div>
               )}
             </CardContent>
@@ -526,7 +657,7 @@ const TasksTab = ({ coachee }) => {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Target className="h-5 w-5" />
-                Meine Aufgaben zu {coachee?.name} ({myTasks.length})
+                Meine Aufgaben zu {coacheeName} ({myTasks.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -537,7 +668,7 @@ const TasksTab = ({ coachee }) => {
               ) : (
                 <div className="text-center py-8">
                   <Target className="mx-auto h-12 w-12 text-slate-500 mb-4" />
-                  <p className="text-slate-400">Keine eigenen Aufgaben zu {coachee?.name} vorhanden</p>
+                  <p className="text-slate-400">Keine eigenen Aufgaben zu {coacheeName} vorhanden</p>
                 </div>
               )}
             </CardContent>

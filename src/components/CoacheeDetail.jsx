@@ -1,6 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Save, X, Plus, Target, CheckSquare, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Save, X, Plus, Target, CheckSquare, Trash2, AlertTriangle, User, Calendar, FileText, Folder } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,20 +8,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import ProfileCard from "./coachee-detail/ProfileCard";
 import { useAppStateContext } from '@/context/AppStateContext';
+import { supabase } from '@/supabaseConfig';
 
-// Lazy import für TasksTab - GEÄNDERT
+// Lazy import für TasksTab
 import TasksTab from "./coachee-detail/TasksTab.jsx";
 
 export default function CoacheeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { getCoacheeById, updateCoachee } = useAppStateContext();
+  const { getCoacheeById, updateCoachee, removeCoachee } = useAppStateContext();
   
   const [coachee, setCoachee] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Ziele State
   const [goals, setGoals] = useState([]);
@@ -30,6 +43,7 @@ export default function CoacheeDetail() {
 
   // Task Count für Tab-Anzeige
   const [taskCount, setTaskCount] = useState(0);
+  const [supabaseTasks, setSupabaseTasks] = useState([]);
 
   useEffect(() => {
     console.log('Loading coachee with ID:', id);
@@ -52,15 +66,107 @@ export default function CoacheeDetail() {
     }
   }, [id, getCoacheeById]);
 
-  // Task Count laden
-  useEffect(() => {
-    const loadTaskCount = () => {
+  // Coachee löschen mit allen verknüpften Daten
+  const handleDeleteCoachee = async () => {
+    if (!coachee) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // Tasks aus localStorage löschen
+      const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const filteredTasks = allTasks.filter(task => 
+        task.coacheeId !== coachee.id && 
+        task.assignedTo !== coachee.id
+      );
+      localStorage.setItem('tasks', JSON.stringify(filteredTasks));
+
+      // Supabase pushed_tasks löschen
       try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          await supabase
+            .from('pushed_tasks')
+            .delete()
+            .eq('coachee_id', coachee.id)
+            .eq('coach_id', userData.user.id);
+          
+          await supabase
+            .from('tasks')
+            .delete()
+            .eq('coachee_id', coachee.id)
+            .eq('user_id', userData.user.id);
+        }
+      } catch (supabaseError) {
+        console.log('Supabase Tasks konnten nicht gelöscht werden:', supabaseError);
+      }
+
+      // Sessions und Rechnungen löschen
+      const allSessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+      const filteredSessions = allSessions.filter(session => session.coacheeId !== coachee.id);
+      localStorage.setItem('sessions', JSON.stringify(filteredSessions));
+
+      const allInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+      const filteredInvoices = allInvoices.filter(invoice => invoice.coacheeId !== coachee.id);
+      localStorage.setItem('invoices', JSON.stringify(filteredInvoices));
+
+      // Coachee aus AppStateContext entfernen
+      removeCoachee(coachee.id);
+
+      toast({
+        title: "Coachee gelöscht",
+        description: `${coachee.firstName} ${coachee.lastName} und alle verknüpften Daten wurden gelöscht.`,
+        className: "bg-red-600 text-white"
+      });
+
+      // Zurück zur Coachees-Liste
+      navigate('/coachees');
+      
+    } catch (error) {
+      console.error('Fehler beim Löschen des Coachees:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Löschen",
+        description: "Der Coachee konnte nicht gelöscht werden. Versuche es erneut."
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Task Count laden - MIT SUPABASE INTEGRATION
+  useEffect(() => {
+    const loadTaskCount = async () => {
+      try {
+        // localStorage Tasks
         const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-        const coacheeTasks = allTasks.filter(task => 
-          task.assignedTo === coachee?.id || task.assignedTo === 'me'
+        const localTasks = allTasks.filter(task => 
+          task.assignedTo === coachee?.id || 
+          task.assignedTo === 'me' ||
+          task.coacheeId === coachee?.id
         );
-        setTaskCount(coacheeTasks.length);
+
+        // Supabase Tasks
+        let supabaseTasks = [];
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user) {
+            const { data } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('user_id', userData.user.id)
+              .eq('coachee_id', coachee.id);
+            supabaseTasks = data || [];
+            console.log(`Loaded ${supabaseTasks.length} Supabase tasks for coachee ${coachee.id}`);
+          }
+        } catch (error) {
+          console.log('Supabase tasks loading failed:', error);
+        }
+
+        const totalCount = localTasks.length + supabaseTasks.length;
+        console.log(`Total tasks for coachee ${coachee.id}: ${totalCount} (${localTasks.length} local + ${supabaseTasks.length} supabase)`);
+        setTaskCount(totalCount);
+        setSupabaseTasks(supabaseTasks); // Speichere Supabase-Tasks für TasksTab
       } catch (error) {
         console.error('Error loading task count:', error);
       }
@@ -130,8 +236,8 @@ export default function CoacheeDetail() {
 
   if (!coachee) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-200 text-lg">Lade Coachee-Daten...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-slate-200 text-xl">Lade Coachee-Daten...</div>
       </div>
     );
   }
@@ -143,7 +249,8 @@ export default function CoacheeDetail() {
     
     toast({
       title: "Änderungen gespeichert",
-      description: "Die Coachee-Daten wurden erfolgreich im System aktualisiert."
+      description: "Die Coachee-Daten wurden erfolgreich im System aktualisiert.",
+      className: "bg-green-600 text-white"
     });
   };
 
@@ -151,7 +258,8 @@ export default function CoacheeDetail() {
     setIsEditing(false);
     toast({
       title: "Bearbeitung beendet",
-      description: "Alle Änderungen wurden automatisch gespeichert."
+      description: "Alle Änderungen wurden automatisch gespeichert.",
+      className: "bg-blue-600 text-white"
     });
   };
 
@@ -190,7 +298,8 @@ export default function CoacheeDetail() {
 
     toast({
       title: "Ziel hinzugefügt",
-      description: `Neues Ziel "${goal.title}" wurde erstellt.`
+      description: `Neues Ziel "${goal.title}" wurde erstellt.`,
+      className: "bg-green-600 text-white"
     });
   };
 
@@ -210,7 +319,8 @@ export default function CoacheeDetail() {
 
     toast({
       title: "Ziel gelöscht",
-      description: `Ziel "${goal?.title}" wurde entfernt.`
+      description: `Ziel "${goal?.title}" wurde entfernt.`,
+      className: "bg-red-600 text-white"
     });
   };
 
@@ -226,31 +336,33 @@ export default function CoacheeDetail() {
 
     toast({
       title: newStatus === 'completed' ? "Ziel erreicht!" : "Ziel reaktiviert",
-      description: `"${goal.title}" wurde als ${newStatus === 'completed' ? 'erreicht' : 'aktiv'} markiert.`
+      description: `"${goal.title}" wurde als ${newStatus === 'completed' ? 'erreicht' : 'aktiv'} markiert.`,
+      className: newStatus === 'completed' ? "bg-green-600 text-white" : "bg-blue-600 text-white"
     });
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="mb-6 flex justify-between items-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex justify-between items-center">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => navigate('/coachees')}
-            className="flex items-center gap-2 bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            className="flex items-center gap-2 bg-slate-800/50 backdrop-blur-xl border-slate-700/50 text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all"
           >
             <ArrowLeft className="h-4 w-4" />
             Zurück zu Coachees
           </Button>
 
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             {isEditing ? (
               <>
                 <Button 
                   onClick={handleSave}
                   size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6"
                 >
                   <Save className="mr-2 h-4 w-4" />
                   Speichern
@@ -259,56 +371,126 @@ export default function CoacheeDetail() {
                   onClick={handleCancel}
                   variant="outline"
                   size="sm"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-700/50 px-6"
                 >
                   <X className="mr-2 h-4 w-4" />
                   Abbrechen
                 </Button>
               </>
             ) : (
-              <Button 
-                onClick={() => setIsEditing(true)}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Bearbeiten
-              </Button>
+              <>
+                <Button 
+                  onClick={() => setIsEditing(true)}
+                  size="sm"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6"
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Bearbeiten
+                </Button>
+                
+                {/* Löschen-Button */}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      className="border-red-600 text-red-400 hover:bg-red-900/20 hover:border-red-500 px-6"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Löschen
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-slate-800/95 backdrop-blur-xl border-slate-700/50">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-white flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-red-400" />
+                        Coachee löschen?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="text-slate-400 space-y-3">
+                        <p>
+                          Möchtest du <strong className="text-white">{coachee.firstName} {coachee.lastName}</strong> wirklich dauerhaft löschen?
+                        </p>
+                        <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-3">
+                          <p className="text-red-400 font-medium mb-2">Folgende Daten werden unwiderruflich gelöscht:</p>
+                          <ul className="text-sm text-red-300 space-y-1">
+                            <li>• Alle persönlichen Daten und Ziele</li>
+                            <li>• Alle Aufgaben und Deadlines</li>
+                            <li>• Alle Sessions mit diesem Coachee</li>
+                            <li>• Alle Rechnungen</li>
+                            <li>• Portal-Zugang und geteilte Tasks</li>
+                          </ul>
+                        </div>
+                        <p className="text-sm">
+                          Diese Aktion kann nicht rückgängig gemacht werden.
+                        </p>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600">
+                        Abbrechen
+                      </AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDeleteCoachee}
+                        disabled={isDeleting}
+                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+                      >
+                        {isDeleting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2" />
+                            Lösche...
+                          </>
+                        ) : (
+                          'Ja, dauerhaft löschen'
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             )}
           </div>
         </div>
 
-        <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700">
+        {/* Main Content */}
+        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl">
           <Tabs defaultValue="profil" className="w-full">
-            <TabsList className="w-full bg-slate-900 rounded-t-lg border-b border-slate-700 p-0">
-              <TabsTrigger 
-                value="profil" 
-                className="flex-1 py-4 text-slate-400 data-[state=active]:bg-slate-800 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 rounded-none"
-              >
-                Profil
-              </TabsTrigger>
-              <TabsTrigger 
-                value="ziele" 
-                className="flex-1 py-4 text-slate-400 data-[state=active]:bg-slate-800 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 rounded-none"
-              >
-                Ziele ({goals.filter(g => g.status === 'active').length})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="aufgaben" 
-                className="flex-1 py-4 text-slate-400 data-[state=active]:bg-slate-800 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 rounded-none"
-              >
-                Aufgaben ({taskCount})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="verlauf" 
-                className="flex-1 py-4 text-slate-400 data-[state=active]:bg-slate-800 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 rounded-none"
-              >
-                Verlauf
-              </TabsTrigger>
-            </TabsList>
+            {/* Tab Navigation */}
+            <div className="bg-slate-900/50 backdrop-blur-xl border-b border-slate-700/50 rounded-t-xl p-2">
+              <TabsList className="w-full bg-transparent h-auto p-0 space-x-2">
+                <TabsTrigger 
+                  value="profil" 
+                  className="flex-1 py-4 text-slate-400 data-[state=active]:bg-slate-700/50 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all"
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  Profil
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="ziele" 
+                  className="flex-1 py-4 text-slate-400 data-[state=active]:bg-slate-700/50 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all"
+                >
+                  <Target className="mr-2 h-4 w-4" />
+                  Ziele ({goals.filter(g => g.status === 'active').length})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="aufgaben" 
+                  className="flex-1 py-4 text-slate-400 data-[state=active]:bg-slate-700/50 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all"
+                >
+                  <CheckSquare className="mr-2 h-4 w-4" />
+                  Aufgaben ({taskCount})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="verlauf" 
+                  className="flex-1 py-4 text-slate-400 data-[state=active]:bg-slate-700/50 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all"
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Verlauf
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-            <TabsContent value="profil" className="p-6 bg-slate-800">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Tab Content */}
+            <TabsContent value="profil" className="p-8 mt-0">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 <div className="lg:col-span-3">
                   <ProfileCard 
                     coachee={coachee}
@@ -317,20 +499,22 @@ export default function CoacheeDetail() {
                   />
                 </div>
 
+                {/* Quick Navigation Sidebar */}
                 <div className="lg:col-span-1">
-                  <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-lg p-6">
-                    <h3 className="font-semibold text-slate-200 text-lg mb-6">
+                  <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-xl p-6">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-6">
                       Quick Navigation
                     </h3>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <Button
                         onClick={() => {
                           const coacheeName = `${coachee.firstName}+${coachee.lastName}`;
                           navigate(`/sessions?coachee=${coachee.id}&name=${coacheeName}`);
                         }}
-                        className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                        className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all flex items-center justify-center gap-3"
                       >
+                        <Calendar className="h-4 w-4" />
                         {coachee.firstName}s Sessions
                       </Button>
 
@@ -339,8 +523,9 @@ export default function CoacheeDetail() {
                           const coacheeName = `${coachee.firstName}+${coachee.lastName}`;
                           navigate(`/journal?coachee=${coachee.id}&name=${coacheeName}`);
                         }}
-                        className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                        className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all flex items-center justify-center gap-3"
                       >
+                        <User className="h-4 w-4" />
                         {coachee.firstName}s Journal
                       </Button>
 
@@ -349,8 +534,9 @@ export default function CoacheeDetail() {
                           const coacheeName = `${coachee.firstName}+${coachee.lastName}`;
                           navigate(`/invoices?coachee=${coachee.id}&name=${coacheeName}`);
                         }}
-                        className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                        className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all flex items-center justify-center gap-3"
                       >
+                        <FileText className="h-4 w-4" />
                         {coachee.firstName}s Rechnungen
                       </Button>
 
@@ -359,8 +545,9 @@ export default function CoacheeDetail() {
                           const coacheeName = `${coachee.firstName}+${coachee.lastName}`;
                           navigate(`/documents?coachee=${coachee.id}&name=${coacheeName}`);
                         }}
-                        className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                        className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all flex items-center justify-center gap-3"
                       >
+                        <Folder className="h-4 w-4" />
                         {coachee.firstName}s Dokumente
                       </Button>
                     </div>
@@ -369,155 +556,155 @@ export default function CoacheeDetail() {
               </div>
             </TabsContent>
 
-            {/* ZIELE TAB - unverändert */}
-            <TabsContent value="ziele" className="p-6 bg-slate-800">
-              <div className="space-y-6">
-                <Card className="bg-slate-900 border-slate-700">
-                  <CardHeader>
-                    <CardTitle className="text-slate-200 flex items-center gap-2">
-                      <Target className="h-5 w-5 text-blue-400" />
-                      Neues Ziel hinzufügen
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        value={newGoal}
-                        onChange={(e) => setNewGoal(e.target.value)}
-                        placeholder="Ziel eingeben (z.B. Work-Life-Balance verbessern)"
-                        className="flex-1 bg-slate-800 border-slate-600 text-white"
-                        onKeyPress={(e) => e.key === 'Enter' && addGoal()}
-                      />
-                      <Button 
-                        onClick={addGoal}
-                        className="bg-blue-600 hover:bg-blue-700"
-                        disabled={!newGoal.trim()}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+            {/* ZIELE TAB */}
+            <TabsContent value="ziele" className="p-8 mt-0">
+              <div className="space-y-8">
+                {/* Neues Ziel hinzufügen */}
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-xl p-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
+                      <Target className="h-5 w-5 text-white" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <h3 className="text-xl font-bold text-white">Neues Ziel hinzufügen</h3>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <Input
+                      value={newGoal}
+                      onChange={(e) => setNewGoal(e.target.value)}
+                      placeholder="Ziel eingeben (z.B. Work-Life-Balance verbessern)"
+                      className="flex-1 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 h-12"
+                      onKeyPress={(e) => e.key === 'Enter' && addGoal()}
+                    />
+                    <Button 
+                      onClick={addGoal}
+                      className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-8 h-12"
+                      disabled={!newGoal.trim()}
+                    >
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
 
                 {/* Ziele Liste */}
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-200">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                       Coaching-Ziele ({goals.length})
                     </h3>
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="text-green-400 border-green-400">
+                    <div className="flex gap-3">
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 px-3 py-1">
                         {goals.filter(g => g.status === 'completed').length} erreicht
                       </Badge>
-                      <Badge variant="outline" className="text-blue-400 border-blue-400">
+                      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 px-3 py-1">
                         {goals.filter(g => g.status === 'active').length} aktiv
                       </Badge>
                     </div>
                   </div>
 
                   {goals.length === 0 ? (
-                    <Card className="bg-slate-900 border-slate-700">
-                      <CardContent className="p-8 text-center">
-                        <Target className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                        <p className="text-slate-400">Noch keine Ziele definiert.</p>
-                        <p className="text-slate-500 text-sm mt-2">
+                    <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-xl">
+                      <div className="p-12 text-center">
+                        <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                          <Target className="h-8 w-8 text-white" />
+                        </div>
+                        <h4 className="text-xl font-bold text-white mb-2">Noch keine Ziele definiert</h4>
+                        <p className="text-slate-400 text-lg">
                           Fügen Sie das erste Coaching-Ziel für {coachee.firstName} hinzu.
                         </p>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   ) : (
                     <div className="grid gap-4">
                       {goals.map(goal => (
-                        <Card 
+                        <div 
                           key={goal.id} 
-                          className={`bg-slate-900 border-slate-700 ${goal.status === 'completed' ? 'opacity-75' : ''}`}
+                          className={`bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-xl p-6 ${goal.status === 'completed' ? 'opacity-75' : ''}`}
                         >
-                          <CardContent className="p-4">
-                            {editingGoal === goal.id ? (
-                              <div className="space-y-3">
-                                <Input
-                                  value={goal.title}
-                                  onChange={(e) => updateGoal(goal.id, { title: e.target.value })}
-                                  className="bg-slate-800 border-slate-600 text-white"
-                                />
-                                <Textarea
-                                  value={goal.description}
-                                  onChange={(e) => updateGoal(goal.id, { description: e.target.value })}
-                                  placeholder="Beschreibung (optional)"
-                                  className="bg-slate-800 border-slate-600 text-white"
-                                  rows={2}
-                                />
-                                <div className="flex gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => setEditingGoal(null)}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    Speichern
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => setEditingGoal(null)}
-                                  >
-                                    Abbrechen
-                                  </Button>
-                                </div>
+                          {editingGoal === goal.id ? (
+                            <div className="space-y-4">
+                              <Input
+                                value={goal.title}
+                                onChange={(e) => updateGoal(goal.id, { title: e.target.value })}
+                                className="bg-slate-700/50 border-slate-600 text-white h-12"
+                              />
+                              <Textarea
+                                value={goal.description}
+                                onChange={(e) => updateGoal(goal.id, { description: e.target.value })}
+                                placeholder="Beschreibung (optional)"
+                                className="bg-slate-700/50 border-slate-600 text-white"
+                                rows={3}
+                              />
+                              <div className="flex gap-3">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => setEditingGoal(null)}
+                                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                                >
+                                  Speichern
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => setEditingGoal(null)}
+                                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                                >
+                                  Abbrechen
+                                </Button>
                               </div>
-                            ) : (
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-start space-x-3 flex-1">
-                                  <input
-                                    type="checkbox"
-                                    checked={goal.status === 'completed'}
-                                    onChange={() => toggleGoalStatus(goal.id)}
-                                    className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                                  />
-                                  <div className="flex-1">
-                                    <h4 className={`font-medium ${goal.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
-                                      {goal.title}
-                                    </h4>
-                                    {goal.description && (
-                                      <p className="text-slate-400 text-sm mt-1">{goal.description}</p>
-                                    )}
-                                    <div className="flex items-center gap-2 mt-2">
-                                      <Badge 
-                                        variant="outline" 
-                                        className={goal.status === 'completed' ? 'text-green-400 border-green-400' : 'text-blue-400 border-blue-400'}
-                                      >
-                                        {goal.status === 'completed' ? 'Erreicht' : 'Aktiv'}
-                                      </Badge>
-                                      <span className="text-slate-500 text-xs">
-                                        {goal.status === 'completed' 
-                                          ? `Erreicht am ${new Date(goal.achievedAt).toLocaleDateString('de-DE')}`
-                                          : `Erstellt am ${new Date(goal.createdAt).toLocaleDateString('de-DE')}`
-                                        }
-                                      </span>
-                                    </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start space-x-4 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={goal.status === 'completed'}
+                                  onChange={() => toggleGoalStatus(goal.id)}
+                                  className="mt-2 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 accent-blue-600"
+                                />
+                                <div className="flex-1">
+                                  <h4 className={`text-lg font-semibold ${goal.status === 'completed' ? 'text-slate-400 line-through' : 'text-white'}`}>
+                                    {goal.title}
+                                  </h4>
+                                  {goal.description && (
+                                    <p className="text-slate-400 mt-2 leading-relaxed">{goal.description}</p>
+                                  )}
+                                  <div className="flex items-center gap-3 mt-4">
+                                    <Badge 
+                                      className={goal.status === 'completed' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}
+                                    >
+                                      {goal.status === 'completed' ? 'Erreicht' : 'Aktiv'}
+                                    </Badge>
+                                    <span className="text-slate-500 text-sm">
+                                      {goal.status === 'completed' 
+                                        ? `Erreicht am ${new Date(goal.achievedAt).toLocaleDateString('de-DE')}`
+                                        : `Erstellt am ${new Date(goal.createdAt).toLocaleDateString('de-DE')}`
+                                      }
+                                    </span>
                                   </div>
                                 </div>
-                                <div className="flex gap-1 ml-4">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setEditingGoal(goal.id)}
-                                    className="border-slate-600"
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => deleteGoal(goal.id)}
-                                    className="border-red-600 text-red-400 hover:bg-red-900/20"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
                               </div>
-                            )}
-                          </CardContent>
-                        </Card>
+                              <div className="flex gap-2 ml-4">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingGoal(goal.id)}
+                                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => deleteGoal(goal.id)}
+                                  className="border-red-600 text-red-400 hover:bg-red-900/20"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}
@@ -525,51 +712,48 @@ export default function CoacheeDetail() {
               </div>
             </TabsContent>
 
-            {/* AUFGABEN TAB - Mit lazy TasksTab */}
-            <TabsContent value="aufgaben" className="p-6 bg-slate-800">
+            {/* AUFGABEN TAB */}
+            <TabsContent value="aufgaben" className="p-8 mt-0">
               <Suspense fallback={
-                <div className="text-center py-8">
-                  <div className="text-slate-400 text-lg">Lade Aufgaben...</div>
+                <div className="text-center py-12">
+                  <div className="text-slate-400 text-xl">Lade Aufgaben...</div>
                 </div>
               }>
-                <TasksTab coachee={coachee} />
+                <TasksTab coachee={coachee} supabaseTasks={supabaseTasks} />
               </Suspense>
             </TabsContent>
 
-            <TabsContent value="verlauf" className="p-6 bg-slate-800">
-              <div className="bg-slate-900 border border-slate-700 rounded-lg p-8">
-                <h2 className="text-2xl font-bold mb-4 text-slate-200">Coaching-Verlauf</h2>
-                <p className="text-slate-400 mb-6">
+            {/* VERLAUF TAB */}
+            <TabsContent value="verlauf" className="p-8 mt-0">
+              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-xl p-8">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4">
+                  Coaching-Verlauf
+                </h2>
+                <p className="text-slate-400 text-lg mb-8">
                   Hier wird der gesamte Coaching-Verlauf von {coachee.firstName} {coachee.lastName} angezeigt.
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="bg-slate-800 border-slate-600">
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-400">
-                        {goals.length}
-                      </div>
-                      <div className="text-sm text-slate-400">Ziele gesetzt</div>
-                    </CardContent>
-                  </Card>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-slate-700/50 backdrop-blur-xl border border-slate-600/50 rounded-xl p-6 text-center">
+                    <div className="text-3xl font-bold text-blue-400 mb-2">
+                      {goals.length}
+                    </div>
+                    <div className="text-slate-400">Ziele gesetzt</div>
+                  </div>
                   
-                  <Card className="bg-slate-800 border-slate-600">
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-green-400">
-                        {goals.filter(g => g.status === 'completed').length}
-                      </div>
-                      <div className="text-sm text-slate-400">Ziele erreicht</div>
-                    </CardContent>
-                  </Card>
+                  <div className="bg-slate-700/50 backdrop-blur-xl border border-slate-600/50 rounded-xl p-6 text-center">
+                    <div className="text-3xl font-bold text-green-400 mb-2">
+                      {goals.filter(g => g.status === 'completed').length}
+                    </div>
+                    <div className="text-slate-400">Ziele erreicht</div>
+                  </div>
                   
-                  <Card className="bg-slate-800 border-slate-600">
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-purple-400">
-                        {taskCount}
-                      </div>
-                      <div className="text-sm text-slate-400">Aufgaben verwaltet</div>
-                    </CardContent>
-                  </Card>
+                  <div className="bg-slate-700/50 backdrop-blur-xl border border-slate-600/50 rounded-xl p-6 text-center">
+                    <div className="text-3xl font-bold text-cyan-400 mb-2">
+                      {taskCount}
+                    </div>
+                    <div className="text-slate-400">Aufgaben verwaltet</div>
+                  </div>
                 </div>
               </div>
             </TabsContent>

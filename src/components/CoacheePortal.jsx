@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/supabaseConfig';
 import { 
   Shield, ShieldCheck, Eye, EyeOff, AlertTriangle, 
   MessageCircle, CheckSquare, BookOpen, Upload, 
@@ -49,6 +50,7 @@ const CoacheePortal = () => {
   
   // Tasks State
   const [tasks, setTasks] = useState([]);
+  const [supabaseTasks, setSupabaseTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   
   // Shared Content State
@@ -71,6 +73,54 @@ const CoacheePortal = () => {
   // Zusätzliche State für Progress-Bereich
   const [newGoal, setNewGoal] = useState('');
   const [newReflection, setNewReflection] = useState('');
+
+  // Supabase Tasks laden
+  const loadSupabaseTasks = async (coacheeId) => {
+    try {
+      console.log('Loading Supabase tasks for coachee ID:', coacheeId);
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData?.user) {
+        console.log('No authenticated user found');
+        return [];
+      }
+
+      const { data: tasks, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('coachee_id', coacheeId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading Supabase tasks:', error);
+        return [];
+      }
+
+      console.log(`Found ${tasks?.length || 0} Supabase tasks for this coachee:`, tasks);
+      return tasks || [];
+    } catch (error) {
+      console.error('Failed to load Supabase tasks:', error);
+      return [];
+    }
+  };
+
+  // Alle Tasks kombiniert abrufen
+  const getAllTasks = () => {
+    const localTasks = tasks.map(task => ({ ...task, isSupabaseTask: false }));
+    const remoteTasks = supabaseTasks.map(task => ({ 
+      ...task, 
+      isSupabaseTask: true,
+      id: task.id,
+      title: task.title,
+      completed: task.completed || false,
+      createdAt: task.created_at
+    }));
+    
+    console.log('Local tasks:', localTasks.length);
+    console.log('Supabase tasks:', remoteTasks.length);
+    
+    return [...localTasks, ...remoteTasks];
+  };
 
   useEffect(() => {
     if (!token) {
@@ -126,6 +176,16 @@ const CoacheePortal = () => {
 
     setLoading(false);
   }, [token]);
+
+  // Nach erfolgreicher Authentifizierung Supabase-Tasks laden
+  useEffect(() => {
+    if (isAuthenticated && coachee) {
+      console.log('Authenticated - loading Supabase tasks for coachee:', coachee.id);
+      loadSupabaseTasks(coachee.id).then(tasks => {
+        setSupabaseTasks(tasks);
+      });
+    }
+  }, [isAuthenticated, coachee]);
 
   const loadPortalData = (coacheeData) => {
     const portalData = coacheeData.portalData || {};
@@ -271,7 +331,13 @@ const CoacheePortal = () => {
     setTimeout(savePortalData, 100);
   };
 
-  const toggleTask = (taskId) => {
+  const toggleTask = (taskId, isSupabaseTask) => {
+    if (isSupabaseTask) {
+      // Supabase-Task - nur Warnung anzeigen
+      alert('Dashboard-Tasks können nur im Dashboard bearbeitet werden.');
+      return;
+    }
+
     const updatedTasks = tasks.map(task => 
       task.id === taskId ? { ...task, completed: !task.completed } : task
     );
@@ -630,7 +696,6 @@ const CoacheePortal = () => {
                   </div>
                 )}
                 
-                {/* Demo-Impulse hinzufügen für Jon */}
                 <div className="mt-6 pt-6 border-t border-slate-700">
                   <Button 
                     variant="outline" 
@@ -749,7 +814,6 @@ const CoacheePortal = () => {
       case 'progress':        
         return (
           <div className="space-y-6">
-            {/* Ziele Sektion */}
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center text-slate-200">
@@ -808,7 +872,6 @@ const CoacheePortal = () => {
               </CardContent>
             </Card>
 
-            {/* Erfolge */}
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-slate-200">Meine Erfolge</CardTitle>
@@ -839,7 +902,6 @@ const CoacheePortal = () => {
               </CardContent>
             </Card>
 
-            {/* Fortschritts-Reflexionen */}
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-slate-200">Fortschritts-Reflexionen</CardTitle>
@@ -968,6 +1030,10 @@ const CoacheePortal = () => {
         );
 
       case 'tasks':
+        const allTasks = getAllTasks();
+        const openTasks = allTasks.filter(t => !t.completed);
+        const completedTasks = allTasks.filter(t => t.completed);
+        
         return (
           <div className="space-y-6">
             <Card className="glass-card">
@@ -998,8 +1064,19 @@ const CoacheePortal = () => {
             </Card>
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-slate-200">Meine Aufgaben</h3>
-              {tasks.length === 0 ? (
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-200">Meine Aufgaben</h3>
+                <div className="flex space-x-2">
+                  <Badge variant="outline" className="text-blue-400 border-blue-400">
+                    {openTasks.length} offen
+                  </Badge>
+                  <Badge variant="outline" className="text-green-400 border-green-400">
+                    {completedTasks.length} erledigt
+                  </Badge>
+                </div>
+              </div>
+              
+              {allTasks.length === 0 ? (
                 <Card className="glass-card">
                   <CardContent className="p-8 text-center">
                     <CheckSquare className="h-12 w-12 text-slate-400 mx-auto mb-4" />
@@ -1009,25 +1086,41 @@ const CoacheePortal = () => {
                 </Card>
               ) : (
                 <div className="grid gap-3">
-                  {tasks.map(task => (
-                    <Card key={task.id} className="glass-card">
+                  {allTasks.map(task => (
+                    <Card 
+                      key={`${task.isSupabaseTask ? 'supabase' : 'local'}_${task.id}`} 
+                      className={`glass-card ${task.isSupabaseTask ? 'ring-1 ring-blue-500/30' : ''}`}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-center space-x-3">
                           <input
                             type="checkbox"
                             checked={task.completed}
-                            onChange={() => toggleTask(task.id)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                            onChange={() => toggleTask(task.id, task.isSupabaseTask)}
+                            disabled={task.isSupabaseTask}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50"
                           />
                           <span className={`flex-1 ${task.completed ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
                             {task.title}
                           </span>
-                          {task.completed && (
-                            <Badge variant="outline" className="text-green-400 border-green-400">
-                              Erledigt
-                            </Badge>
-                          )}
+                          <div className="flex items-center space-x-2">
+                            {task.isSupabaseTask && (
+                              <Badge variant="outline" className="text-blue-400 border-blue-400 text-xs">
+                                Vom Coach
+                              </Badge>
+                            )}
+                            {task.completed && (
+                              <Badge variant="outline" className="text-green-400 border-green-400">
+                                Erledigt
+                              </Badge>
+                            )}
+                          </div>
                         </div>
+                        {task.isSupabaseTask && (
+                          <p className="text-slate-500 text-xs mt-2">
+                            Diese Aufgabe wurde von Ihrem Coach erstellt und kann nur im Dashboard bearbeitet werden.
+                          </p>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
@@ -1132,6 +1225,10 @@ const CoacheePortal = () => {
         );
 
       default:
+        const dashboardAllTasks = getAllTasks();
+        const dashboardOpenTasks = dashboardAllTasks.filter(t => !t.completed);
+        const dashboardCompletedTasks = dashboardAllTasks.filter(t => t.completed);
+        
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Card className="glass-card">
@@ -1143,7 +1240,11 @@ const CoacheePortal = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-slate-400">Neue Impulse von Ihrem Coach warten auf Sie...</p>
-                <Button className="mt-4 w-full" variant="outline">
+                <Button 
+                  className="mt-4 w-full" 
+                  variant="outline"
+                  onClick={() => setActiveSection('impulses')}
+                >
                   Impulse ansehen
                 </Button>
               </CardContent>
@@ -1157,8 +1258,16 @@ const CoacheePortal = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-slate-400 mb-2">{tasks.filter(t => !t.completed).length} offene Aufgaben</p>
-                <p className="text-slate-400">{tasks.filter(t => t.completed).length} erledigte Aufgaben</p>
+                <p className="text-slate-400 mb-2">{dashboardOpenTasks.length} offene Aufgaben</p>
+                <p className="text-slate-400">{dashboardCompletedTasks.length} erledigte Aufgaben</p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Badge variant="outline" className="text-slate-400 border-slate-400 text-xs">
+                    {tasks.length} eigene
+                  </Badge>
+                  <Badge variant="outline" className="text-blue-400 border-blue-400 text-xs">
+                    {supabaseTasks.length} vom Coach
+                  </Badge>
+                </div>
                 <Button 
                   className="mt-4 w-full" 
                   variant="outline"
@@ -1198,7 +1307,11 @@ const CoacheePortal = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-slate-400">Teilen Sie Inhalte mit Ihrem Coach...</p>
-                <Button className="mt-4 w-full" variant="outline">
+                <Button 
+                  className="mt-4 w-full" 
+                  variant="outline"
+                  onClick={() => setActiveSection('documents')}
+                >
                   Dokument hochladen
                 </Button>
               </CardContent>
@@ -1213,7 +1326,11 @@ const CoacheePortal = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-slate-400">Verfolgen Sie Ihre Entwicklung...</p>
-                <Button className="mt-4 w-full" variant="outline">
+                <Button 
+                  className="mt-4 w-full" 
+                  variant="outline"
+                  onClick={() => setActiveSection('progress')}
+                >
                   Fortschritt ansehen
                 </Button>
               </CardContent>

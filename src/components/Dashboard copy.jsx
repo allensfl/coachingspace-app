@@ -1,11 +1,17 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '../supabaseConfig';
 import {
   ArrowUpRight,
   Users,
@@ -26,146 +32,101 @@ import {
   PartyPopper,
   CalendarPlus,
   Share2,
-  Eye
+  Eye,
+  Edit,
+  Trash2,
+  X,
+  Target
 } from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
 import OpenInvoices from './OpenInvoices';
 import EventsAndBirthdays from './EventsAndBirthdays';
 import QuickActions from './QuickActions';
 import CalendarOverview from './CalendarOverview';
+import { SubscriptionOverviewWidget } from '../components/SubscriptionOverviewWidget';
 
-// E-Mail Template Funktionen
-const emailTemplates = {
-  nachfassen: (coachee, task) => ({
-    subject: `Nachfassen: ${task.titel}`,
-    body: `Hallo ${coachee.firstName},
-
-ich wollte kurz nachfragen, wie es mit deiner Aufgabe "${task.titel}" läuft.
-
-Deadline war heute - wie ist der Stand? Brauchst du Unterstützung oder haben sich neue Herausforderungen ergeben?
-
-Lass uns gerne kurz telefonieren oder in der nächsten Session darüber sprechen.
-
-Beste Grüße,
-[Dein Name]`
-  }),
-
-  mahnen: (coachee) => ({
-    subject: `Zahlungserinnerung - Coaching Sessions`,
-    body: `Hallo ${coachee.firstName},
-
-ich hoffe, es geht dir gut! 
-
-Mir ist aufgefallen, dass eine Rechnung noch offen ist. Könntest du bitte einen Blick darauf werfen?
-
-Falls es Fragen gibt oder sich etwas geändert hat, melde dich gerne bei mir.
-
-Vielen Dank und beste Grüße,
-[Dein Name]`
-  }),
-
-  gratulieren: (coachee, task) => ({
-    subject: `Herzlichen Glückwunsch - ${task.titel} erfolgreich abgeschlossen!`,
-    body: `Hallo ${coachee.firstName},
-
-ich freue mich riesig mit dir! Du hast dein Ziel "${task.titel}" erfolgreich erreicht. 🎉
-
-Das zeigt wieder einmal, was für eine starke und zielstrebige Person du bist. Ich bin stolz auf deinen Fortschritt!
-
-Lass uns in der nächsten Session gemeinsam reflektieren und den nächsten Schritt planen.
-
-Herzliche Glückwünsche,
-[Dein Name]`
-  }),
-
-  terminieren: (coachee) => ({
-    subject: `Terminfindung für unsere nächste Coaching Session`,
-    body: `Hallo ${coachee.firstName},
-
-es ist Zeit für unsere nächste Session! 
-
-Wann passt es dir in den nächsten 1-2 Wochen am besten? Ich habe folgende Zeiten frei:
-- [Datum/Zeit 1]
-- [Datum/Zeit 2] 
-- [Datum/Zeit 3]
-
-Oder schlage gerne eigene Zeiten vor. Wir können wie gewohnt [online/in meinem Büro] treffen.
-
-Freue mich auf unser Gespräch!
-
-Beste Grüße,
-[Dein Name]`
-  }),
-
-  kontaktieren: (coachee) => ({
-    subject: `Kurzes Check-in`,
-    body: `Hallo ${coachee.firstName},
-
-ich wollte mich kurz bei dir melden und fragen, wie es dir geht.
-
-Falls du Fragen hast oder einfach mal sprechen möchtest, melde dich gerne.
-
-Beste Grüße,
-[Dein Name]`
-  })
-};
-
-const sendEmail = (coachee, templateType, task = null) => {
-  if (!coachee?.email && !coachee?.emailAddress) {
-    alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
-    return;
-  }
-
-  const email = coachee.email || coachee.emailAddress;
-  const template = emailTemplates[templateType](coachee, task);
-  
-  const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
-  window.open(mailtoUrl);
-};
-
-// Kompakte StatCard
-const StatCard = ({ title, value, icon, to, colorClass }) => {
-  return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      className="h-full"
-    >
-      <Card className="relative overflow-hidden h-full flex flex-col justify-between glass-card-enhanced hover:shadow-lg transition-all duration-300 group">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-          <CardTitle className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-300">{title}</CardTitle>
-          <div className="p-1.5 rounded-md bg-primary/10 group-hover:bg-primary/20 transition-all duration-300">
-            {React.cloneElement(icon, { className: 'h-3 w-3 text-primary group-hover:scale-110 transition-transform duration-300' })}
+// Statistik-Card Komponente
+const StatCard = ({ title, value, icon, to, colorClass = "text-blue-500" }) => (
+  <Card className="glass-card-enhanced transition-all duration-300 hover:scale-105 cursor-pointer group">
+    <Link to={to} className="block">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+              {title}
+            </p>
+            <p className="text-2xl font-bold">{value}</p>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">{value}</div>
-          {to && (
-            <Link to={to} className="text-xs text-primary hover:text-primary/80 mt-1 flex items-center group-hover:translate-x-1 transition-all duration-300">
-              Details <ArrowUpRight className="h-3 w-3 ml-1 group-hover:scale-110 transition-transform duration-300" />
-            </Link>
-          )}
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-};
+          <div className={`${colorClass} opacity-70 group-hover:opacity-100 transition-opacity`}>
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Link>
+  </Card>
+);
 
-// Formatdatum-Helfer
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  
-  if (date.toDateString() === today.toDateString()) {
-    return 'Heute';
-  } else if (date.toDateString() === tomorrow.toDateString()) {
-    return 'Morgen';
-  } else {
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-  }
+// Task Komponente
+const TaskItem = ({ task, onComplete, onEdit, onDelete, overdue = false }) => {
+  const priorityColors = {
+    high: 'border-l-red-500 bg-red-50/10',
+    medium: 'border-l-yellow-500 bg-yellow-50/10',
+    low: 'border-l-green-500 bg-green-50/10'
+  };
+
+  const priorityLabels = {
+    high: 'Hoch',
+    medium: 'Mittel', 
+    low: 'Niedrig'
+  };
+
+  return (
+    <div className={`p-3 rounded-lg border-l-4 transition-all hover:shadow-md ${priorityColors[task.priority] || 'border-l-gray-500 bg-gray-50/10'} ${task.completed ? 'opacity-60' : ''} ${overdue ? 'ring-2 ring-red-500/30' : ''}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <button
+              onClick={() => onComplete(task.id)}
+              className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                task.completed 
+                  ? 'bg-green-500 border-green-500 text-white' 
+                  : 'border-gray-300 hover:border-green-500'
+              }`}
+            >
+              {task.completed && <CheckCircle2 className="w-3 h-3" />}
+            </button>
+            <h4 className={`font-medium truncate ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+              {task.title}
+            </h4>
+            {overdue && (
+              <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+            {task.description}
+          </p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline" className="text-xs">
+              {priorityLabels[task.priority]}
+            </Badge>
+            {(task.dueDate || task.due_date) && (
+              <span className={overdue ? 'text-red-500 font-medium' : ''}>
+                {new Date(task.dueDate || task.due_date).toLocaleDateString('de-DE')}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => onEdit(task)}>
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onDelete(task.id)}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default function Dashboard() {
@@ -173,163 +134,699 @@ export default function Dashboard() {
   const { 
     sessions = [], 
     coachees = [], 
-    tasks = [], 
-    packages = []
+    packages = [],
+    recurringInvoices = [],
+    serviceRates = [],
+    settings = {}
   } = state;
-  const { 
-    updateTask,
-    getSharedJournalEntries = () => [] // Fallback-Funktion
-  } = actions;
   
-  const [selectedEntry, setSelectedEntry] = useState(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Geteilte Journal-Einträge temporär deaktiviert bis Funktion repariert ist
-  const sharedEntries = useMemo(() => {
-    return []; // Temporär deaktiviert
+  // Personalisierungs-Daten
+  const userData = useMemo(() => {
+    const companyData = settings?.company || {};
+    const personalData = settings?.personal || {};
+    
+    return {
+      firstName: personalData.firstName || "Coach",
+      lastName: personalData.lastName || "",
+      companyName: companyData.name || personalData.firstName ? `${personalData.firstName}s Coaching` : "Dein Coaching Business",
+      logoUrl: companyData.logoUrl || "https://via.placeholder.com/120x40/3B82F6/FFFFFF?text=CC",
+      primaryColor: companyData.primaryColor || "#3B82F6"
+    };
+  }, [settings]);
+
+  const currentTime = new Date().getHours();
+  const getGreeting = () => {
+    if (currentTime < 12) return "Guten Morgen";
+    if (currentTime < 18) return "Guten Tag";
+    return "Guten Abend";
+  };
+
+  // Task-Management State - MIT SUPABASE INTEGRATION
+  const [tasks, setTasks] = useState([]);
+
+  // Supabase Tasks und Coachee-Deadlines laden
+  const loadTasksFromSupabase = async () => {
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !userData?.user) {
+        console.log('No authenticated user - using fallback');
+        // Fallback auf ursprüngliche Mock-Daten
+        setTasks([
+          {
+            id: 1,
+            title: "Session-Notes für Maria Müller fertigstellen",
+            description: "Notizen von der letzten Session strukturieren und wichtige Erkenntnisse dokumentieren",
+            priority: "high",
+            dueDate: "2024-12-28",
+            completed: false,
+            category: "documentation"
+          },
+          {
+            id: 2,
+            title: "Neue Coaching-Materialien vorbereiten",
+            description: "Übungen für Stressbewältigung und Zeitmanagement erstellen",
+            priority: "medium",
+            dueDate: "2024-12-30",
+            completed: false,
+            category: "preparation"
+          }
+        ]);
+        return;
+      }
+
+      const user = userData.user;
+      console.log('Loading tasks for user:', user.id);
+
+      // Personal Tasks laden (ohne coachee_id)
+      const { data: personalTasks, error: personalError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .is('coachee_id', null)
+        .order('due_date', { ascending: true, nullsFirst: false });
+
+      // Coachee-Deadlines laden (mit coachee_id)
+      const { data: coacheeTasksData, error: coacheeError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .not('coachee_id', 'is', null)
+        .order('due_date', { ascending: true, nullsFirst: false });
+
+      if (personalError) {
+        console.error('Error loading personal tasks:', personalError);
+        setTasks([]);
+      } else {
+        console.log('Loaded Supabase personal tasks:', personalTasks);
+        setTasks(personalTasks || []);
+      }
+
+      if (coacheeError) {
+        console.error('Error loading coachee deadlines:', coacheeError);
+        setCoacheeDeadlines([]);
+      } else {
+        console.log('Loaded Supabase coachee deadlines:', coacheeTasksData);
+        // Coachee-Tasks in Deadline-Format konvertieren
+        const formattedDeadlines = (coacheeTasksData || []).map(task => ({
+          id: task.id,
+          coacheeId: task.coachee_id,
+          title: task.title,
+          description: task.description,
+          dueDate: task.due_date,
+          category: task.category,
+          completed: task.completed
+        }));
+        setCoacheeDeadlines(formattedDeadlines);
+      }
+
+    } catch (error) {
+      console.error('Error in loadTasksFromSupabase:', error);
+      setTasks([]);
+      setCoacheeDeadlines([]);
+    }
+  };
+
+  // Tasks beim Start laden
+  useEffect(() => {
+    loadTasksFromSupabase();
   }, []);
 
-  // Sessions für die nächsten 3 Tage
-  const upcomingSessions = useMemo(() => {
-    if (!sessions) return [];
-    const today = new Date();
-    const threeDaysLater = new Date(today);
-    threeDaysLater.setDate(today.getDate() + 3);
+  // Coachee Deadlines - JETZT AUS SUPABASE GELADEN
+  const [coacheeDeadlines, setCoacheeDeadlines] = useState([]);
+
+  // Task Dialog States
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    dueDate: '',
+    category: 'general'
+  });
+
+  // Coachee Deadline Dialog States
+  const [showDeadlineDialog, setShowDeadlineDialog] = useState(false);
+  const [editingDeadline, setEditingDeadline] = useState(null);
+  const [deadlineForm, setDeadlineForm] = useState({
+    coacheeId: '',
+    title: '',
+    description: '',
+    dueDate: '',
+    category: 'goal'
+  });
+
+  // Berechnete Werte
+  const activeCoachees = useMemo(() => {
+    return coachees.filter(coachee => coachee.status === 'active').length;
+  }, [coachees]);
+
+  const sessionsThisWeek = useMemo(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const endOfWeek = new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000);
     
+    return sessions.filter(session => {
+      const sessionDate = new Date(session.date);
+      return sessionDate >= startOfWeek && sessionDate <= endOfWeek;
+    }).length;
+  }, [sessions]);
+
+  const activePackages = useMemo(() => {
+    return packages.filter(pkg => pkg.status === 'active').length;
+  }, [packages]);
+
+  const upcomingSessions = useMemo(() => {
+    const now = new Date();
     return sessions
-      .filter(session => {
-        const sessionDate = new Date(session.date);
-        return sessionDate >= today && sessionDate <= threeDaysLater;
-      })
+      .filter(session => new Date(session.date) >= now)
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 5);
   }, [sessions]);
 
-  // Persönliche Tasks für heute (neue Struktur)
-  const todaysTasks = useMemo(() => {
-    if (!tasks) return [];
-    const today = new Date().toDateString();
-    return tasks.filter(task => {
-      if (!task.faelligkeitsdatum) return false;
-      const taskDate = new Date(task.faelligkeitsdatum).toDateString();
-      return taskDate === today && !task.abgeschlossen && !task.zugewiesenAn;
-    });
+  const overdueTasks = useMemo(() => {
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    return tasks.filter(task => 
+      !task.completed && 
+      (task.dueDate || task.due_date) && 
+      new Date(task.dueDate || task.due_date) < now
+    );
   }, [tasks]);
 
-  // Coachee-Deadlines für heute (neue Struktur)
-  const coacheeDeadlines = useMemo(() => {
-    if (!tasks) return [];
-    const today = new Date().toDateString();
-    return tasks.filter(task => {
-      if (!task.faelligkeitsdatum) return false;
-      const taskDate = new Date(task.faelligkeitsdatum).toDateString();
-      return taskDate === today && task.zugewiesenAn && !task.abgeschlossen;
-    });
-  }, [tasks]);
+  const overdueDeadlines = useMemo(() => {
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    return coacheeDeadlines.filter(deadline => 
+      !deadline.completed && 
+      new Date(deadline.dueDate) < now
+    );
+  }, [coacheeDeadlines]);
 
-  // Statistiken berechnen
-  const activeCoachees = coachees?.filter(c => c.status === 'active').length || 0;
-  const sessionsThisWeek = sessions?.filter(s => {
-    const sessionDate = new Date(s.date);
-    const today = new Date();
-    const weekStart = new Date(today.setDate(today.getDate() - today.getDay()));
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    return sessionDate >= weekStart && sessionDate <= weekEnd;
-  }).length || 0;
-  const activePackages = packages?.filter(p => p.status === 'active').length || 0;
-
-  const toggleTask = (taskId) => {
+  // Task Management Functions - MIT SUPABASE UPDATES
+  const handleTaskComplete = async (taskId) => {
     const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      updateTask(taskId, { abgeschlossen: !task.abgeschlossen });
+    if (!task) return;
+
+    const newCompletedState = !task.completed;
+    
+    // Optimistic update
+    setTasks(prev => prev.map(task => 
+      task.id === taskId 
+        ? { ...task, completed: newCompletedState }
+        : task
+    ));
+
+    // Supabase update (falls Task aus Supabase stammt)
+    if (task.user_id) {
+      try {
+        const { error } = await supabase
+          .from('tasks')
+          .update({ completed: newCompletedState })
+          .eq('id', taskId);
+
+        if (error) {
+          console.error('Error updating task:', error);
+          // Revert optimistic update
+          setTasks(prev => prev.map(task => 
+            task.id === taskId 
+              ? { ...task, completed: !newCompletedState }
+              : task
+          ));
+        }
+      } catch (error) {
+        console.error('Error updating task:', error);
+      }
     }
   };
 
-  const openEntryDetail = (entry) => {
-    setSelectedEntry(entry);
-    setIsDetailOpen(true);
+  const handleTaskEdit = (task) => {
+    setEditingTask(task);
+    setTaskForm({
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      dueDate: task.dueDate || task.due_date || '',
+      category: task.category
+    });
+    setShowTaskDialog(true);
   };
 
-  // Quick Action Buttons für häufige Coach-Aktionen - Vereinfacht für kontextuelle Nutzung
-  const sendMahnung = (coachee) => {
-    const template = emailTemplates.mahnen(coachee);
-    const email = coachee.email || coachee.emailAddress;
+  const handleTaskDelete = async (taskId) => {
+    const task = tasks.find(t => t.id === taskId);
     
-    if (!email) {
-      alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
-      return;
+    setTasks(prev => prev.filter(task => task.id !== taskId));
+    
+    if (task?.user_id) {
+      try {
+        const { error } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('id', taskId);
+
+        if (error) {
+          console.error('Error deleting task:', error);
+          loadTasksFromSupabase();
+        }
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        loadTasksFromSupabase();
+      }
     }
     
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
-    window.open(mailtoUrl);
+    toast({
+      title: "Task gelöscht",
+      description: "Der Task wurde erfolgreich entfernt.",
+    });
   };
 
-  const sendGratulation = (coachee, occasion = 'Geburtstag') => {
-    const template = {
-      subject: `Herzlichen Glückwunsch zum ${occasion}!`,
-      body: `Hallo ${coachee.firstName},
+  const handleTaskSave = async () => {
+    if (!taskForm.title.trim()) return;
 
-herzlichen Glückwunsch zu deinem ${occasion}! 🎉
+    try {
+      if (editingTask) {
+        // Update existing task
+        if (editingTask.user_id) {
+          const { error } = await supabase
+            .from('tasks')
+            .update({
+              title: taskForm.title,
+              description: taskForm.description,
+              priority: taskForm.priority,
+              due_date: taskForm.dueDate || null,
+              category: taskForm.category
+            })
+            .eq('id', editingTask.id);
 
-Ich wünsche dir alles Gute, viel Freude und dass alle deine Wünsche in Erfüllung gehen.
+          if (error) throw error;
+        }
 
-Genieße deinen besonderen Tag!
+        setTasks(prev => prev.map(task =>
+          task.id === editingTask.id
+            ? { ...task, ...taskForm, due_date: taskForm.dueDate, dueDate: taskForm.dueDate }
+            : task
+        ));
 
-Herzliche Grüße,
-[Dein Name]`
-    };
+        toast({
+          title: "Task aktualisiert",
+          description: "Der Task wurde erfolgreich bearbeitet.",
+        });
+      } else {
+        // Create new task
+        const user = (await supabase.auth.getUser()).data?.user;
+        
+        if (user) {
+          const { data, error } = await supabase
+            .from('tasks')
+            .insert({
+              user_id: user.id,
+              title: taskForm.title,
+              description: taskForm.description,
+              priority: taskForm.priority,
+              due_date: taskForm.dueDate || null,
+              category: taskForm.category,
+              completed: false
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+          setTasks(prev => [...prev, data]);
+        } else {
+          const newTask = {
+            ...taskForm,
+            id: Date.now(),
+            completed: false,
+            dueDate: taskForm.dueDate
+          };
+          setTasks(prev => [...prev, newTask]);
+        }
+
+        toast({
+          title: "Task erstellt",
+          description: "Der neue Task wurde erfolgreich hinzugefügt.",
+        });
+      }
+    } catch (error) {
+      console.error('Error saving task:', error);
+      toast({
+        title: "Fehler",
+        description: "Der Task konnte nicht gespeichert werden.",
+        variant: "destructive"
+      });
+    }
+
+    setShowTaskDialog(false);
+    setEditingTask(null);
+    setTaskForm({
+      title: '',
+      description: '',
+      priority: 'medium',
+      dueDate: '',
+      category: 'general'
+    });
+  };
+
+  // Coachee Deadline Functions - JETZT MIT SUPABASE SPEICHERUNG
+  const handleDeadlineComplete = async (deadlineId) => {
+    const deadline = coacheeDeadlines.find(d => d.id === deadlineId);
+    if (!deadline) return;
+
+    const newCompletedState = !deadline.completed;
     
-    const email = coachee.email || coachee.emailAddress;
+    // Optimistic update
+    setCoacheeDeadlines(prev => prev.map(deadline => 
+      deadline.id === deadlineId 
+        ? { ...deadline, completed: newCompletedState }
+        : deadline
+    ));
+
+    // Supabase update
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: newCompletedState })
+        .eq('id', deadlineId);
+
+      if (error) {
+        console.error('Error updating deadline:', error);
+        // Revert optimistic update
+        setCoacheeDeadlines(prev => prev.map(deadline => 
+          deadline.id === deadlineId 
+            ? { ...deadline, completed: !newCompletedState }
+            : deadline
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating deadline:', error);
+    }
+  };
+
+  const handleDeadlineEdit = (deadline) => {
+    setEditingDeadline(deadline);
+    setDeadlineForm({
+      coacheeId: deadline.coacheeId?.toString() || '',
+      title: deadline.title,
+      description: deadline.description,
+      dueDate: deadline.dueDate,
+      category: deadline.category
+    });
+    setShowDeadlineDialog(true);
+  };
+
+  const handleDeadlineDelete = async (deadlineId) => {
+    setCoacheeDeadlines(prev => prev.filter(deadline => deadline.id !== deadlineId));
     
-    if (!email) {
-      alert('Keine E-Mail-Adresse für diesen Coachee gefunden.');
-      return;
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', deadlineId);
+
+      if (error) {
+        console.error('Error deleting deadline:', error);
+        loadTasksFromSupabase();
+      }
+    } catch (error) {
+      console.error('Error deleting deadline:', error);
+      loadTasksFromSupabase();
     }
     
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(template.subject)}&body=${encodeURIComponent(template.body)}`;
-    window.open(mailtoUrl);
+    toast({
+      title: "Coachee-Deadline gelöscht",
+      description: "Die Deadline wurde erfolgreich entfernt.",
+    });
   };
+
+  const handleDeadlineSave = async () => {
+    if (!deadlineForm.title.trim() || !deadlineForm.coacheeId) return;
+
+    const coachee = coachees.find(c => c.id.toString() === deadlineForm.coacheeId);
+    if (!coachee) return;
+
+    console.log('Saving deadline with coacheeId:', deadlineForm.coacheeId, 'type:', typeof deadlineForm.coacheeId);
+
+    try {
+      if (editingDeadline) {
+        // Update existing deadline
+        const { error } = await supabase
+          .from('tasks')
+          .update({
+            title: deadlineForm.title,
+            description: deadlineForm.description,
+            due_date: deadlineForm.dueDate,
+            category: deadlineForm.category
+          })
+          .eq('id', editingDeadline.id);
+
+        if (error) throw error;
+
+        setCoacheeDeadlines(prev => prev.map(deadline =>
+          deadline.id === editingDeadline.id
+            ? { ...deadline, ...deadlineForm, coacheeId: deadlineForm.coacheeId, dueDate: deadlineForm.dueDate }
+            : deadline
+        ));
+        toast({
+          title: "Coachee-Deadline aktualisiert",
+          description: "Die Deadline wurde erfolgreich bearbeitet.",
+        });
+      } else {
+        // Create new deadline in Supabase
+        const user = (await supabase.auth.getUser()).data?.user;
+        
+        if (user) {
+          console.log('Inserting task with coachee_id:', deadlineForm.coacheeId);
+          
+          const { data, error } = await supabase
+            .from('tasks')
+            .insert({
+              user_id: user.id,
+              coachee_id: deadlineForm.coacheeId, // Direkt als String verwenden
+              title: deadlineForm.title,
+              description: deadlineForm.description,
+              due_date: deadlineForm.dueDate,
+              category: deadlineForm.category,
+              priority: 'medium',
+              completed: false
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Supabase insert error:', error);
+            throw error;
+          }
+
+          console.log('Successfully inserted task:', data);
+
+          // Task in lokalen Deadlines-State hinzufügen
+          const newDeadline = {
+            id: data.id,
+            coacheeId: deadlineForm.coacheeId, // Als String belassen
+            title: deadlineForm.title,
+            description: deadlineForm.description,
+            dueDate: deadlineForm.dueDate,
+            category: deadlineForm.category,
+            completed: false
+          };
+          setCoacheeDeadlines(prev => [...prev, newDeadline]);
+        } else {
+          // Fallback: Nur lokaler State
+          const newDeadline = {
+            ...deadlineForm,
+            id: Date.now(),
+            coacheeId: deadlineForm.coacheeId,
+            completed: false
+          };
+          setCoacheeDeadlines(prev => [...prev, newDeadline]);
+        }
+
+        toast({
+          title: "Coachee-Deadline erstellt",
+          description: "Die neue Deadline wurde erfolgreich hinzugefügt und gespeichert.",
+        });
+      }
+    } catch (error) {
+      console.error('Error saving deadline:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Deadline konnte nicht gespeichert werden.",
+        variant: "destructive"
+      });
+    }
+
+    setShowDeadlineDialog(false);
+    setEditingDeadline(null);
+    setDeadlineForm({
+      coacheeId: '',
+      title: '',
+      description: '',
+      dueDate: '',
+      category: 'goal'
+    });
+  };
+
+  // Auto-Hide überfällige Deadlines
+  useEffect(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    setCoacheeDeadlines(prev => 
+      prev.filter(deadline => {
+        if (deadline.completed) return true;
+        const dueDate = new Date(deadline.dueDate);
+        return dueDate >= sevenDaysAgo;
+      })
+    );
+  }, []);
 
   return (
     <>
       <Helmet>
-        <title>Dashboard - Coaching Plattform</title>
-        <meta name="description" content="Übersicht über Ihre Coaching-Aktivitäten" />
+        <title>Dashboard - {userData.companyName}</title>
+        <meta name="description" content="Übersicht über deine Coaching-Aktivitäten" />
       </Helmet>
 
-      {/* Entry Detail Modal */}
-      {isDetailOpen && selectedEntry && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">{selectedEntry.title || 'Geteilter Eintrag'}</h2>
-                  <p className="text-slate-400 text-sm">
-                    Von {selectedEntry.sharedBy} • {selectedEntry.date ? new Date(selectedEntry.date).toLocaleDateString('de-DE') : 'Kein Datum'}
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setIsDetailOpen(false)}>
-                  ✕
-                </Button>
+      {/* Task Dialog */}
+      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editingTask ? 'Task bearbeiten' : 'Neuen Task erstellen'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Titel</label>
+              <Input
+                value={taskForm.title}
+                onChange={(e) => setTaskForm(prev => ({...prev, title: e.target.value}))}
+                placeholder="Task-Titel"
+                className="bg-gray-800 border-gray-600 text-white"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Beschreibung</label>
+              <Textarea
+                value={taskForm.description}
+                onChange={(e) => setTaskForm(prev => ({...prev, description: e.target.value}))}
+                placeholder="Beschreibung des Tasks"
+                className="bg-gray-800 border-gray-600 text-white"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-2 block">Priorität</label>
+                <Select value={taskForm.priority} onValueChange={(value) => setTaskForm(prev => ({...prev, priority: value}))}>
+                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-600">
+                    <SelectItem value="low">Niedrig</SelectItem>
+                    <SelectItem value="medium">Mittel</SelectItem>
+                    <SelectItem value="high">Hoch</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="prose prose-invert max-w-none">
-                <div className="text-slate-200 whitespace-pre-wrap">{selectedEntry.content || 'Kein Inhalt verfügbar'}</div>
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-2 block">Fälligkeitsdatum</label>
+                <Input
+                  type="date"
+                  value={taskForm.dueDate}
+                  onChange={(e) => setTaskForm(prev => ({...prev, dueDate: e.target.value}))}
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
               </div>
             </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowTaskDialog(false)}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleTaskSave}>
+                {editingTask ? 'Aktualisieren' : 'Erstellen'}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Coachee Deadline Dialog */}
+      <Dialog open={showDeadlineDialog} onOpenChange={setShowDeadlineDialog}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editingDeadline ? 'Coachee-Deadline bearbeiten' : 'Neue Coachee-Deadline erstellen'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Coachee</label>
+              <Select value={deadlineForm.coacheeId} onValueChange={(value) => setDeadlineForm(prev => ({...prev, coacheeId: value}))}>
+                <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                  <SelectValue placeholder="Coachee auswählen" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-600">
+                  {coachees.map(coachee => (
+                    <SelectItem key={coachee.id} value={coachee.id.toString()}>
+                      {coachee.firstName} {coachee.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Titel</label>
+              <Input
+                value={deadlineForm.title}
+                onChange={(e) => setDeadlineForm(prev => ({...prev, title: e.target.value}))}
+                placeholder="Deadline-Titel"
+                className="bg-gray-800 border-gray-600 text-white"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Beschreibung</label>
+              <Textarea
+                value={deadlineForm.description}
+                onChange={(e) => setDeadlineForm(prev => ({...prev, description: e.target.value}))}
+                placeholder="Beschreibung der Deadline"
+                className="bg-gray-800 border-gray-600 text-white"
+                rows={3}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Fälligkeitsdatum</label>
+              <Input
+                type="date"
+                value={deadlineForm.dueDate}
+                onChange={(e) => setDeadlineForm(prev => ({...prev, dueDate: e.target.value}))}
+                className="bg-gray-800 border-gray-600 text-white"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowDeadlineDialog(false)}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleDeadlineSave}>
+                {editingDeadline ? 'Aktualisieren' : 'Erstellen'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="container mx-auto p-6 space-y-6">
-        {/* Header */}
+        {/* Personalisierter Header */}
         <div className="mb-6">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent mb-2">
-            Dashboard
+            {getGreeting()}, {userData.firstName}! 👋
           </h1>
           <p className="text-muted-foreground text-lg">
-            Willkommen zurück! Hier ist Ihre Übersicht für heute.
+            Hier ist deine Übersicht für heute.
           </p>
         </div>
 
@@ -365,127 +862,213 @@ Herzliche Grüße,
           />
         </div>
 
-        {/* To-Do Bereich - separate Cards */}
+        {/* Abonnement-Übersicht Widget */}
+        <SubscriptionOverviewWidget
+          recurringInvoices={recurringInvoices}
+          serviceRates={serviceRates}
+          coachees={coachees}
+          onNavigateToSubscriptions={() => navigate('/recurring-invoices')}
+        />
+
+        {/* Primärer Bereich - Tasks und Deadlines */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Persönliche Tasks */}
+          {/* Deine Tasks */}
           <Card className="glass-card-enhanced">
-            <CardHeader>
-              <CardTitle className="flex items-center text-foreground text-lg">
-                <CheckCircle2 className="mr-3 h-6 w-6 text-green-500" />
-                Meine Aufgaben heute ({todaysTasks.length})
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Deine Tasks</CardTitle>
+                  {overdueTasks.length > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      {overdueTasks.length} überfällig
+                    </Badge>
+                  )}
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        setEditingTask(null);
+                        setTaskForm({
+                          title: '',
+                          description: '',
+                          priority: 'medium',
+                          dueDate: '',
+                          category: 'general'
+                        });
+                        setShowTaskDialog(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Task
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
             </CardHeader>
-            <CardContent>
-              {todaysTasks.length > 0 ? (
-                <div className="space-y-3">
-                  {todaysTasks.slice(0, 5).map((task) => (
-                    <div key={task.id} className="flex items-center space-x-3 p-3 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors group">
-                      <CheckCircle2 
-                        className="h-5 w-5 text-muted-foreground cursor-pointer hover:text-green-500 transition-colors" 
-                        onClick={() => toggleTask(task.id)}
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                          {task.titel || 'Unbenannte Aufgabe'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {task.thema && <span className="font-medium">{task.thema}</span>}
-                          {task.thema && task.konkretesToDo && ' • '}
-                          {task.konkretesToDo}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end space-y-1">
-                        <Badge variant="outline" className="text-xs">
-                          {task.prioritaet || 'Normal'}
-                        </Badge>
-                        {task.schaetzung && (
-                          <span className="text-xs text-muted-foreground">{task.schaetzung}</span>
-                        )}
-                      </div>
-                    </div>
+            <CardContent className="space-y-3">
+              {tasks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ClipboardCheck className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                  <p>Keine Tasks vorhanden</p>
+                </div>
+              ) : (
+                <>
+                  {/* Überfällige Tasks zuerst */}
+                  {overdueTasks.map(task => (
+                    <TaskItem
+                      key={task.id}
+                      task={task}
+                      overdue={true}
+                      onComplete={handleTaskComplete}
+                      onEdit={handleTaskEdit}
+                      onDelete={handleTaskDelete}
+                    />
                   ))}
+                  {/* Normale Tasks */}
+                  {tasks.filter(task => 
+                    !overdueTasks.some(overdueTask => overdueTask.id === task.id)
+                  ).slice(0, 5).map(task => (
+                    <TaskItem
+                      key={task.id}
+                      task={task}
+                      onComplete={handleTaskComplete}
+                      onEdit={handleTaskEdit}
+                      onDelete={handleTaskDelete}
+                    />
+                  ))}
+                </>
+              )}
+              {tasks.length > 5 && (
+                <div className="text-center pt-2">
+                  <Button variant="ghost" size="sm">
+                    Alle {tasks.length} Tasks anzeigen
+                  </Button>
                 </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-6">Keine Aufgaben für heute.</p>
               )}
             </CardContent>
           </Card>
 
-          {/* Coachee Deadlines - nur Nachfassen */}
+          {/* Coachee Deadlines */}
           <Card className="glass-card-enhanced">
-            <CardHeader>
-              <CardTitle className="flex items-center text-foreground text-lg">
-                <AlertTriangle className="mr-3 h-6 w-6 text-orange-500" />
-                Coachee-Deadlines heute ({coacheeDeadlines.length})
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  <CardTitle className="text-lg">Coachee Deadlines</CardTitle>
+                  {overdueDeadlines.length > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      {overdueDeadlines.length} überfällig
+                    </Badge>
+                  )}
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      size="sm"
+                      onClick={() => {
+                        setEditingDeadline(null);
+                        setDeadlineForm({
+                          coacheeId: '',
+                          title: '',
+                          description: '',
+                          dueDate: '',
+                          category: 'goal'
+                        });
+                        setShowDeadlineDialog(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Deadline
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
             </CardHeader>
-            <CardContent>
-              {coacheeDeadlines.length > 0 ? (
-                <div className="space-y-3">
-                  {coacheeDeadlines.slice(0, 5).map((task) => {
-                    const coachee = coachees?.find(c => c.id === task.zugewiesenAn);
-                    const isOverdue = new Date(task.faelligkeitsdatum) < new Date();
+            <CardContent className="space-y-3">
+              {coacheeDeadlines.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                  <p>Keine Coachee-Deadlines vorhanden</p>
+                </div>
+              ) : (
+                <>
+                  {coacheeDeadlines.map(deadline => {
+                    const coachee = coachees.find(c => c.id === deadline.coacheeId);
+                    const isOverdue = !deadline.completed && new Date(deadline.dueDate) < new Date();
+                    
                     return (
-                      <div key={task.id} className="flex items-center space-x-3 p-3 bg-background/50 rounded-lg border border-border/50 hover:bg-background/80 transition-colors">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={coachee?.avatarUrl} />
-                          <AvatarFallback className="text-xs">
-                            {coachee ? `${coachee.firstName[0]}${coachee.lastName[0]}` : '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{task.titel}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}
-                            {task.thema && ` • ${task.thema}`}
-                          </p>
-                          {task.konkretesToDo && (
-                            <p className="text-xs text-muted-foreground mt-1">{task.konkretesToDo}</p>
-                          )}
-                        </div>
-                        <div className="text-right space-y-2">
-                          <Badge variant={isOverdue ? "destructive" : "default"} className="text-xs">
-                            {isOverdue ? 'Überfällig' : 'Fällig heute'}
-                          </Badge>
-                          {coachee && (
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="text-xs h-7 w-full hover:bg-blue-50 hover:border-blue-300"
-                              onClick={() => sendEmail(coachee, 'nachfassen', task)}
-                            >
-                              <MessageCircle className="h-3 w-3 mr-1" />
-                              Nachfassen
+                      <div 
+                        key={deadline.id} 
+                        className={`p-3 rounded-lg border transition-all hover:shadow-md ${
+                          deadline.completed 
+                            ? 'border-gray-200 bg-gray-50/50 opacity-60' 
+                            : isOverdue 
+                              ? 'border-red-200 bg-red-50/10 ring-2 ring-red-500/20' 
+                              : 'border-gray-200 bg-white/50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <button
+                                onClick={() => handleDeadlineComplete(deadline.id)}
+                                className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                  deadline.completed 
+                                    ? 'bg-green-500 border-green-500 text-white' 
+                                    : 'border-gray-300 hover:border-green-500'
+                                }`}
+                              >
+                                {deadline.completed && <CheckCircle2 className="w-3 h-3" />}
+                              </button>
+                              <h4 className={`font-medium truncate ${deadline.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                {deadline.title}
+                              </h4>
+                              {isOverdue && (
+                                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                              {deadline.description}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="font-medium">
+                                {coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Unbekannt'}
+                              </span>
+                              <span>•</span>
+                              <span className={isOverdue ? 'text-red-500 font-medium' : ''}>
+                                {new Date(deadline.dueDate).toLocaleDateString('de-DE')}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleDeadlineEdit(deadline)}>
+                              <Edit className="w-4 h-4" />
                             </Button>
-                          )}
+                            <Button variant="ghost" size="sm" onClick={() => handleDeadlineDelete(deadline.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    )
+                    );
                   })}
+                </>
+              )}
+              {coacheeDeadlines.length > 0 && (
+                <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+                  💡 Überfällige Deadlines verschwinden automatisch nach 7 Tagen
                 </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-6">Keine Deadlines heute.</p>
               )}
             </CardContent>
           </Card>
-        </div>
-
-        {/* Link zu vollständigem Aufgaben-Manager */}
-        <div className="text-center">
-          <Link to="/tasks">
-            <Button variant="outline" size="lg" className="bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-primary/20">
-              <ClipboardCheck className="mr-2 h-5 w-5" />
-              Alle Aufgaben verwalten
-            </Button>
-          </Link>
         </div>
 
         {/* Sekundärer Bereich */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Kalender - kombiniert Sessions + Termine */}
           <CalendarOverview sessions={upcomingSessions} coachees={coachees} />
-          
-          {/* Weitere Bereiche in der oberen Zeile */}
           <div className="grid gap-6 lg:grid-cols-2 lg:col-span-2">
             <OpenInvoices />
             <QuickActions />
