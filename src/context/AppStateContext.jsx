@@ -11,6 +11,11 @@ import { promptLibrary as defaultPrompts } from '@/data/prompts';
 
 const AppStateContext = createContext(null);
 
+// Feature Flags - KI-Modul auf false für Core-Version
+const FEATURE_FLAGS = {
+  aiModule: false
+};
+
 const useLocalStorage = (key, initialValue, initializer) => {
   const [storedValue, setStoredValue] = useState(() => {
     try {
@@ -54,6 +59,18 @@ const useAppState = () => {
   const { toast } = useToast();
   const [isCommandOpen, setCommandOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Feature Flag Functions
+  const hasFeature = useCallback((featureName) => {
+    return FEATURE_FLAGS[featureName] || false;
+  }, []);
+
+  const showPremiumFeature = useCallback((featureName) => {
+    toast({
+      title: "KI-Modul in Entwicklung",
+      description: `${featureName} wird aktuell entwickelt und kommt in einem zukünftigen Update`
+    });
+  }, [toast]);
 
   const [coachees, setCoachees] = useLocalStorage('coachees', dummyCoachees);
   const [sessions, setSessions] = useLocalStorage('sessions', dummySessions);
@@ -106,9 +123,9 @@ const useAppState = () => {
       const hasVisitedBefore = localStorage.getItem('hasVisitedCoachingspace');
       if (!hasVisitedBefore) {
         toast({
-          title: "Willkommen zu Coachingspace!",
-          description: "Drücke ⌘+K um die globale Suche zu öffnen. Lass uns gemeinsam Großes erreichen!",
-          duration: 7000,
+          title: "Willkommen zu Coachingspace - Core Version!",
+          description: "KI-Modul in Entwicklung. Drücke ⌘+K um die globale Suche zu öffnen.",
+          duration: 8000,
         });
         localStorage.setItem('hasVisitedCoachingspace', 'true');
       }
@@ -406,7 +423,7 @@ const useAppState = () => {
     
     addCoachee, updateCoachee, getCoacheeById, getCoacheeByToken, ensurePermanentTokenForDemo,
     getToolById, updateCoacheeConsent, getAllCoacheeDocuments, getCoacheeDocuments, addDocument, addDocumentToContext, updateDocumentInContext, removeDocumentFromContext, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
-    activatePackage, addTask, updateTask, deleteTask,
+    activatePackage, addTask, updateTask, deleteTask, hasFeature, showPremiumFeature,
 
     state: {
       isLoading,
@@ -418,14 +435,14 @@ const useAppState = () => {
       setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
       addCoachee, updateCoachee, getCoacheeById, getCoacheeByToken, ensurePermanentTokenForDemo,
       getToolById, updateCoacheeConsent, getAllCoacheeDocuments, getCoacheeDocuments, addDocument, addDocumentToContext, updateDocumentInContext, removeDocumentFromContext, updateSettings, setSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
-      activatePackage, addTask, updateTask, deleteTask
+      activatePackage, addTask, updateTask, deleteTask, hasFeature, showPremiumFeature
     },
   }), [
     isLoading, isCommandOpen, coachees, sessions, invoices, journalEntries, generalDocuments, documents, tools, activePackages, settings, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates,
     setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
     addCoachee, updateCoachee, getCoacheeById, getCoacheeByToken, ensurePermanentTokenForDemo,
     getToolById, updateCoacheeConsent, getAllCoacheeDocuments, getCoacheeDocuments, addDocument, addDocumentToContext, updateDocumentInContext, removeDocumentFromContext, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
-    activatePackage, addTask, updateTask, deleteTask
+    activatePackage, addTask, updateTask, deleteTask, hasFeature, showPremiumFeature
   ]);
 
   return contextValue;

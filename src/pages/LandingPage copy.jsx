@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "../supabaseConfig";
-import { Shield, Download, Copy, AlertTriangle, Check, Sparkles, Clock, FileText, Users } from 'lucide-react';
+import { Shield, Download, Copy, AlertTriangle, Check } from 'lucide-react';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -138,158 +138,53 @@ export default function LandingPage() {
 
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto">
-          {/* Hero Section - Core-Version fokussiert */}
+          {/* Hero Section */}
           <div className="text-center mb-16">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Professionelles Coaching-Management
+              KI-gestütztes triadisches Coaching
             </h1>
-            <p className="text-xl text-slate-300 mb-4 max-w-2xl mx-auto">
-              DSGVO-konforme Desktop-Anwendung für strukturiertes Coaching mit 
-              messbaren Fortschritten und professioneller Dokumentation.
+            <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
+              Revolutionieren Sie Ihr Coaching mit einer DSGVO-konformen Desktop-Anwendung, 
+              die echte Insights und messbare Fortschritte ermöglicht.
             </p>
-            <div className="flex items-center justify-center gap-2 text-orange-400 font-medium">
-              <Sparkles className="w-5 h-5" />
-              <span>KI-Module in Entwicklung - Core-Features sofort verfügbar</span>
-            </div>
           </div>
 
-          {/* Features Grid - Core Features prominent */}
+          {/* Features Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {[
               {
-                icon: <Users className="w-6 h-6 text-blue-400" />,
-                title: "Coachee-Verwaltung",
-                description: "Strukturierte Klientenakten mit Fortschritts-Tracking",
-                status: "available"
-              },
-              {
-                icon: <Clock className="w-6 h-6 text-green-400" />,
-                title: "Session-Management",
-                description: "Terminplanung und strukturierte Gesprächsführung",
-                status: "available"
-              },
-              {
-                icon: <FileText className="w-6 h-6 text-purple-400" />,
-                title: "Reflexionstagebuch",
-                description: "Digitales Journal mit Kategorien und Auswertungen",
-                status: "available"
-              },
-              {
-                icon: <Sparkles className="w-6 h-6 text-orange-400" />,
                 title: "KI-Coaching-Assistent",
-                description: "Triadisches KI-Coaching und intelligente Analysen",
-                status: "coming"
+                description: "Intelligente Unterstützung bei Analyse und Interventionen"
+              },
+              {
+                title: "Lokale Datenhaltung",
+                description: "100% DSGVO-konform ohne Cloud-Speicherung"
+              },
+              {
+                title: "Session-Management",
+                description: "Strukturierte Coaching-Gespräche mit Dokumentation"
+              },
+              {
+                title: "Progress-Tracking",
+                description: "Messbare Fortschritte und detaillierte Analysen"
               }
             ].map((feature, index) => (
-              <div key={index} className={`bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-lg p-6 relative ${
-                feature.status === 'coming' ? 'opacity-75' : ''
-              }`}>
-                <div className="flex items-center gap-3 mb-3">
-                  {feature.icon}
-                  <h3 className="font-semibold text-white">{feature.title}</h3>
-                </div>
-                <p className="text-sm text-slate-300 mb-3">{feature.description}</p>
-                {feature.status === 'coming' && (
-                  <div className="absolute top-3 right-3">
-                    <span className="text-xs px-2 py-1 bg-orange-500/30 text-orange-300 rounded font-medium">
-                      In Entwicklung
-                    </span>
-                  </div>
-                )}
+              <div key={index} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-lg p-6">
+                <h3 className="font-semibold text-white mb-3">{feature.title}</h3>
+                <p className="text-sm text-slate-300">{feature.description}</p>
               </div>
             ))}
           </div>
 
-          {/* Core Features Benefits */}
-          <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-8 mb-16">
-            <h2 className="text-2xl font-bold text-white mb-6 text-center">
-              Sofort verfügbare Core-Features
-            </h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-white mb-2">100% DSGVO-konform</h3>
-                <p className="text-sm text-slate-300">
-                  Lokale Datenhaltung ohne Cloud-Speicherung für maximalen Datenschutz
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-white mb-2">Professionelle Dokumentation</h3>
-                <p className="text-sm text-slate-300">
-                  Strukturierte Session-Protokolle und Fortschritts-Dokumentation
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-white mb-2">Unbegrenzte Coachees</h3>
-                <p className="text-sm text-slate-300">
-                  Verwalten Sie beliebig viele Klienten mit individuellen Coaching-Plänen
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* KI Add-On Preview */}
-          <div className="bg-gradient-to-r from-orange-900/20 to-yellow-900/20 border border-orange-500/30 rounded-lg p-8 mb-16">
-            <div className="text-center mb-6">
-              <Sparkles className="w-8 h-8 text-orange-400 mx-auto mb-3" />
-              <h2 className="text-2xl font-bold text-white mb-3">
-                Kommende KI-Features
-              </h2>
-              <p className="text-orange-200 mb-4">
-                Erweitern Sie Ihre Coaching-Praxis mit innovativen KI-Modulen (in Entwicklung)
-              </p>
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <h3 className="font-semibold text-orange-300 mb-2">Triadisches KI-Coaching</h3>
-                <p className="text-sm text-slate-300 mb-2">
-                  12-Schritte-Coaching-Prozess mit KI-Unterstützung für tiefere Einsichten
-                </p>
-                <div className="text-xs text-orange-400">
-                  • Avatar-basierte Persönlichkeitsanalyse
-                  • Intelligente Prompt-Bibliothek
-                  • Automatische Session-Auswertung
-                </div>
-              </div>
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <h3 className="font-semibold text-orange-300 mb-2">KI-Analyse & Insights</h3>
-                <p className="text-sm text-slate-300 mb-2">
-                  Automatische Fortschritts-Analysen und Coaching-Empfehlungen
-                </p>
-                <div className="text-xs text-orange-400">
-                  • Tagebuch-Sentiment-Analyse
-                  • Mustererkennung in Sessions
-                  • Personalisierte Interventionsvorschläge
-                </div>
-              </div>
-            </div>
-            <div className="text-center mt-6">
-              <p className="text-sm text-orange-300">
-                Starten Sie jetzt mit der Core-Version - KI-Module werden als kostenpflichtiges Add-On verfügbar
-              </p>
-            </div>
-          </div>
-
-          {/* Demo Form - Core-Version Messaging */}
+          {/* Demo Form */}
           <div className="max-w-2xl mx-auto">
             <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-lg p-8">
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-white mb-4">
-                  Core-Version kostenfrei testen
+                  Kostenlose Demo starten
                 </h2>
-                <p className="text-slate-300 mb-2">
-                  Vollständiges Coaching-Management sofort verfügbar
-                </p>
-                <p className="text-sm text-orange-400">
-                  KI-Features werden als Add-On hinzugefügt, wenn verfügbar
+                <p className="text-slate-300">
+                  Testen Sie alle Features 30 Tage kostenfrei
                 </p>
               </div>
 
@@ -347,12 +242,12 @@ export default function LandingPage() {
                   />
                 </div>
 
-                {/* Security Info - Core-Version angepasst */}
+                {/* Security Info */}
                 <div className="bg-slate-700/50 border-l-4 border-blue-500 p-4 rounded-r-lg">
                   <p className="text-sm text-slate-300">
-                    <strong>Core-Version beinhaltet:</strong> Vollständige Coachee-Verwaltung, 
-                    Session-Management, Reflexionstagebuch und professionelle Dokumentation. 
-                    KI-Features werden als separates Add-On verfügbar.
+                    <strong>Sicherheitshinweis:</strong> Nach der Demo-Erstellung müssen Sie ein 
+                    sicheres Passwort für die lokale Desktop-App setzen. Sie erhalten 5 einmalige 
+                    Backup-Codes für den Notfall - bewahren Sie diese sicher auf.
                   </p>
                 </div>
 
@@ -361,16 +256,13 @@ export default function LandingPage() {
                   disabled={isLoading}
                   className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? 'Demo wird erstellt...' : 'Core-Version kostenfrei testen'}
+                  {isLoading ? 'Demo wird erstellt...' : 'Kostenlose Demo starten'}
                 </button>
               </form>
 
               <div className="mt-6 text-center">
                 <p className="text-sm text-slate-400">
-                  Vollzugang • Unbegrenzte Coachees • DSGVO-konform
-                </p>
-                <p className="text-xs text-orange-400 mt-2">
-                  KI-Add-On: Verfügbar sobald entwickelt
+                  Demo-Limits: 5 Coachees • 50 Sessions • DSGVO-konform
                 </p>
               </div>
             </div>
@@ -387,7 +279,7 @@ const BackupCodesDisplay = ({ codes, password, email, onComplete }) => {
   const [passwordCopied, setPasswordCopied] = useState(false);
 
   const downloadCodes = () => {
-    const content = `COACHINGSPACE - CORE-VERSION ZUGANG
+    const content = `COACHINGSPACE - DEMO-ZUGANG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 WICHTIGE ANMELDEDATEN - SICHER VERWAHREN!
@@ -397,18 +289,6 @@ Temporäres Passwort: ${password}
 
 BACKUP-CODES für Passwort-Reset:
 ${codes.map((code, i) => `${i + 1}. ${code}`).join('\n')}
-
-CORE-VERSION FEATURES:
-✓ Vollständige Coachee-Verwaltung
-✓ Session-Management & Terminplanung
-✓ Reflexionstagebuch mit Kategorien
-✓ Professionelle Dokumentation
-✓ DSGVO-konforme lokale Datenhaltung
-
-KI-FEATURES (in Entwicklung):
-○ Triadisches KI-Coaching
-○ Intelligente Session-Analysen
-○ Automatische Fortschritts-Insights
 
 WICHTIGE HINWEISE:
 • Verwenden Sie die E-Mail-Adresse und das temporäre Passwort für die erste Anmeldung
@@ -423,15 +303,14 @@ ANLEITUNG:
 3. Diese Backup-Codes ausdrucken und sicher verwahren
 4. Bei Passwort-Vergessen einen Code verwenden
 
-Core-Version verfügbar ab: ${new Date().toLocaleDateString('de-DE')}
-KI-Add-On: Verfügbar sobald entwickelt
-Generiert am: ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocaleTimeString('de-DE')}`;
+Generiert am: ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocaleTimeString('de-DE')}
+Demo-Zugang gültig bis: ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('de-DE')}`;
 
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'coachingspace-core-zugang.txt';
+    a.download = 'coachingspace-demo-zugang.txt';
     a.click();
     URL.revokeObjectURL(url);
     setDownloaded(true);
@@ -455,17 +334,17 @@ Generiert am: ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocale
       <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-lg max-w-2xl w-full p-8">
         <div className="flex items-center mb-6">
           <Shield className="w-8 h-8 text-blue-400 mr-3" />
-          <h2 className="text-2xl font-bold text-white">Core-Version Zugang erstellt!</h2>
+          <h2 className="text-2xl font-bold text-white">Demo-Zugang erstellt!</h2>
         </div>
         
-        <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-4 mb-6">
+        <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-4 mb-6">
           <div className="flex items-start">
-            <Check className="w-5 h-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+            <AlertTriangle className="w-5 h-5 text-red-400 mr-3 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="font-semibold text-blue-300 mb-2">Core-Version bereit!</h3>
-              <p className="text-sm text-blue-200">
-                Alle Basis-Features sind sofort verfügbar. KI-Funktionen erscheinen als 
-                "In Entwicklung" und werden als Add-On hinzugefügt.
+              <h3 className="font-semibold text-red-300 mb-2">Wichtig - Sofort speichern!</h3>
+              <p className="text-sm text-red-200">
+                Diese Daten benötigen Sie für die erste Anmeldung. Speichern Sie sie jetzt, 
+                da sie nach dem Schließen dieser Seite nicht mehr verfügbar sind.
               </p>
             </div>
           </div>
@@ -527,8 +406,7 @@ Generiert am: ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocale
             <li>Speichern Sie die Anmeldedaten (Download-Button)</li>
             <li>Gehen Sie zur App und melden sich mit E-Mail + temporärem Passwort an</li>
             <li>Setzen Sie sofort ein eigenes, sicheres Passwort</li>
-            <li>Entdecken Sie alle verfügbaren Core-Features</li>
-            <li>KI-Features zeigen "In Entwicklung" - Add-On kommt später</li>
+            <li>Drucken Sie die Backup-Codes aus und verwahren sie sicher</li>
           </ol>
         </div>
 
@@ -541,7 +419,7 @@ Generiert am: ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocale
               : 'bg-slate-600 text-slate-400 cursor-not-allowed'
           }`}
         >
-          {downloaded ? 'Anmeldedaten gesichert - Zur Core-Version' : 'Bitte zuerst Anmeldedaten speichern'}
+          {downloaded ? 'Anmeldedaten gesichert - Zur App' : 'Bitte zuerst Anmeldedaten speichern'}
         </button>
       </div>
     </div>

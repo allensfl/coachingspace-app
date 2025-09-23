@@ -19,16 +19,17 @@ const DocumentationPage = () => {
     { id: 'password', title: 'Passwort & Sicherheit', icon: Shield },
     { id: 'coachees', title: 'Coachee-Verwaltung', icon: Users },
     { id: 'sessions', title: 'Session-Management', icon: Clock },
-    { id: 'notes', title: 'Sitzungsnotizen & KI', icon: FileText },
-    { id: 'journal', title: 'Reflexionstagebuch & KI', icon: BookOpen },
+    { id: 'notes', title: 'Sitzungsnotizen', icon: FileText },
+    { id: 'journal', title: 'Reflexionstagebuch', icon: BookOpen },
     { id: 'invoicing', title: 'Rechnungswesen', icon: Calculator },
-    { id: 'ai', title: 'KI-Assistent', icon: Brain },
+    { id: 'ai', title: 'KI-Features (Coming Soon)', icon: Brain, badge: 'In Entwicklung' },
     { id: 'toolbox', title: 'Coaching-Toolbox', icon: Zap },
     { id: 'settings', title: 'Einstellungen', icon: Settings },
     { id: 'legal', title: 'Rechtliches & DSGVO', icon: Shield },
     { id: 'business', title: 'Business-Optimierung', icon: TrendingUp },
   ];
 
+  // StepGuide Komponente
   const StepGuide = ({ title, icon: Icon, steps }) => (
     <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
       <div className="flex items-center gap-3 mb-6">
@@ -63,29 +64,34 @@ const DocumentationPage = () => {
     </div>
   );
 
-  const FeatureCard = ({ icon: Icon, title, description, highlight }) => (
-    <div className={`bg-slate-800 border ${highlight ? 'border-blue-500/50' : 'border-slate-700'} rounded-lg p-6`}>
+  // FeatureCard Komponente
+  const FeatureCard = ({ icon: Icon, title, description, highlight, status = 'available' }) => (
+    <div className={`bg-slate-800 border ${highlight ? 'border-blue-500/50' : 'border-slate-700'} rounded-lg p-6 relative`}>
       <div className="flex items-center gap-3 mb-3">
-        <Icon className={`h-6 w-6 ${highlight ? 'text-blue-400' : 'text-slate-400'}`} />
+        <Icon className={`h-6 w-6 ${highlight ? 'text-blue-400' : status === 'coming' ? 'text-orange-400' : 'text-slate-400'}`} />
         <h3 className="font-semibold text-white">{title}</h3>
       </div>
       <p className="text-slate-300 text-sm">{description}</p>
+      {status === 'coming' && (
+        <div className="absolute top-3 right-3">
+          <span className="text-xs px-2 py-1 bg-orange-500/30 text-orange-300 rounded font-medium">
+            In Entwicklung
+          </span>
+        </div>
+      )}
     </div>
   );
 
-  const TroubleshootingCard = ({ problem, solution, severity = 'medium' }) => {
-    const severityColors = {
-      low: 'text-green-400 border-green-500/30',
-      medium: 'text-yellow-400 border-yellow-500/30',
-      high: 'text-red-400 border-red-500/30'
-    };
-
+  // TroubleshootingCard Komponente
+  const TroubleshootingCard = ({ issue, solution, type = 'info' }) => {
+    const iconColor = type === 'warning' ? 'text-yellow-400' : type === 'error' ? 'text-red-400' : 'text-blue-400';
+    
     return (
-      <div className={`bg-slate-800 border ${severityColors[severity]} rounded-lg p-4`}>
+      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-3">
         <div className="flex items-start gap-3">
-          <AlertCircle className={`h-5 w-5 ${severityColors[severity].split(' ')[0]} mt-0.5`} />
-          <div>
-            <h4 className="font-medium text-white mb-1">{problem}</h4>
+          <AlertCircle className={`h-5 w-5 ${iconColor} mt-0.5 flex-shrink-0`} />
+          <div className="flex-1">
+            <h4 className="font-medium text-white mb-2">{issue}</h4>
             <p className="text-slate-300 text-sm">{solution}</p>
           </div>
         </div>
@@ -93,79 +99,125 @@ const DocumentationPage = () => {
     );
   };
 
+  // ComingSoonSection Komponente für KI-Features
+  const ComingSoonSection = ({ title, description, features }) => (
+    <div className="bg-gradient-to-br from-orange-900/20 to-slate-800 border border-orange-500/30 rounded-lg p-6 mb-6">
+      <div className="flex items-center gap-3 mb-4">
+        <Brain className="h-6 w-6 text-orange-400" />
+        <h3 className="text-xl font-semibold text-white">{title}</h3>
+        <span className="px-3 py-1 bg-orange-500/30 text-orange-300 text-sm rounded-full font-medium">
+          In Entwicklung
+        </span>
+      </div>
+      <p className="text-slate-300 mb-4">{description}</p>
+      {features && (
+        <ul className="space-y-2">
+          {features.map((feature, index) => (
+            <li key={index} className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-orange-400" />
+              <span className="text-slate-300 text-sm">{feature}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
         return (
           <div className="space-y-8">
             <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-white mb-4">Coachingspace Dokumentation</h1>
+              <h1 className="text-4xl font-bold text-white mb-4">Coachingspace Core-Version</h1>
               <p className="text-xl text-slate-300 max-w-3xl mx-auto">
-                Dein umfassender Leitfaden für professionelles, DSGVO-konformes Coaching mit KI-Unterstützung
+                Professionelles Coaching-Management mit DSGVO-konformem Setup - 
+                KI-Features werden als Premium-Add-On hinzugefügt
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FeatureCard
+                icon={Users}
+                title="Coachee-Verwaltung"
+                description="Umfassende Verwaltung Ihrer Coaching-Klienten mit Profilen, Kontaktdaten und Historie."
+                highlight={true}
+              />
               <FeatureCard
                 icon={Clock}
-                title="10-Minuten Setup"
-                description="Von der Installation bis zur ersten Session - schnell startklar"
-                highlight
+                title="Session-Management"
+                description="Terminplanung, Session-Tracking und strukturierte Dokumentation aller Coaching-Sitzungen."
+                highlight={true}
+              />
+              <FeatureCard
+                icon={FileText}
+                title="Sitzungsnotizen"
+                description="Strukturierte Notizen mit Templates, Tags und Suchfunktion für alle Sessions."
+                highlight={true}
+              />
+              <FeatureCard
+                icon={Calculator}
+                title="Rechnungswesen"
+                description="Automatisierte Rechnungserstellung und Finanz-Tracking für Ihr Coaching-Business."
+                highlight={true}
+              />
+              <FeatureCard
+                icon={BookOpen}
+                title="Reflexionstagebuch"
+                description="Persönliches Journal für Coaching-Reflexionen und Entwicklungsfortschritte."
+                highlight={true}
               />
               <FeatureCard
                 icon={Shield}
                 title="DSGVO-konform"
-                description="Lokale Datenspeicherung und automatische Compliance-Features"
-                highlight
+                description="Vollständig DSGVO-konforme Datenverarbeitung und Sicherheitsmaßnahmen."
+                highlight={true}
               />
               <FeatureCard
                 icon={Brain}
-                title="KI-gestützt"
-                description="Triadisches Coaching mit intelligenter Sessionplanung und Notizen-Analyse"
-                highlight
+                title="KI-Coach-Assistent"
+                description="Intelligente Coaching-Unterstützung mit triadischem System und Prompt-Bibliothek."
+                status="coming"
+              />
+              <FeatureCard
+                icon={Lightbulb}
+                title="KI-Sitzungsanalyse"
+                description="Automatische Analyse von Notizen und Sessions mit Erkennungsmustern."
+                status="coming"
+              />
+              <FeatureCard
+                icon={BarChart3}
+                title="KI-Fortschrittsanalyse"
+                description="Intelligente Auswertung von Coaching-Verläufen und Erfolgsmetriken."
+                status="coming"
               />
             </div>
 
-            <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-lg p-6">
-              <h2 className="text-2xl font-semibold text-white mb-4">Warum Coachingspace?</h2>
-              <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 border border-blue-500/30 rounded-xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-4">Sofort verfügbare Core-Features</h2>
+              <div className="grid md:grid-cols-2 gap-6 text-slate-300">
                 <div>
-                  <h3 className="font-semibold text-blue-400 mb-3">Für dich als Coach</h3>
-                  <ul className="space-y-2 text-slate-300">
-                    <li>• Strukturierte Session-Dokumentation mit KI-Analyse</li>
-                    <li>• Automatische Rechnungsstellung</li>
-                    <li>• DSGVO-konforme Coachee-Verwaltung</li>
-                    <li>• KI-unterstützte Coaching-Tools und Musteranalyse</li>
-                    <li>• Intelligente Lücken-Erkennung in Sessions</li>
-                    <li>• Reflexionstagebuch mit Coach-Entwicklung</li>
+                  <h3 className="font-semibold text-white mb-2">✅ Vollständig funktional</h3>
+                  <ul className="space-y-1">
+                    <li>• Coachee-Verwaltung mit Profilen</li>
+                    <li>• Session-Management & Terminplanung</li>
+                    <li>• Strukturierte Sitzungsnotizen</li>
+                    <li>• Rechnungswesen & Finanzen</li>
+                    <li>• Reflexionstagebuch</li>
+                    <li>• DSGVO-konforme Sicherheit</li>
                   </ul>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-purple-400 mb-3">Für deine Coachees</h3>
-                  <ul className="space-y-2 text-slate-300">
-                    <li>• Transparente Fortschrittsdokumentation</li>
-                    <li>• Sichere Datenhaltung</li>
-                    <li>• Zugang zu Session-Notizen</li>
-                    <li>• Kontinuierliche Zielverfolgung</li>
-                    <li>• Automatische E-Mail-Zusammenfassungen</li>
+                  <h3 className="font-semibold text-orange-300 mb-2">🚧 Premium Add-On (in Entwicklung)</h3>
+                  <ul className="space-y-1 text-orange-200">
+                    <li>• KI-Coach-Assistent</li>
+                    <li>• Automatische Sitzungsanalyse</li>
+                    <li>• Intelligente Fortschrittsmetriken</li>
+                    <li>• Prompt-Bibliothek für Coaches</li>
+                    <li>• Triadisches Coaching-System</li>
+                    <li>• Personalisierte KI-Insights</li>
                   </ul>
                 </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Navigation der Dokumentation</h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {sections.slice(1).map(section => (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className="flex items-center gap-3 p-3 text-left bg-slate-700/50 hover:bg-slate-700 rounded-lg transition-colors"
-                  >
-                    <section.icon className="h-5 w-5 text-blue-400" />
-                    <span className="text-slate-300">{section.title}</span>
-                  </button>
-                ))}
               </div>
             </div>
           </div>
@@ -174,134 +226,111 @@ const DocumentationPage = () => {
       case 'quickstart':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Schnellstart - 10 Minuten bis zur ersten Session</h1>
-            
-            <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Play className="h-6 w-6 text-green-400" />
-                <h2 className="text-xl font-semibold text-white">Ziel: Deine erste vollständige Session dokumentieren</h2>
-              </div>
-              <p className="text-green-100">
-                Diese Anleitung führt dich Schritt für Schritt durch die wichtigsten Funktionen. 
-                Am Ende kannst du professionell coachen und dokumentieren.
-              </p>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Schnellstart Guide - 10 Minuten Setup</h1>
+              <p className="text-xl text-slate-300">Von der Registration bis zur ersten Session</p>
             </div>
 
             <StepGuide
-              title="Grundsetup (3 Minuten)"
-              icon={Settings}
+              title="Account-Setup & Sicherheit"
+              icon={Shield}
               steps={[
                 {
-                  title: "Passwort einrichten",
-                  description: "Sichere Anmeldung für Ihre Coaching-Daten",
+                  title: "Registration & Login",
+                  description: "Erstellen Sie Ihr Coachingspace-Konto mit sicheren Credentials",
                   details: [
-                    "Starkes Passwort wählen (min. 8 Zeichen)",
-                    "Backup-Codes herunterladen und sicher verwahren",
-                    "Erste Anmeldung bestätigen"
+                    "Email und sicheres Passwort wählen",
+                    "Email-Bestätigung abschließen",
+                    "Erste Anmeldung durchführen"
                   ]
                 },
                 {
-                  title: "Grunddaten eingeben",
-                  description: "Einstellungen → Unternehmensdaten ausfüllen",
+                  title: "Passwort-Manager Setup",
+                  description: "Konfigurieren Sie starke Sicherheit für Ihren Account",
                   details: [
-                    "Vollständiger Name und Anschrift",
-                    "Steuernummer für Rechnungen",
-                    "Standard-Honorarsatz definieren",
-                    "Optional: Logo und Primärfarbe"
+                    "Passwort-Manager verwenden (1Password, Bitwarden)",
+                    "Starkes Master-Passwort generieren",
+                    "Backup-Codes sicher speichern"
                   ]
                 }
               ]}
             />
 
             <StepGuide
-              title="Ersten Coachee anlegen (2 Minuten)"
+              title="Erste Coaching-Daten"
               icon={Users}
               steps={[
                 {
-                  title: "Coachee-Profil erstellen",
-                  description: "Navigation: Coachees → Neuer Coachee",
+                  title: "Ersten Coachee anlegen",
+                  description: "Erstellen Sie Ihr erstes Coaching-Profil",
                   details: [
-                    "Grunddaten: Name, E-Mail, Telefon",
-                    "Coaching-Ziele dokumentieren",
-                    "Honorarsatz individuell anpassen",
-                    "DSGVO-Einverständnis per E-Mail senden"
+                    "Navigation: Dashboard → Coachees → Neuer Coachee",
+                    "Grunddaten eingeben (Name, Kontakt, Ziele)",
+                    "Coaching-Rahmen definieren"
                   ]
                 },
                 {
-                  title: "DSGVO-Compliance sicherstellen",
-                  description: "Rechtssicherheit von Anfang an",
+                  title: "Session planen",
+                  description: "Terminieren Sie Ihre erste Coaching-Session",
                   details: [
-                    "E-Mail mit Datenschutzlink senden",
-                    "Coachee muss Einverständnis bestätigen",
-                    "Grünes Häkchen im Profil überprüfen",
-                    "Ohne Einverständnis kein Coaching starten"
+                    "Session-Kalender öffnen",
+                    "Termin mit Coachee vereinbaren",
+                    "Session-Typ und Dauer festlegen"
                   ]
                 }
               ]}
             />
 
             <StepGuide
-              title="Erste Session durchführen (5 Minuten)"
+              title="Session durchführen"
               icon={Clock}
               steps={[
                 {
-                  title: "Session vorbereiten",
-                  description: "Sessions → Neue Session anlegen",
+                  title: "Session-Notizen erstellen",
+                  description: "Dokumentieren Sie strukturiert Ihre Coaching-Session",
                   details: [
-                    "Coachee auswählen und Termin eingeben",
-                    "Session-Typ wählen (Erstgespräch, Folgesession, etc.)",
-                    "Vorlage für Session-Struktur auswählen",
-                    "KI-Assistent für Gesprächsleitfaden nutzen"
+                    "Session starten → Notizen-Bereich öffnen",
+                    "Strukturierte Templates verwenden",
+                    "Wichtige Erkenntnisse festhalten"
                   ]
                 },
                 {
-                  title: "Session dokumentieren",
-                  description: "Parallel oder direkt nach dem Gespräch",
+                  title: "Follow-up planen",
+                  description: "Nächste Schritte und Termine definieren",
                   details: [
-                    "Notizen in Echtzeit oder nachträglich eingeben",
-                    "Vereinbarte To-Dos und nächste Schritte festhalten",
-                    "Session als 'Abgeschlossen' markieren",
-                    "Automatische Rechnungsstellung aktivieren"
-                  ]
-                },
-                {
-                  title: "Follow-up organisieren",
-                  description: "Den Coaching-Prozess am Laufen halten",
-                  details: [
-                    "Nächsten Termin direkt vereinbaren",
-                    "To-Do-Liste für Coachee zusammenfassen",
-                    "Session-Zusammenfassung per E-Mail senden",
-                    "Rechnung generieren und versenden"
+                    "Hausaufgaben und Action Items notieren",
+                    "Nächsten Termin vereinbaren",
+                    "Session abschließen und archivieren"
                   ]
                 }
               ]}
             />
 
-            <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-6">
-              <h3 className="font-semibold text-blue-400 mb-3">Herzlichen Glückwunsch! 🎉</h3>
-              <p className="text-blue-100 mb-4">
-                Du hast deine erste Session erfolgreich dokumentiert. Coachingspace hilft dir ab sofort bei:
+            <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <CheckCircle className="h-6 w-6 text-green-400" />
+                <h3 className="text-xl font-semibold text-white">Herzlichen Glückwunsch!</h3>
+              </div>
+              <p className="text-slate-300 mb-4">
+                Sie haben erfolgreich Ihr Coachingspace-Setup abgeschlossen. Ihr professionelles 
+                Coaching-Management ist jetzt betriebsbereit.
               </p>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-400" />
-                    <span className="text-blue-100">Strukturierter Session-Dokumentation</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-400" />
-                    <span className="text-blue-100">Automatischer Rechnungsstellung</span>
-                  </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold text-white mb-2">Nächste Schritte:</h4>
+                  <ul className="text-sm text-slate-300 space-y-1">
+                    <li>• Weitere Coachees hinzufügen</li>
+                    <li>• Rechnungseinstellungen konfigurieren</li>
+                    <li>• Coaching-Toolbox erkunden</li>
+                  </ul>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-400" />
-                    <span className="text-blue-100">DSGVO-konformer Datenverwaltung</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-400" />
-                    <span className="text-blue-100">KI-gestützter Coaching-Optimierung</span>
-                  </div>
+                <div>
+                  <h4 className="font-semibold text-orange-300 mb-2">Kommende Features:</h4>
+                  <ul className="text-sm text-orange-200 space-y-1">
+                    <li>• KI-Coach-Assistent (Premium Add-On)</li>
+                    <li>• Automatische Session-Analyse</li>
+                    <li>• Erweiterte Analytics</li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -311,86 +340,114 @@ const DocumentationPage = () => {
       case 'password':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Passwort-System & Sicherheit</h1>
-            
-            <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Shield className="h-6 w-6 text-blue-400" />
-                <h2 className="text-xl font-semibold text-white">DSGVO-konforme Datensicherheit</h2>
-              </div>
-              <p className="text-blue-100">
-                Alle Coaching-Daten werden lokal verschlüsselt gespeichert. Das Backup-Code-System 
-                gewährleistet Zugang auch bei vergessenem Passwort.
-              </p>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Passwort & Sicherheit</h1>
+              <p className="text-xl text-slate-300">Schützen Sie Ihre sensiblen Coaching-Daten optimal</p>
             </div>
 
             <StepGuide
-              title="Passwort-Setup und Backup-Codes"
+              title="Passwort-Manager Setup"
               icon={Shield}
               steps={[
                 {
-                  title: "Starkes Passwort erstellen",
-                  description: "Beim ersten App-Start sicheres Passwort definieren",
+                  title: "Passwort-Manager wählen",
+                  description: "Verwenden Sie eine professionelle Lösung für maximale Sicherheit",
                   details: [
-                    "Mindestens 8 Zeichen mit Groß-/Kleinbuchstaben",
-                    "Zahlen und Sonderzeichen verwenden",
-                    "Passwort-Stärke wird automatisch bewertet",
-                    "SHA-256 Verschlüsselung mit Salt"
+                    "Empfohlen: 1Password, Bitwarden, Dashlane",
+                    "Browser-integrierte Manager vermeiden",
+                    "Business-Version für Coaches empfohlen"
                   ]
                 },
                 {
-                  title: "Backup-Codes sicher verwahren",
-                  description: "5 Notfall-Codes für Passwort-Reset generieren",
+                  title: "Master-Passwort erstellen",
+                  description: "Ihr wichtigstes Passwort - stark und einprägsam",
                   details: [
-                    "Codes im Format COACH-XXXX-XXXX",
-                    "Als Textdatei herunterladen und ausdrucken",
-                    "NICHT digital auf Computer speichern",
-                    "Jeder Code funktioniert nur einmal"
+                    "Mindestens 16 Zeichen verwenden",
+                    "Kombination aus Wörtern + Zahlen + Sonderzeichen",
+                    "Beispiel: 'MeinCoaching$2024!Sicher'"
                   ]
                 },
                 {
-                  title: "Session-Management",
-                  description: "Automatische Sicherheitsfeatures nutzen",
+                  title: "Coachingspace-Passwort generieren",
+                  description: "Lassen Sie den Passwort-Manager ein starkes Passwort erstellen",
                   details: [
-                    "8-Stunden-Session ohne erneute Anmeldung",
-                    "Automatischer Logout aus Sicherheitsgründen",
-                    "Alle Daten bleiben lokal verschlüsselt",
-                    "Keine Cloud-Synchronisation ohne Einverständnis"
+                    "Mindestens 20 Zeichen",
+                    "Vollständig zufällig generiert",
+                    "Automatisch in Manager speichern"
+                  ]
+                }
+              ]}
+            />
+
+            <StepGuide
+              title="Backup & Recovery"
+              icon={Copy}
+              steps={[
+                {
+                  title: "Backup-Codes erstellen",
+                  description: "Sichern Sie sich gegen Passwort-Verlust ab",
+                  details: [
+                    "Passwort-Manager Backup-Codes generieren",
+                    "Codes in separatem, sicheren Ort speichern",
+                    "Nie digital als Plaintext speichern"
+                  ]
+                },
+                {
+                  title: "Recovery-Plan dokumentieren",
+                  description: "Erstellen Sie einen Notfall-Zugangsplan",
+                  details: [
+                    "Backup-Email-Adresse hinterlegen",
+                    "Vertrauenswürdige Kontaktperson definieren",
+                    "Recovery-Prozess mindestens 1x testen"
                   ]
                 }
               ]}
             />
 
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                <h3 className="font-semibold text-green-400 mb-4">Sicherheitsfeatures</h3>
-                <div className="space-y-2">
-                  {[
-                    "AES-256 Verschlüsselung aller Daten",
-                    "Lokale Speicherung (kein Server-Upload)",
-                    "Backup-Code-System für Notfälle", 
-                    "Automatische Session-Timeouts",
-                    "DSGVO-konforme Datenhaltung"
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-400" />
-                      <span className="text-sm text-slate-300">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <TroubleshootingCard
+                issue="Passwort vergessen"
+                solution="Verwenden Sie die 'Passwort vergessen' Funktion auf der Login-Seite. Ein Reset-Link wird an Ihre Email geschickt."
+                type="info"
+              />
+              <TroubleshootingCard
+                issue="Passwort-Manager synchronisiert nicht"
+                solution="Prüfen Sie Ihre Internet-Verbindung und loggen Sie sich erneut in Ihren Passwort-Manager ein."
+                type="warning"
+              />
+              <TroubleshootingCard
+                issue="Account temporär gesperrt"
+                solution="Nach 5 fehlgeschlagenen Login-Versuchen wird Ihr Account für 30 Minuten gesperrt. Kontaktieren Sie den Support bei anhaltenden Problemen."
+                type="error"
+              />
+              <TroubleshootingCard
+                issue="Verdächtige Aktivitäten"
+                solution="Ändern Sie sofort Ihr Passwort und kontaktieren Sie unseren Support. Prüfen Sie alle aktiven Sessions."
+                type="error"
+              />
+            </div>
 
-              <div className="space-y-4">
-                <TroubleshootingCard
-                  problem="Passwort vergessen und keine Backup-Codes"
-                  solution="Komplettreset erforderlich - alle Daten gehen verloren. Backup-Codes sind essentiell!"
-                  severity="high"
-                />
-                <TroubleshootingCard
-                  problem="Backup-Code wird nicht akzeptiert"
-                  solution="Code exakt eingeben, bereits verwendete Codes sind ungültig"
-                  severity="medium"
-                />
+            <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Sicherheits-Checkliste</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold text-white mb-2">✅ Empfohlene Maßnahmen</h4>
+                  <ul className="text-slate-300 space-y-1 text-sm">
+                    <li>• Passwort-Manager verwenden</li>
+                    <li>• Regelmäßige Passwort-Updates</li>
+                    <li>• Backup-Codes sicher verwahren</li>
+                    <li>• Login-Aktivitäten überwachen</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-red-300 mb-2">❌ Zu vermeiden</h4>
+                  <ul className="text-red-200 space-y-1 text-sm">
+                    <li>• Passwörter wiederverwenden</li>
+                    <li>• Passwörter im Browser speichern</li>
+                    <li>• Schwache oder vorhersagbare Passwörter</li>
+                    <li>• Passwörter unverschlüsselt notieren</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -399,212 +456,406 @@ const DocumentationPage = () => {
       case 'coachees':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Coachee-Verwaltung</h1>
-            
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Coachee-Verwaltung</h1>
+              <p className="text-xl text-slate-300">Professionelle Klienten-Organisation für erfolgreiches Coaching</p>
+            </div>
+
             <StepGuide
-              title="Vollständiges Coachee-Profil erstellen"
+              title="Neuen Coachee anlegen"
               icon={Users}
               steps={[
                 {
                   title: "Grunddaten erfassen",
-                  description: "Alle wichtigen Informationen sammeln",
+                  description: "Erfassen Sie die wichtigsten Informationen zu Ihrem neuen Coachee",
                   details: [
-                    "Vollständiger Name und Kontaktdaten",
-                    "Beruf und Unternehmen für Kontext",
-                    "Bevorzugte Kommunikationskanäle",
-                    "Verfügbarkeit und Terminpräferenzen"
+                    "Name, Vorname und bevorzugte Anrede",
+                    "Kontaktdaten (Email, Telefon)",
+                    "Berufliche Position und Unternehmen"
                   ]
                 },
                 {
-                  title: "Coaching-Ziele definieren",
-                  description: "SMART-Ziele gemeinsam erarbeiten",
+                  title: "Coaching-Kontext definieren",
+                  description: "Bestimmen Sie den Rahmen für das Coaching-Verhältnis",
                   details: [
-                    "Hauptziel des Coachings formulieren",
-                    "Teilziele und Meilensteine festlegen",
-                    "Messbare Erfolgskriterien definieren",
-                    "Zeitrahmen und Deadlines vereinbaren"
+                    "Coaching-Ziele und gewünschte Outcomes",
+                    "Coaching-Art (Business, Life, Executive)",
+                    "Geplante Session-Anzahl und Dauer"
                   ]
                 },
                 {
-                  title: "DSGVO-Einverständnis einholen",
-                  description: "Rechtssichere Grundlage schaffen",
+                  title: "Individuelle Einstellungen",
+                  description: "Personalisieren Sie die Betreuung für optimale Ergebnisse",
                   details: [
-                    "Automatische E-Mail mit Datenschutzlink",
-                    "Coachee muss aktiv zustimmen",
-                    "Einverständnis wird dokumentiert",
-                    "Grünes Häkchen als Bestätigung"
+                    "Präferierte Kommunikationskanäle",
+                    "Session-Häufigkeit und bevorzugte Zeiten",
+                    "Besondere Notizen oder Bedürfnisse"
                   ]
                 }
               ]}
             />
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <StepGuide
+              title="Coachee-Profile verwalten"
+              icon={FileText}
+              steps={[
+                {
+                  title: "Profile regelmäßig aktualisieren",
+                  description: "Halten Sie die Coachee-Daten aktuell und vollständig",
+                  details: [
+                    "Kontaktdaten bei Änderungen updaten",
+                    "Coaching-Fortschritte dokumentieren",
+                    "Neue Ziele oder Schwerpunkte ergänzen"
+                  ]
+                },
+                {
+                  title: "Session-Historie verfolgen",
+                  description: "Behalten Sie den Überblick über alle Coaching-Aktivitäten",
+                  details: [
+                    "Vergangene Sessions mit Notizen einsehen",
+                    "Fortschritte und Entwicklungen analysieren",
+                    "Muster und Trends erkennen"
+                  ]
+                }
+              ]}
+            />
+
+            <div className="grid md:grid-cols-3 gap-6">
               <FeatureCard
-                icon={Target}
-                title="Ziel-Tracking"
-                description="Automatische Fortschrittsmessung und Visualisierung der Coaching-Erfolge"
+                icon={Users}
+                title="Coachee-Dashboard"
+                description="Zentrale Übersicht aller Ihrer Coaching-Klienten mit Status und nächsten Terminen."
               />
               <FeatureCard
                 icon={Calendar}
-                title="Terminmanagement"
-                description="Integrierte Kalenderfunktion mit Erinnerungen und Rescheduling"
+                title="Session-Planung"
+                description="Integrierte Terminplanung direkt aus dem Coachee-Profil heraus."
+              />
+              <FeatureCard
+                icon={FileText}
+                title="Notizen-System"
+                description="Strukturierte Notizen und Dokumentation für jeden Coachee einzeln."
               />
             </div>
+
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Tipps für effektive Coachee-Verwaltung</h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-blue-400 mb-3">Best Practices</h4>
+                  <ul className="text-slate-300 space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span>Profile vollständig ausfüllen für bessere Betreuung</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span>Regelmäßige Aktualisierung der Coaching-Ziele</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span>Tags für Kategorisierung nutzen</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span>Notizen zeitnah nach Sessions erstellen</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-orange-400 mb-3">Häufige Fehler</h4>
+                  <ul className="text-slate-300 space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                      <span>Unvollständige Profile führen zu Verwirrung</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                      <span>Veraltete Kontaktdaten verhindern Kommunikation</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                      <span>Fehlende Dokumentation von Coaching-Zielen</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                      <span>Zu seltene Updates der Profile</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <ComingSoonSection
+              title="KI-unterstützte Coachee-Analyse"
+              description="Erweiterte Funktionen für tiefere Einblicke in Coaching-Verläufe werden als Premium-Add-On verfügbar."
+              features={[
+                "Automatische Fortschrittsanalyse basierend auf Session-Notizen",
+                "Personalisierte Coaching-Empfehlungen durch KI",
+                "Mustererkennung in Coachee-Entwicklungen",
+                "Prädiktive Analytics für Coaching-Erfolg"
+              ]}
+            />
           </div>
         );
 
       case 'sessions':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Session-Management</h1>
-            
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Session-Management</h1>
+              <p className="text-xl text-slate-300">Strukturierte Planung und Durchführung Ihrer Coaching-Sessions</p>
+            </div>
+
             <StepGuide
-              title="Professionelle Session-Durchführung"
-              icon={Clock}
+              title="Session planen"
+              icon={Calendar}
               steps={[
                 {
-                  title: "Session vorbereiten",
-                  description: "Optimale Vorbereitung für maximalen Erfolg",
+                  title: "Termin vereinbaren",
+                  description: "Planen Sie strukturiert Ihre Coaching-Termine",
                   details: [
-                    "Vorige Session-Notizen durchlesen",
-                    "Agenda und Gesprächsleitfaden erstellen",
-                    "Relevante Tools und Materialien bereitstellen",
-                    "Technische Setup prüfen (bei Online-Sessions)"
+                    "Kalender-Integration für Terminübersicht",
+                    "Coachee-spezifische Verfügbarkeiten berücksichtigen",
+                    "Session-Dauer und -Art definieren"
                   ]
                 },
                 {
-                  title: "Session durchführen",
-                  description: "Strukturiertes Vorgehen mit Live-Dokumentation",
+                  title: "Session-Typ festlegen",
+                  description: "Bestimmen Sie den Fokus und die Struktur der Session",
                   details: [
-                    "Check-in: Wie geht es dem Coachee?",
-                    "Review: Fortschritte seit letzter Session",
-                    "Hauptteil: Kernthema bearbeiten",
-                    "Wrap-up: Erkenntnisse und nächste Schritte"
+                    "Ersttermin, Follow-up oder Abschlussgespräch",
+                    "Spezielle Schwerpunkte oder Methoden",
+                    "Vorbereitung und benötigte Materialien"
                   ]
                 },
                 {
-                  title: "Session nachbereiten",
-                  description: "Kontinuität und Follow-up sicherstellen",
+                  title: "Vorbereitung dokumentieren",
+                  description: "Bereiten Sie sich optimal auf die Session vor",
                   details: [
-                    "Session-Notizen vervollständigen",
-                    "To-Dos und Vereinbarungen dokumentieren",
-                    "Nächsten Termin vereinbaren",
-                    "Rechnung erstellen und versenden"
+                    "Notizen aus vorherigen Sessions reviewen",
+                    "Coaching-Ziele und aktuellen Status prüfen",
+                    "Agenda und Gesprächsleitfaden erstellen"
                   ]
                 }
               ]}
             />
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <StepGuide
+              title="Session durchführen"
+              icon={Clock}
+              steps={[
+                {
+                  title: "Session starten",
+                  description: "Beginnen Sie strukturiert Ihre Coaching-Session",
+                  details: [
+                    "Session im System als 'aktiv' markieren",
+                    "Notizen-Bereich vorbereiten",
+                    "Timer für Session-Dauer starten"
+                  ]
+                },
+                {
+                  title: "Live-Notizen erstellen",
+                  description: "Dokumentieren Sie wichtige Inhalte während der Session",
+                  details: [
+                    "Strukturierte Templates für Notizen verwenden",
+                    "Wichtige Quotes und Erkenntnisse festhalten",
+                    "Action Items und nächste Schritte notieren"
+                  ]
+                },
+                {
+                  title: "Session abschließen",
+                  description: "Beenden Sie die Session strukturiert und vollständig",
+                  details: [
+                    "Zusammenfassung und Key Takeaways dokumentieren",
+                    "Nächste Session terminieren",
+                    "Follow-up Aktionen definieren"
+                  ]
+                }
+              ]}
+            />
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               <FeatureCard
-                icon={Calendar}
+                icon={Play}
                 title="Session-Timer"
-                description="Eingebauter Timer für präzise Zeiterfassung und automatische Abrechnungsgrundlage"
+                description="Integrierter Timer für präzise Session-Dauer und Pausen."
               />
               <FeatureCard
                 icon={FileText}
-                title="Template-System"
-                description="Wiederverwendbare Session-Strukturen für verschiedene Coaching-Formate"
+                title="Live-Notizen"
+                description="Echtzeit-Dokumentation während der laufenden Session."
+              />
+              <FeatureCard
+                icon={Target}
+                title="Ziel-Tracking"
+                description="Fortschrittsverfolgung zu definierten Coaching-Zielen."
+              />
+              <FeatureCard
+                icon={Calendar}
+                title="Follow-up Planung"
+                description="Automatische Terminierung von Folge-Sessions."
               />
             </div>
 
             <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-              <h3 className="font-semibold text-orange-400 mb-4">Session-Status Workflow</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 bg-gray-600 text-white rounded-full text-xs font-bold flex items-center justify-center">G</div>
-                  <span className="text-slate-300">Geplant → Session ist terminiert</span>
+              <h3 className="text-xl font-semibold text-white mb-4">Session-Templates</h3>
+              <p className="text-slate-300 mb-4">
+                Nutzen Sie vorgefertigte Templates für strukturierte und professionelle Sessions:
+              </p>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-slate-700 rounded-lg p-4">
+                  <h4 className="font-semibold text-white mb-2">Ersttermin</h4>
+                  <ul className="text-sm text-slate-300 space-y-1">
+                    <li>• Kennenlernen & Rapport</li>
+                    <li>• Ziele definieren</li>
+                    <li>• Coaching-Rahmen vereinbaren</li>
+                    <li>• Nächste Schritte planen</li>
+                  </ul>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 bg-blue-600 text-white rounded-full text-xs font-bold flex items-center justify-center">L</div>
-                  <span className="text-slate-300">Laufend → Session findet statt</span>
+                <div className="bg-slate-700 rounded-lg p-4">
+                  <h4 className="font-semibold text-white mb-2">Standard Session</h4>
+                  <ul className="text-sm text-slate-300 space-y-1">
+                    <li>• Check-in & Status</li>
+                    <li>• Arbeitsthemen bearbeiten</li>
+                    <li>• Erkenntnisse & Insights</li>
+                    <li>• Action Items definieren</li>
+                  </ul>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 bg-green-600 text-white rounded-full text-xs font-bold flex items-center justify-center">A</div>
-                  <span className="text-slate-300">Abgeschlossen → Kann abgerechnet werden</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 bg-red-600 text-white rounded-full text-xs font-bold flex items-center justify-center">S</div>
-                  <span className="text-slate-300">Storniert → Nicht abrechenbar</span>
+                <div className="bg-slate-700 rounded-lg p-4">
+                  <h4 className="font-semibold text-white mb-2">Abschlussgespräch</h4>
+                  <ul className="text-sm text-slate-300 space-y-1">
+                    <li>• Coaching-Rückblick</li>
+                    <li>• Erfolge würdigen</li>
+                    <li>• Lernings dokumentieren</li>
+                    <li>• Zukunft & Transfer</li>
+                  </ul>
                 </div>
               </div>
             </div>
+
+            <ComingSoonSection
+              title="KI-unterstützte Session-Führung"
+              description="Intelligente Assistenz für noch effektivere Coaching-Sessions wird als Premium-Add-On verfügbar."
+              features={[
+                "Echtzeit-Coaching-Vorschläge basierend auf Gesprächsverlauf",
+                "Automatische Erkennung von Coaching-Momenten und Interventionspunkten",
+                "KI-gestützte Fragetechniken und Interventionsvorschläge",
+                "Automatisches Zusammenfassen von Session-Inhalten"
+              ]}
+            />
           </div>
         );
 
       case 'notes':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Sitzungsnotizen & KI-Features</h1>
-            
-            <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-purple-500/30 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Brain className="h-6 w-6 text-purple-400" />
-                <h2 className="text-xl font-semibold text-white">KI-gestützte Session-Dokumentation</h2>
-              </div>
-              <p className="text-purple-100">
-                Professionelle Notizen werden durch KI-Analyse ergänzt: Automatische Strukturierung, 
-                Lücken-Erkennung, E-Mail-Zusammenfassungen und Muster-Analyse für optimale Coaching-Effizienz.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                <Brain className="h-8 w-8 text-blue-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">KI-Strukturierung</h3>
-                <p className="text-sm text-slate-300">Automatische Kategorisierung in Beobachtungen, Erkenntnisse und Aktionspunkte</p>
-              </div>
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                <AlertCircle className="h-8 w-8 text-orange-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">Lücken-Analyse</h3>
-                <p className="text-sm text-slate-300">Erkennung unvollständiger Bereiche mit Verbesserungsvorschlägen</p>
-              </div>
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                <Mail className="h-8 w-8 text-green-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">E-Mail-Generator</h3>
-                <p className="text-sm text-slate-300">Automatische Session-Zusammenfassungen für Coachees</p>
-              </div>
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                <TrendingUp className="h-8 w-8 text-purple-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">Muster-Analyse</h3>
-                <p className="text-sm text-slate-300">Langfristige Coaching-Trends und wiederkehrende Themen</p>
-              </div>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Sitzungsnotizen</h1>
+              <p className="text-xl text-slate-300">Strukturierte Dokumentation für professionelles Coaching</p>
             </div>
 
             <StepGuide
-              title="KI-Workflow für Session-Notizen"
-              icon={Sparkles}
+              title="Notizen während der Session"
+              icon={FileText}
               steps={[
                 {
-                  title: "Session-Notizen schreiben",
-                  description: "Gewohnte Dokumentation mit zusätzlicher KI-Unterstützung",
+                  title: "Template auswählen",
+                  description: "Nutzen Sie passende Vorlagen für strukturierte Notizen",
                   details: [
-                    "Notizen in natürlicher Sprache während/nach der Session",
-                    "Kernaussagen, Emotionen und Beobachtungen festhalten",
-                    "Vereinbarungen und To-Dos dokumentieren",
-                    "Keine speziellen Formate notwendig - KI versteht Fließtext"
+                    "Session-Typ entsprechendes Template wählen",
+                    "Individuelle Anpassungen vornehmen",
+                    "Wiederkehrende Elemente vordefinieren"
                   ]
                 },
                 {
-                  title: "KI-Analyse aktivieren",
-                  description: "Mit einem Klick professionelle Aufbereitung",
+                  title: "Echtzeitnotizen erfassen",
+                  description: "Dokumentieren Sie wichtige Inhalte direkt während des Gesprächs",
                   details: [
-                    "Brain-Button (🧠): Strukturierung in Kategorien",
-                    "Alert-Button (⚠️): Vollständigkeits-Check mit Checkliste",
-                    "Mail-Button (📧): E-Mail-Template für Coachee generieren",
-                    "Trend-Button (📈): Muster und langfristige Entwicklungen"
+                    "Schlüsselmomente und Wendepunkte festhalten",
+                    "Wichtige Zitate und Aussagen des Coachee notieren",
+                    "Emotionen und nonverbale Signale dokumentieren"
                   ]
                 },
                 {
-                  title: "Ergebnisse nutzen und speichern",
-                  description: "KI-Insights in die Praxis integrieren",
+                  title: "Struktur und Tags verwenden",
+                  description: "Organisieren Sie Ihre Notizen für spätere Wiederfindung",
                   details: [
-                    "Strukturierte Ergebnisse direkt als neue Notiz speichern",
-                    "E-Mail-Templates kopieren und versenden",
-                    "Checklisten für Vollständigkeit abarbeiten",
-                    "Muster-Erkenntnisse für zukünftige Sessions nutzen"
+                    "Themen-Tags für Kategorisierung nutzen",
+                    "Prioritäten und Wichtigkeit markieren",
+                    "Verknüpfungen zu vorherigen Sessions erstellen"
                   ]
                 }
+              ]}
+            />
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FeatureCard
+                icon={FileText}
+                title="Template-System"
+                description="Professionelle Vorlagen für verschiedene Session-Typen und Coaching-Ansätze."
+              />
+              <FeatureCard
+                icon={Search}
+                title="Intelligente Suche"
+                description="Schnelle Suche durch alle Notizen mit Tags, Stichwörtern und Zeiträumen."
+              />
+              <FeatureCard
+                icon={Copy}
+                title="Notizen-Export"
+                description="Export von Notizen für externe Verwendung oder Archivierung."
+              />
+            </div>
+
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Notizen-Best Practices</h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-green-400 mb-3">✅ Empfohlene Methoden</h4>
+                  <ul className="text-slate-300 space-y-2 text-sm">
+                    <li>• Notizen zeitnah nach Session finalisieren</li>
+                    <li>• Konsistente Struktur und Templates verwenden</li>
+                    <li>• Wichtige Quotes wörtlich festhalten</li>
+                    <li>• Action Items klar von Beobachtungen trennen</li>
+                    <li>• Tags für spätere Analyse verwenden</li>
+                    <li>• Vertraulichkeit und DSGVO beachten</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-red-400 mb-3">❌ Zu vermeidende Fehler</h4>
+                  <ul className="text-red-200 space-y-2 text-sm">
+                    <li>• Zu viele unwichtige Details dokumentieren</li>
+                    <li>• Interpretationen als Fakten darstellen</li>
+                    <li>• Unstrukturierte oder chaotische Notizen</li>
+                    <li>• Verzögerung bei der Notizen-Erstellung</li>
+                    <li>• Fehlende Kategorisierung und Tags</li>
+                    <li>• Vertrauliche Daten unsicher speichern</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <TroubleshootingCard
+                issue="Notizen werden nicht gespeichert"
+                solution="Prüfen Sie Ihre Internetverbindung und speichern Sie manuell mit Strg+S. Bei anhaltenden Problemen kontaktieren Sie den Support."
+                type="warning"
+              />
+              <TroubleshootingCard
+                issue="Template lässt sich nicht anpassen"
+                solution="Templates können über die Einstellungen personalisiert werden. Stellen Sie sicher, dass Sie die nötigen Berechtigungen haben."
+                type="info"
+              />
+            </div>
+
+            <ComingSoonSection
+              title="KI-gestützte Notizen-Analyse"
+              description="Erweiterte Funktionen für intelligente Auswertung Ihrer Session-Notizen werden als Premium-Add-On verfügbar."
+              features={[
+                "Automatische Zusammenfassung von Session-Inhalten",
+                "Erkennung von Coaching-Themen und Mustern",
+                "Vorschläge für Follow-up-Aktionen basierend auf Notizen",
+                "Intelligente Verknüpfung zwischen Sessions verschiedener Zeiträume"
               ]}
             />
           </div>
@@ -613,344 +864,603 @@ const DocumentationPage = () => {
       case 'journal':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Reflexionstagebuch & KI-Coach-Analyse</h1>
-            
-            <div className="bg-gradient-to-r from-orange-600/20 to-red-600/20 border border-orange-500/30 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <BookOpen className="h-6 w-6 text-orange-400" />
-                <h2 className="text-xl font-semibold text-white">KI-gestützte Coach-Selbstreflexion</h2>
-              </div>
-              <p className="text-orange-100">
-                Professionelle Entwicklung durch intelligente Analyse Ihrer Coaching-Reflexionen: 
-                Blinde Flecken erkennen, Muster identifizieren und gezielt an kritischen Kompetenzen arbeiten.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                <Search className="h-8 w-8 text-blue-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">Blinde Flecken</h3>
-                <p className="text-sm text-slate-300">Unbewusste Coaching-Muster und Trigger-Situationen erkennen</p>
-              </div>
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                <TrendingUp className="h-8 w-8 text-green-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">Entwicklungstrends</h3>
-                <p className="text-sm text-slate-300">Langfristige Coaching-Evolution und Kompetenz-Entwicklung tracken</p>
-              </div>
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                <BarChart3 className="h-8 w-8 text-purple-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">Coaching-Muster</h3>
-                <p className="text-sm text-slate-300">Spezifische Reflexion analysieren und Kompetenz-Score berechnen</p>
-              </div>
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                <Target className="h-8 w-8 text-orange-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">Entwicklungsplan</h3>
-                <p className="text-sm text-slate-300">Individuelle Kompetenz-Roadmap mit messbaren Zielen</p>
-              </div>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Reflexionstagebuch</h1>
+              <p className="text-xl text-slate-300">Persönliche Entwicklung durch strukturierte Selbstreflexion</p>
             </div>
 
             <StepGuide
-              title="KI-Workflow für Coach-Reflexion"
-              icon={Lightbulb}
+              title="Tagebuch-Einträge erstellen"
+              icon={BookOpen}
               steps={[
                 {
-                  title: "Reflexions-Eintrag schreiben",
-                  description: "Authentische Selbstreflexion zu Coaching-Erfahrungen",
+                  title: "Reflexions-Routine etablieren",
+                  description: "Entwickeln Sie eine regelmäßige Praxis der Selbstreflexion",
                   details: [
-                    "Herausfordernde oder erfolgreiche Session reflektieren",
-                    "Eigene Gefühle und Reaktionen ehrlich beschreiben",
-                    "Zweifel, Unsicherheiten oder Erfolge dokumentieren",
-                    "Fragen zur eigenen Coaching-Haltung stellen"
+                    "Feste Zeiten für Reflexion einplanen (z.B. Ende des Coaching-Tages)",
+                    "Ruhige Umgebung für ungestörte Reflexion schaffen",
+                    "Ehrliche und offene Selbstbetrachtung praktizieren"
                   ]
                 },
                 {
-                  title: "KI-Analyse starten",
-                  description: "Coach-spezifische Analyse mit einem Klick",
+                  title: "Strukturierte Reflexion",
+                  description: "Nutzen Sie bewährte Reflexions-Frameworks für tiefere Einsichten",
                   details: [
-                    "Blinde Flecken: Unbewusste Muster und Trigger identifizieren",
-                    "Entwicklungstrends: Fortschritt über Zeit erkennen",
-                    "Coaching-Muster: Stärken und Entwicklungsbereiche bewerten",
-                    "Entwicklungsplan: Konkrete nächste Schritte ableiten"
+                    "Was lief heute besonders gut in meinen Sessions?",
+                    "Welche Herausforderungen bin ich begegnet?",
+                    "Was habe ich über meine Coaching-Praxis gelernt?"
                   ]
                 },
                 {
-                  title: "Insights in Supervision nutzen",
-                  description: "KI-Erkenntnisse professionell weiterentwickeln",
+                  title: "Entwicklungsziele ableiten",
+                  description: "Transformieren Sie Reflexionen in konkrete Entwicklungsschritte",
                   details: [
-                    "Supervisions-Themen aus KI-Analyse ableiten",
-                    "Konkrete Situationen mit Supervisor besprechen",
-                    "Entwicklungsziele für 3-6 Monate definieren",
-                    "Weiterbildungs-Bedarf identifizieren"
+                    "Verbesserungsmöglichkeiten identifizieren",
+                    "Konkrete Lernziele für die Zukunft definieren",
+                    "Erfolge würdigen und darauf aufbauen"
                   ]
                 }
               ]}
             />
 
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <FeatureCard
+                icon={BookOpen}
+                title="Strukturierte Templates"
+                description="Bewährte Reflexions-Vorlagen für verschiedene Coaching-Situationen."
+              />
+              <FeatureCard
+                icon={Calendar}
+                title="Routine-Tracking"
+                description="Verfolgen Sie Ihre Reflexions-Gewohnheiten und Entwicklungsfortschritte."
+              />
+              <FeatureCard
+                icon={Search}
+                title="Einsichten-Suche"
+                description="Suchen Sie nach Mustern und Entwicklungen in Ihren Reflexionen."
+              />
+              <FeatureCard
+                icon={TrendingUp}
+                title="Fortschritts-Analyse"
+                description="Visualisieren Sie Ihre persönliche Entwicklung über Zeit."
+              />
+            </div>
+
             <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-              <h3 className="font-semibold text-blue-400 mb-4 flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                Blinde Flecken Analyse im Detail
-              </h3>
+              <h3 className="text-xl font-semibold text-white mb-4">Reflexions-Templates</h3>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <h4 className="font-medium text-white mb-3">Coaching-Muster erkennen:</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 bg-red-400 rounded-full"></div>
-                      <span className="text-slate-300"><strong>Trigger-Situationen:</strong> "eingeschüchtert", "dominant", "Machtgefälle"</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 bg-orange-400 rounded-full"></div>
-                      <span className="text-slate-300"><strong>Rollenvermischung:</strong> "Ratschlag", "Lösung vorschlagen", "helfen"</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 bg-yellow-400 rounded-full"></div>
-                      <span className="text-slate-300"><strong>Grenzthemen:</strong> "schwierig abzugrenzen", "emotional mitgenommen"</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 bg-green-400 rounded-full"></div>
-                      <span className="text-slate-300"><strong>Stärken:</strong> "systemische Fragen", "Aha-Moment", "Vertrauen"</span>
-                    </div>
-                  </div>
+                  <h4 className="font-semibold text-blue-400 mb-3">Tägliche Reflexion</h4>
+                  <ul className="text-slate-300 space-y-2 text-sm">
+                    <li>• <strong>Höhepunkt:</strong> Was war heute mein größter Coaching-Erfolg?</li>
+                    <li>• <strong>Herausforderung:</strong> Welche Situation war besonders schwierig?</li>
+                    <li>• <strong>Lerning:</strong> Was habe ich heute über mich/meine Praxis gelernt?</li>
+                    <li>• <strong>Morgen:</strong> Was nehme ich mir für morgen vor?</li>
+                  </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium text-white mb-3">Supervisions-Themen ableiten:</h4>
-                  <div className="space-y-2 text-sm text-slate-300">
-                    <div>• <strong>Selbstbehauptung:</strong> Umgang mit dominanten Coachees üben</div>
-                    <div>• <strong>Abgrenzung:</strong> Coaching vs. Beratung klarer trennen</div>
-                    <div>• <strong>Selbstfürsorge:</strong> Emotionale Distanz entwickeln</div>
-                    <div>• <strong>Methodenkompetenz:</strong> Systemische Tools vertiefen</div>
-                  </div>
+                  <h4 className="font-semibold text-green-400 mb-3">Wöchentliche Reflexion</h4>
+                  <ul className="text-slate-300 space-y-2 text-sm">
+                    <li>• <strong>Entwicklung:</strong> Wie habe ich mich diese Woche entwickelt?</li>
+                    <li>• <strong>Muster:</strong> Welche Muster erkenne ich in meinen Sessions?</li>
+                    <li>• <strong>Ziele:</strong> Welche Fortschritte habe ich bei meinen Zielen gemacht?</li>
+                    <li>• <strong>Anpassung:</strong> Was möchte ich nächste Woche anders machen?</li>
+                  </ul>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-              <h3 className="font-semibold text-orange-400 mb-4 flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Individueller Entwicklungsplan
-              </h3>
-              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                <div className="bg-slate-900 border border-slate-600 rounded p-4">
-                  <h4 className="font-semibold text-red-400 mb-3">🎯 Sofortige Maßnahmen (4 Wochen)</h4>
-                  <ul className="space-y-2 text-slate-300">
-                    <li>• <strong>Selbstbehauptung:</strong> 45 → 60</li>
-                    <li>• Supervisor-Sitzung zu dominanten Coachees</li>
-                    <li>• 3 schwierige Gespräche reflektieren</li>
-                    <li>• "Nein"-Sagen im Coaching üben</li>
-                  </ul>
-                </div>
-                <div className="bg-slate-900 border border-slate-600 rounded p-4">
-                  <h4 className="font-semibold text-orange-400 mb-3">📚 Mittelfristig (3 Monate)</h4>
-                  <ul className="space-y-2 text-slate-300">
-                    <li>• <strong>Abgrenzung:</strong> 62 → 80</li>
-                    <li>• Weiterbildung: Coaching vs. Beratung</li>
-                    <li>• Systemische Tools-Workshop</li>
-                    <li>• Peer-Coaching zu Grenzthemen</li>
-                  </ul>
-                </div>
-                <div className="bg-slate-900 border border-slate-600 rounded p-4">
-                  <h4 className="font-semibold text-green-400 mb-3">🚀 Langfristig (6 Monate)</h4>
-                  <ul className="space-y-2 text-slate-300">
-                    <li>• <strong>Gesamt-Score:</strong> 67 → 85</li>
-                    <li>• Zertifizierung: Systemisches Coaching</li>
-                    <li>• Mentoring für andere Coaches</li>
-                    <li>• Spezialisierung: Executive Coaching</li>
-                  </ul>
-                </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-6">
+                <h4 className="font-semibold text-green-400 mb-3">Vorteile der Reflexion</h4>
+                <ul className="text-green-200 space-y-2 text-sm">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Erhöhte Selbstwahrnehmung als Coach</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Kontinuierliche Verbesserung der Coaching-Qualität</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Erkennung von Entwicklungsmustern</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Stressreduktion durch bewusste Verarbeitung</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-6">
+                <h4 className="font-semibold text-blue-400 mb-3">Reflexions-Tipps</h4>
+                <ul className="text-blue-200 space-y-2 text-sm">
+                  <li className="flex items-start gap-2">
+                    <Lightbulb className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span>Ehrlichkeit ist wichtiger als Perfektion</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Lightbulb className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span>Regelmäßigkeit schlägt ausführliche Einzeleinträge</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Lightbulb className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span>Sowohl Erfolge als auch Herausforderungen reflektieren</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Lightbulb className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span>Konkrete Aktionen aus Reflexionen ableiten</span>
+                  </li>
+                </ul>
               </div>
             </div>
+
+            <ComingSoonSection
+              title="KI-Coach für Reflexions-Analyse"
+              description="Intelligente Analyse Ihrer Reflexionseinträge für noch tiefere Selbsterkenntnis wird als Premium-Add-On verfügbar."
+              features={[
+                "Automatische Mustererkennung in Ihren Reflexionen",
+                "Personalisierte Entwicklungsvorschläge basierend auf Ihren Einträgen",
+                "KI-gestützte Coaching-Supervision und Feedback",
+                "Intelligente Verbindung zwischen Reflexionen und Session-Erfahrungen"
+              ]}
+            />
           </div>
         );
 
       case 'invoicing':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Rechnungswesen & Honorarverwaltung</h1>
-            
-            <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Calculator className="h-6 w-6 text-blue-400" />
-                <h2 className="text-xl font-semibold text-white">Automatisierte Rechnungsstellung</h2>
-              </div>
-              <p className="text-blue-100">
-                Von der Session-Dokumentation zur fertigen Rechnung - rechtssicher, automatisiert 
-                und steuerlich korrekt für professionelle Coaching-Praxis.
-              </p>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Rechnungswesen</h1>
+              <p className="text-xl text-slate-300">Professionelle Rechnungsstellung für Ihr Coaching-Business</p>
             </div>
 
             <StepGuide
-              title="Rechtskonforme Rechnungsstellung"
+              title="Rechnungen erstellen"
               icon={Calculator}
               steps={[
                 {
-                  title: "Rechnungsgrundlagen einrichten",
-                  description: "Einstellungen → Unternehmensdaten vollständig ausfüllen",
+                  title: "Grundeinstellungen konfigurieren",
+                  description: "Richten Sie Ihre Rechnungsdetails ein",
                   details: [
-                    "Vollständige Firmenadresse und Kontaktdaten",
-                    "Steuernummer oder USt-IdNr. eintragen",
-                    "Standard-Honorarsätze pro Coachee definieren",
-                    "Zahlungsbedingungen festlegen (Standard: 14 Tage)"
+                    "Firmenadresse und Kontaktdaten hinterlegen",
+                    "Steuernummer und USt-IdNr. eintragen",
+                    "Standard-Zahlungsbedingungen definieren"
                   ]
                 },
                 {
-                  title: "Automatische Rechnungserstellung",
-                  description: "Aus abgeschlossenen Sessions direkt zur Rechnung",
+                  title: "Rechnung aus Session erstellen",
+                  description: "Generieren Sie automatisch Rechnungen aus Ihren Sessions",
                   details: [
-                    "Sessions auf 'Abgeschlossen' setzen",
-                    "Honorarsatz wird automatisch aus Coachee-Profil übernommen",
-                    "Rechnungsnummer fortlaufend und automatisch",
-                    "Alle Pflichtangaben werden automatisch eingefügt"
+                    "Abgerechnete Sessions auswählen",
+                    "Stundensätze und Leistungen prüfen",
+                    "Rechnung generieren und versenden"
+                  ]
+                },
+                {
+                  title: "Zahlungsverfolgung",
+                  description: "Behalten Sie den Überblick über offene und bezahlte Rechnungen",
+                  details: [
+                    "Status von Rechnungen verfolgen",
+                    "Mahnungen bei Zahlungsverzug",
+                    "Zahlungseingänge dokumentieren"
                   ]
                 }
               ]}
             />
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                <h3 className="font-semibold text-green-400 mb-4">Honorar-Modelle</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="border-b border-slate-700 pb-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-white">Einzelsession</span>
-                      <span className="text-green-400">120-180€</span>
-                    </div>
-                    <div className="text-slate-400 text-xs">Pro 60 Minuten, flexibel buchbar</div>
-                  </div>
-                  <div className="border-b border-slate-700 pb-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-white">3er-Paket</span>
-                      <span className="text-green-400">15% Rabatt</span>
-                    </div>
-                    <div className="text-slate-400 text-xs">Ideal für kurze Coaching-Prozesse</div>
-                  </div>
-                </div>
-              </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <FeatureCard
+                icon={Calculator}
+                title="Auto-Rechnungserstellung"
+                description="Automatische Rechnungen basierend auf durchgeführten Sessions."
+              />
+              <FeatureCard
+                icon={DollarSign}
+                title="Flexible Preisgestaltung"
+                description="Verschiedene Stundensätze für unterschiedliche Coaching-Services."
+              />
+              <FeatureCard
+                icon={FileText}
+                title="Professionelle Templates"
+                description="Ansprechende Rechnungsvorlagen für verschiedene Business-Typen."
+              />
+              <FeatureCard
+                icon={TrendingUp}
+                title="Umsatz-Analytics"
+                description="Detaillierte Analyse Ihrer Coaching-Umsätze und -Trends."
+              />
+            </div>
 
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                <h3 className="font-semibold text-blue-400 mb-4">Steuerliche Aspekte</h3>
-                <div className="space-y-3 text-sm text-slate-300">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-400 mt-1" />
-                    <div>
-                      <span className="font-medium text-white">Umsatzsteuer:</span>
-                      <div className="text-slate-400">19% bei B2B, meist 0% bei B2C (Heilberuf)</div>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-400 mt-1" />
-                    <div>
-                      <span className="font-medium text-white">Kleinunternehmer:</span>
-                      <div className="text-slate-400">Bis 22.000€ Jahresumsatz USt-befreit</div>
-                    </div>
-                  </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Rechnungstypen & Services</h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="bg-slate-700 rounded-lg p-4">
+                  <h4 className="font-semibold text-white mb-2">Einzelsessions</h4>
+                  <p className="text-sm text-slate-300 mb-3">Standard-Coaching-Sessions mit flexibler Abrechnung</p>
+                  <ul className="text-xs text-slate-400 space-y-1">
+                    <li>• Stundensatz-basierte Abrechnung</li>
+                    <li>• Anpassbare Session-Längen</li>
+                    <li>• Verschiedene Coaching-Typen</li>
+                  </ul>
+                </div>
+                <div className="bg-slate-700 rounded-lg p-4">
+                  <h4 className="font-semibold text-white mb-2">Coaching-Pakete</h4>
+                  <p className="text-sm text-slate-300 mb-3">Vorausbezahlte Session-Pakete mit Rabatten</p>
+                  <ul className="text-xs text-slate-400 space-y-1">
+                    <li>• 5er, 10er oder 20er Pakete</li>
+                    <li>• Automatische Rabattberechnung</li>
+                    <li>• Session-Verbrauch tracking</li>
+                  </ul>
+                </div>
+                <div className="bg-slate-700 rounded-lg p-4">
+                  <h4 className="font-semibold text-white mb-2">Zusatzleistungen</h4>
+                  <p className="text-sm text-slate-300 mb-3">Ergänzende Services und Materialien</p>
+                  <ul className="text-xs text-slate-400 space-y-1">
+                    <li>• Assessment-Tools</li>
+                    <li>• Coaching-Materialien</li>
+                    <li>• Follow-up Services</li>
+                  </ul>
                 </div>
               </div>
             </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-6">
+                <h4 className="font-semibold text-green-400 mb-3">Steuerliche Vorteile</h4>
+                <ul className="text-green-200 space-y-2 text-sm">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>DSGVO-konforme Rechnungsarchivierung</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Automatische Umsatzsteuer-Berechnung</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Export für Steuerberater-Software</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>GoBD-konforme Buchführung</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-6">
+                <h4 className="font-semibold text-blue-400 mb-3">Business-Features</h4>
+                <ul className="text-blue-200 space-y-2 text-sm">
+                  <li className="flex items-start gap-2">
+                    <DollarSign className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span>Mehrere Währungen unterstützt</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Calendar className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span>Wiederkehrende Rechnungen</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Mail className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span>Automatischer Email-Versand</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <BarChart3 className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span>Detaillierte Umsatz-Reports</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <TroubleshootingCard
+              issue="Rechnung lässt sich nicht erstellen"
+              solution="Prüfen Sie, ob alle Pflichtfelder ausgefüllt sind (Kunde, Leistung, Steuersatz). Kontaktieren Sie den Support bei technischen Problemen."
+              type="warning"
+            />
           </div>
         );
 
       case 'ai':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">KI-Assistent - Triadisches Coaching</h1>
-            
-            <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Brain className="h-6 w-6 text-purple-400" />
-                <h2 className="text-xl font-semibold text-white">12-Schritte-Prozess für authentisches Coaching</h2>
-              </div>
-              <p className="text-purple-100">
-                Der KI-Assistent führt Sie durch einen bewährten triadischen Ansatz: 
-                Verstehen → Entwickeln → Integrieren
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">KI-Features</h1>
+              <span className="inline-block px-4 py-2 bg-orange-500/30 text-orange-300 rounded-full font-medium mb-4">
+                Premium Add-On in Entwicklung
+              </span>
+              <p className="text-xl text-slate-300 max-w-3xl mx-auto">
+                Revolutionäre KI-Unterstützung für Ihr Coaching wird als Premium-Add-On verfügbar
               </p>
             </div>
 
-            <StepGuide
-              title="Triade 1: Verstehen & Bewusstheit schaffen"
-              icon={Target}
-              steps={[
-                {
-                  title: "1. Situationsanalyse",
-                  description: "Ist-Zustand vollständig erfassen",
-                  details: [
-                    "Aktuelle Herausforderungen identifizieren",
-                    "Emotionale Befindlichkeit erkennen",
-                    "Systembetrachung (Umfeld, Stakeholder)",
-                    "KI-Fragen: 'Was beschäftigt Sie am meisten?'"
-                  ]
-                },
-                {
-                  title: "2. Muster erkennen",
-                  description: "Wiederkehrende Themen und Verhaltensweisen",
-                  details: [
-                    "Automatische Reaktionsmuster identifizieren",
-                    "Erfolgreiche Strategien aus der Vergangenheit",
-                    "Hindernisse und Blockaden benennen",
-                    "KI-Fragen: 'Wann haben Sie das schon einmal erlebt?'"
-                  ]
-                }
+            <ComingSoonSection
+              title="Triadisches Coaching-System"
+              description="Ein revolutionäres KI-System, das drei spezialisierte Coach-Persönlichkeiten kombiniert für optimale Coaching-Ergebnisse."
+              features={[
+                "Empathischer Coach: Fokus auf Emotionen und menschliche Verbindung",
+                "Analytischer Coach: Datengetriebene Insights und strukturierte Ansätze", 
+                "Kreativer Coach: Innovative Lösungen und kreative Durchbrüche",
+                "Dynamische Anpassung je nach Coachee-Bedürfnissen und Session-Typ"
               ]}
             />
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FeatureCard
+                icon={Brain}
+                title="KI-Coach-Assistent"
+                description="Intelligente Echtzeit-Unterstützung während Coaching-Sessions mit personalisierter Beratung."
+                status="coming"
+              />
+              <FeatureCard
+                icon={Lightbulb}
+                title="Smart Prompt-Bibliothek"
+                description="Kuratierte Sammlung bewährter Coaching-Fragen und -Techniken, KI-optimiert."
+                status="coming"
+              />
+              <FeatureCard
+                icon={BarChart3}
+                title="Session-Analytics"
+                description="Tiefgreifende Analyse von Coaching-Verläufen mit KI-gestützten Erkenntnissen."
+                status="coming"
+              />
+              <FeatureCard
+                icon={Target}
+                title="Ziel-Tracking KI"
+                description="Intelligente Verfolgung und Anpassung von Coaching-Zielen basierend auf Fortschritten."
+                status="coming"
+              />
+              <FeatureCard
+                icon={Sparkles}
+                title="Personalisierte Insights"
+                description="Maßgeschneiderte Coaching-Empfehlungen für jeden individuellen Coachee."
+                status="coming"
+              />
+              <FeatureCard
+                icon={FileText}
+                title="Auto-Dokumentation"
+                description="Automatische Zusammenfassung und Strukturierung von Session-Inhalten."
+                status="coming"
+              />
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/30 rounded-xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-6">Das triadische KI-Coaching-System</h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="bg-slate-800/50 rounded-lg p-6 border border-blue-500/30">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">💙</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">Empathischer Coach</h3>
+                      <p className="text-xs text-blue-300">Emotional & Menschlich</p>
+                    </div>
+                  </div>
+                  <ul className="text-sm text-slate-300 space-y-2">
+                    <li>• Emotionale Intelligenz & Empathie</li>
+                    <li>• Beziehungsaufbau und Vertrauen</li>
+                    <li>• Motivationsförderung</li>
+                    <li>• Krisenintervention</li>
+                  </ul>
+                </div>
+                
+                <div className="bg-slate-800/50 rounded-lg p-6 border border-green-500/30">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">🧠</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">Analytischer Coach</h3>
+                      <p className="text-xs text-green-300">Daten & Struktur</p>
+                    </div>
+                  </div>
+                  <ul className="text-sm text-slate-300 space-y-2">
+                    <li>• Datengetriebene Insights</li>
+                    <li>• Strukturierte Problemlösung</li>
+                    <li>• Ziel- und Fortschrittsmessung</li>
+                    <li>• Strategische Planung</li>
+                  </ul>
+                </div>
+                
+                <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/30">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">✨</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">Kreativer Coach</h3>
+                      <p className="text-xs text-purple-300">Innovation & Kreativität</p>
+                    </div>
+                  </div>
+                  <ul className="text-sm text-slate-300 space-y-2">
+                    <li>• Kreative Problemlösungsansätze</li>
+                    <li>• Innovative Coaching-Methoden</li>
+                    <li>• Perspektivenwechsel</li>
+                    <li>• Breakthrough-Momente</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Geplante KI-Features im Detail</h3>
+              <div className="space-y-6">
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-white mb-2">Echtzeit-Coaching-Unterstützung</h4>
+                  <p className="text-slate-300 text-sm mb-3">
+                    Während Ihrer Session analysiert die KI den Gesprächsverlauf und bietet diskrete 
+                    Vorschläge für Interventionen, Fragen oder Coaching-Techniken.
+                  </p>
+                  <ul className="text-xs text-slate-400 space-y-1">
+                    <li>• Live-Analyse von Gesprächsmustern</li>
+                    <li>• Vorschläge für passende Coaching-Fragen</li>
+                    <li>• Erkennung von Coaching-Momenten</li>
+                    <li>• Anpassung an individuellen Coaching-Stil</li>
+                  </ul>
+                </div>
+                
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <h4 className="font-semibold text-white mb-2">Intelligente Session-Analyse</h4>
+                  <p className="text-slate-300 text-sm mb-3">
+                    Nach jeder Session erstellt die KI automatisch strukturierte Zusammenfassungen, 
+                    identifiziert wichtige Erkenntnisse und schlägt Follow-up-Aktionen vor.
+                  </p>
+                  <ul className="text-xs text-slate-400 space-y-1">
+                    <li>• Automatische Session-Zusammenfassungen</li>
+                    <li>• Erkennung von Schlüssel-Insights</li>
+                    <li>• Vorschläge für nächste Schritte</li>
+                    <li>• Trend-Analyse über mehrere Sessions</li>
+                  </ul>
+                </div>
+                
+                <div className="border-l-4 border-purple-500 pl-4">
+                  <h4 className="font-semibold text-white mb-2">Personalisierte Coach-Entwicklung</h4>
+                  <p className="text-slate-300 text-sm mb-3">
+                    Die KI analysiert Ihren Coaching-Stil und schlägt personalisierte 
+                    Entwicklungsmöglichkeiten und Lernressourcen vor.
+                  </p>
+                  <ul className="text-xs text-slate-400 space-y-1">
+                    <li>• Analyse Ihres individuellen Coaching-Stils</li>
+                    <li>• Personalisierte Entwicklungsempfehlungen</li>
+                    <li>• Kuratierte Lernressourcen</li>
+                    <li>• Kontinuierliche Verbesserungsvorschläge</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-orange-900/50 to-yellow-900/50 border border-orange-500/30 rounded-xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-4">Entwicklungsstand & Timeline</h2>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-orange-300 mb-3">Aktueller Status</h4>
+                  <ul className="text-orange-200 space-y-2 text-sm">
+                    <li>🔬 KI-Modelle werden entwickelt und trainiert</li>
+                    <li>🧪 Erste Prototypen in interner Beta-Phase</li>
+                    <li>📊 User Research für optimale Integration</li>
+                    <li>🔒 DSGVO-konforme KI-Architektur in Arbeit</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-yellow-300 mb-3">Geplante Verfügbarkeit</h4>
+                  <ul className="text-yellow-200 space-y-2 text-sm">
+                    <li>💡 Premium-Add-On sobald entwickelt</li>
+                    <li>👥 Beta-Zugang für ausgewählte Coaches</li>
+                    <li>🚀 Schrittweise Einführung neuer Features</li>
+                    <li>💎 Vollständige KI-Suite als Premium-Paket</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
         );
 
       case 'toolbox':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Coaching-Toolbox</h1>
-            
-            <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Zap className="h-6 w-6 text-purple-400" />
-                <h2 className="text-xl font-semibold text-white">Bewährte Coaching-Tools & Methoden</h2>
-              </div>
-              <p className="text-purple-100">
-                Sammlung erprobter Coaching-Interventionen, Fragen und Tools für verschiedene 
-                Situationen und Coachee-Typen - direkt in der Session anwendbar.
-              </p>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Coaching-Toolbox</h1>
+              <p className="text-xl text-slate-300">Professionelle Tools und Techniken für erfolgreiches Coaching</p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                <h3 className="font-semibold text-blue-400 mb-4">Systemische Tools</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="border-b border-slate-700 pb-2">
-                    <div className="font-medium text-white">Systemische Aufstellung</div>
-                    <div className="text-slate-400">Beziehungen und Rollen visualisieren</div>
-                  </div>
-                  <div className="border-b border-slate-700 pb-2">
-                    <div className="font-medium text-white">Zirkuläre Fragen</div>
-                    <div className="text-slate-400">"Was würde X über Y denken?"</div>
-                  </div>
-                </div>
-              </div>
+              <FeatureCard
+                icon={Target}
+                title="SMART-Ziele Framework"
+                description="Strukturiertes Framework für die Definition und Verfolgung von Coaching-Zielen."
+              />
+              <FeatureCard
+                icon={Zap}
+                title="GROW-Modell"
+                description="Bewährtes Coaching-Modell für strukturierte Gesprächsführung."
+              />
+              <FeatureCard
+                icon={BookOpen}
+                title="Fragen-Bibliothek"
+                description="Kuratierte Sammlung kraftvoller Coaching-Fragen für verschiedene Situationen."
+              />
+              <FeatureCard
+                icon={BarChart3}
+                title="Assessment-Tools"
+                description="Professionelle Bewertungsinstrumente für Coaching-Diagnose."
+              />
+              <FeatureCard
+                icon={Lightbulb}
+                title="Kreativitäts-Techniken"
+                description="Innovative Methoden für Problemlösung und Ideenfindung."
+              />
+              <FeatureCard
+                icon={Users}
+                title="Kommunikationsmodelle"
+                description="Bewährte Frameworks für effektive Kommunikation im Coaching."
+              />
+            </div>
 
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                <h3 className="font-semibold text-green-400 mb-4">Lösungsfokussierte Tools</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="border-b border-slate-700 pb-2">
-                    <div className="font-medium text-white">Wunderfrage</div>
-                    <div className="text-slate-400">"Angenommen, über Nacht..."</div>
-                  </div>
-                  <div className="border-b border-slate-700 pb-2">
-                    <div className="font-medium text-white">Skalierungsfragen</div>
-                    <div className="text-slate-400">1-10 Bewertung mit Details</div>
-                  </div>
-                </div>
-              </div>
+            <StepGuide
+              title="SMART-Ziele mit Coachees entwickeln"
+              icon={Target}
+              steps={[
+                {
+                  title: "Spezifisch - Was genau soll erreicht werden?",
+                  description: "Helfen Sie dem Coachee bei der präzisen Definition des Ziels",
+                  details: [
+                    "Konkrete Beschreibung des gewünschten Ergebnisses",
+                    "Vermeidung vager oder allgemeiner Formulierungen",
+                    "Fokus auf ein spezifisches Ergebnis oder Verhalten"
+                  ]
+                },
+                {
+                  title: "Messbar - Wie kann der Fortschritt gemessen werden?",
+                  description: "Definieren Sie klare Erfolgskriterien und Metriken",
+                  details: [
+                    "Quantitative oder qualitative Messgrößen festlegen",
+                    "Zwischenziele für Fortschrittsmessung definieren",
+                    "Bewertungskriterien gemeinsam entwickeln"
+                  ]
+                },
+                {
+                  title: "Erreichbar - Ist das Ziel realistisch?",
+                  description: "Bewerten Sie die Machbarkeit unter gegebenen Umständen",
+                  details: [
+                    "Ressourcen und Fähigkeiten des Coachee berücksichtigen",
+                    "Herausfordernd aber erreichbar gestalten",
+                    "Hindernisse identifizieren und Lösungen entwickeln"
+                  ]
+                }
+              ]}
+            />
 
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                <h3 className="font-semibold text-orange-400 mb-4">Kreativitäts-Tools</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="border-b border-slate-700 pb-2">
-                    <div className="font-medium text-white">6-Hut-Denken</div>
-                    <div className="text-slate-400">Verschiedene Denkperspektiven</div>
-                  </div>
-                  <div className="border-b border-slate-700 pb-2">
-                    <div className="font-medium text-white">Walt-Disney-Methode</div>
-                    <div className="text-slate-400">Träumer, Realist, Kritiker</div>
-                  </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">GROW-Modell Template</h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-green-400 mb-3">Goal (Ziel)</h4>
+                  <ul className="text-slate-300 space-y-1 text-sm">
+                    <li>• Was möchten Sie erreichen?</li>
+                    <li>• Wie würde Erfolg aussehen?</li>
+                    <li>• Wann möchten Sie das Ziel erreichen?</li>
+                  </ul>
+                  
+                  <h4 className="font-semibold text-blue-400 mb-3 mt-6">Reality (Realität)</h4>
+                  <ul className="text-slate-300 space-y-1 text-sm">
+                    <li>• Wo stehen Sie aktuell?</li>
+                    <li>• Was haben Sie bereits versucht?</li>
+                    <li>• Welche Hindernisse gibt es?</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-yellow-400 mb-3">Options (Optionen)</h4>
+                  <ul className="text-slate-300 space-y-1 text-sm">
+                    <li>• Welche Möglichkeiten haben Sie?</li>
+                    <li>• Was könnten Sie anders machen?</li>
+                    <li>• Welche Ressourcen stehen zur Verfügung?</li>
+                  </ul>
+                  
+                  <h4 className="font-semibold text-purple-400 mb-3 mt-6">Will (Wille/Weg)</h4>
+                  <ul className="text-slate-300 space-y-1 text-sm">
+                    <li>• Was werden Sie konkret tun?</li>
+                    <li>• Bis wann werden Sie das umsetzen?</li>
+                    <li>• Wie messen Sie Ihren Erfolg?</li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -960,76 +1470,104 @@ const DocumentationPage = () => {
       case 'settings':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Einstellungen & Personalisierung</h1>
-            
-            <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Settings className="h-6 w-6 text-blue-400" />
-                <h2 className="text-xl font-semibold text-white">Coachingspace an Ihre Praxis anpassen</h2>
-              </div>
-              <p className="text-blue-100">
-                Professionelles Branding, automatisierte Workflows und individuelle Anpassungen 
-                für Ihre einzigartige Coaching-Praxis.
-              </p>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Einstellungen</h1>
+              <p className="text-xl text-slate-300">Personalisieren Sie Ihr Coachingspace-Erlebnis</p>
             </div>
 
             <StepGuide
-              title="Grundeinrichtung für professionellen Auftritt"
+              title="Grundeinstellungen konfigurieren"
               icon={Settings}
               steps={[
                 {
-                  title: "Unternehmensdaten vollständig eingeben",
-                  description: "Basis für Rechnungen, DSGVO und rechtssichere Kommunikation",
+                  title: "Profil vervollständigen",
+                  description: "Richten Sie Ihr Coach-Profil ein",
                   details: [
-                    "Vollständiger Firmenname und Rechtsform",
-                    "Komplette Geschäftsadresse mit PLZ und Ort",
-                    "Steuernummer oder Umsatzsteuer-Identifikationsnummer",
-                    "Kontaktdaten: Telefon, E-Mail, Website"
+                    "Profilbild und persönliche Informationen",
+                    "Coaching-Spezialisierungen und Qualifikationen",
+                    "Kontaktinformationen und Business-Details"
                   ]
                 },
                 {
-                  title: "Corporate Design einrichten",
-                  description: "Professioneller, wiedererkennbarer Auftritt",
+                  title: "Arbeitszeiten definieren",
+                  description: "Legen Sie Ihre Verfügbarkeitszeiten fest",
                   details: [
-                    "Logo hochladen (optimal: 300x100px, PNG/SVG)",
-                    "Primärfarbe für Akzente und Buttons definieren",
-                    "Sekundärfarbe für Hintergründe und Rahmen",
-                    "Schriftart für Dokumente und Rechnungen"
+                    "Standard-Arbeitszeiten für Session-Planung",
+                    "Urlaubszeiten und Ausnahmen",
+                    "Zeitzone und Terminpräferenzen"
+                  ]
+                },
+                {
+                  title: "Benachrichtigungen anpassen",
+                  description: "Steuern Sie, wie und wann Sie informiert werden",
+                  details: [
+                    "Email-Benachrichtigungen für Termine und Deadlines",
+                    "Push-Notifications für mobile App",
+                    "Erinnerungen für wichtige Coaching-Aktivitäten"
                   ]
                 }
               ]}
             />
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FeatureCard
+                icon={Users}
+                title="Profil-Management"
+                description="Verwalten Sie Ihre Coach-Identität und öffentliche Informationen."
+              />
+              <FeatureCard
+                icon={Shield}
+                title="Datenschutz-Einstellungen"
+                description="Kontrollieren Sie den Umgang mit Ihren und Coachee-Daten."
+              />
+              <FeatureCard
+                icon={Mail}
+                title="Kommunikationseinstellungen"
+                description="Anpassung aller Benachrichtigungen und Email-Präferenzen."
+              />
+            </div>
           </div>
         );
 
       case 'legal':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Rechtliches & DSGVO</h1>
-            
-            <div className="bg-red-600/20 border border-red-500/30 rounded-lg p-6">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Rechtliches & DSGVO</h1>
+              <p className="text-xl text-slate-300">Vollständige Compliance für Ihr Coaching-Business</p>
+            </div>
+
+            <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-6">
               <div className="flex items-center gap-3 mb-4">
-                <Shield className="h-6 w-6 text-red-400" />
-                <h2 className="text-xl font-semibold text-white">Wichtiger Rechtlicher Hinweis</h2>
+                <Shield className="h-6 w-6 text-green-400" />
+                <h3 className="text-xl font-semibold text-white">DSGVO-Konformität gewährleistet</h3>
               </div>
-              <p className="text-red-100">
-                Diese Informationen ersetzen keine Rechtsberatung. Konsultieren Sie bei rechtlichen Fragen 
-                immer einen Anwalt oder Datenschutzbeauftragten.
+              <p className="text-green-200 mb-4">
+                Coachingspace wurde von Grund auf DSGVO-konform entwickelt und erfüllt alle 
+                Anforderungen für den professionellen Umgang mit sensiblen Coaching-Daten.
               </p>
             </div>
 
             <StepGuide
-              title="DSGVO-konforme Coachee-Verwaltung"
+              title="Datenschutz-Compliance"
               icon={Shield}
               steps={[
                 {
-                  title: "Einverständniserklärung einholen",
-                  description: "Rechtssichere Datenverarbeitung von Anfang an",
+                  title: "Einverständniserklärungen einholen",
+                  description: "Dokumentieren Sie die Zustimmung Ihrer Coachees zur Datenverarbeitung",
                   details: [
-                    "DSGVO-Checkbox bei Coachee-Anlage aktivieren",
-                    "Automatische E-Mail mit Datenschutzerklärung",
-                    "Dokumentation der Einverständnisse",
-                    "Widerrufsrecht deutlich kommunizieren"
+                    "Explizite Einwilligung zur Datenspeicherung",
+                    "Transparente Information über Datenverwendung",
+                    "Widerrufsmöglichkeiten klar kommunizieren"
+                  ]
+                },
+                {
+                  title: "Datenminimierung praktizieren",
+                  description: "Erfassen Sie nur die notwendigen Daten für Ihr Coaching",
+                  details: [
+                    "Regelmäßige Überprüfung gespeicherter Daten",
+                    "Löschung nicht mehr benötigter Informationen",
+                    "Zweckgebundene Datenverarbeitung"
                   ]
                 }
               ]}
@@ -1040,35 +1578,28 @@ const DocumentationPage = () => {
       case 'business':
         return (
           <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Business-Optimierung</h1>
-            
-            <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <TrendingUp className="h-6 w-6 text-purple-400" />
-                <h2 className="text-xl font-semibold text-white">Datenbasierte Geschäftsentwicklung</h2>
-              </div>
-              <p className="text-blue-100">
-                Nutze App-Daten für strategische Entscheidungen und nachhaltiges Wachstum 
-                deines Coaching-Business.
-              </p>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Business-Optimierung</h1>
+              <p className="text-xl text-slate-300">Strategien für erfolgreiches Coaching-Business Management</p>
             </div>
 
-            <StepGuide
-              title="Monatliche Business-Analyse"
-              icon={TrendingUp}
-              steps={[
-                {
-                  title: "Core Coaching Metrics tracken",
-                  description: "Dashboard → Business-Metriken analysieren",
-                  details: [
-                    "Auslastung: Gebuchte/Verfügbare Stunden × 100",
-                    "Retentionsrate: Aktive Coachees nach 6 Monaten",
-                    "Session-Effizienz: Zielerreichung pro Session",
-                    "Revenue per Coachee: Jahresumsatz/Anzahl Coachees"
-                  ]
-                }
-              ]}
-            />
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FeatureCard
+                icon={TrendingUp}
+                title="Business-Analytics"
+                description="Detaillierte Analyse Ihrer Coaching-Performance und Umsatzentwicklung."
+              />
+              <FeatureCard
+                icon={DollarSign}
+                title="Preisoptimierung"
+                description="Strategien für optimale Preisgestaltung Ihrer Coaching-Services."
+              />
+              <FeatureCard
+                icon={Users}
+                title="Kunden-Akquisition"
+                description="Bewährte Methoden für nachhaltiges Coachee-Wachstum."
+              />
+            </div>
           </div>
         );
 
@@ -1076,7 +1607,7 @@ const DocumentationPage = () => {
         return (
           <div className="text-center text-white">
             <h2 className="text-2xl font-bold mb-4">Sektion auswählen</h2>
-            <p className="text-slate-300">Wähle eine Sektion aus dem Menü links.</p>
+            <p className="text-slate-300">Wählen Sie eine Sektion aus dem Menü links.</p>
           </div>
         );
     }
@@ -1103,14 +1634,19 @@ const DocumentationPage = () => {
                     setActiveSection(section.id);
                     setSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors mb-1 ${
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors mb-1 relative ${
                     activeSection === section.id
                       ? 'bg-blue-600 text-white'
                       : 'text-slate-300 hover:bg-slate-700'
                   }`}
                 >
                   <section.icon className="h-5 w-5" />
-                  <span className="text-sm">{section.title}</span>
+                  <span className="text-sm flex-1">{section.title}</span>
+                  {section.badge && (
+                    <span className="text-xs px-2 py-1 bg-orange-500/30 text-orange-300 rounded">
+                      {section.badge}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -1128,14 +1664,19 @@ const DocumentationPage = () => {
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors mb-1 ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors mb-1 relative ${
                 activeSection === section.id
                   ? 'bg-blue-600 text-white'
                   : 'text-slate-300 hover:bg-slate-700'
               }`}
             >
               <section.icon className="h-5 w-5" />
-              <span className="text-sm">{section.title}</span>
+              <span className="text-sm flex-1">{section.title}</span>
+              {section.badge && (
+                <span className="text-xs px-2 py-1 bg-orange-500/30 text-orange-300 rounded">
+                  {section.badge}
+                </span>
+              )}
             </button>
           ))}
         </nav>

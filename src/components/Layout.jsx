@@ -14,7 +14,7 @@ const navItems = [
     { icon: BookOpen, label: 'Reflexionstagebuch', path: '/journal', color: 'text-indigo-500' },
     { icon: Folder, label: 'Dokumente', path: '/documents', color: 'text-blue-500' },
     { icon: FileText, label: 'Rechnungen', path: '/invoices', color: 'text-rose-500' },
-    { icon: Bot, label: 'KI-Assistent', path: '/ai-coaching', color: 'text-fuchsia-500' },
+    { icon: Bot, label: 'KI-Assistent', path: '/ai-coaching', color: 'text-fuchsia-500', requiresFeature: 'aiModule' },
     { icon: Wrench, label: 'Toolbox', path: '/toolbox', color: 'text-pink-500' },
     //{ icon: Store, label: 'Store', path: '/store', color: 'text-yellow-500' },
 ];
@@ -26,7 +26,34 @@ const bottomNavItems = [
 
 const NavItem = ({ item, collapsed, onClick }) => {
     const location = useLocation();
+    const { hasFeature, showPremiumFeature } = useAppStateContext();
     const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '/');
+    
+    // Wenn ein Feature erforderlich ist, aber nicht verfügbar
+    if (item.requiresFeature && !hasFeature(item.requiresFeature)) {
+        return (
+            <button
+                onClick={() => {
+                    showPremiumFeature('KI-Assistent');
+                    if (onClick) onClick();
+                }}
+                className={`flex items-center p-3 rounded-xl transition-all duration-300 glass-nav-item ${
+                    collapsed ? 'justify-center' : 'justify-start'
+                } opacity-60 cursor-pointer hover:opacity-80`}
+                title={`${item.label} (In Entwicklung)`}
+            >
+                <item.icon className={`h-5 w-5 ${collapsed ? '' : 'mr-3'} text-muted-foreground`} />
+                {!collapsed && (
+                    <div className="flex items-center justify-between w-full">
+                        <span className="text-sm font-medium">{item.label}</span>
+                       <span className="text-xs px-2 py-1 bg-orange-500/30 text-orange-300 rounded font-medium">
+    In Entwicklung
+</span>
+                    </div>
+                )}
+            </button>
+        );
+    }
     
     return (
         <NavLink

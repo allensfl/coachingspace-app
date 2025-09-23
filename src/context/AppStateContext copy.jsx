@@ -60,6 +60,7 @@ const useAppState = () => {
   const [invoices, setInvoices] = useLocalStorage('invoices', dummyInvoices);
   const [journalEntries, setJournalEntries] = useLocalStorage('journalEntries', dummyJournalEntries);
   const [generalDocuments, setGeneralDocuments] = useLocalStorage('generalDocuments', []);
+  const [documents, setDocuments] = useLocalStorage('coaching_documents', []); // Neue zentrale Documents
   const [tools, setTools] = useLocalStorage('tools', dummyTools);
   const [activePackages, setActivePackages] = useLocalStorage('activePackages', []);
   const [serviceRates, setServiceRates] = useLocalStorage('serviceRates', defaultServiceRates);
@@ -179,7 +180,11 @@ const useAppState = () => {
 
   const getCoacheeByToken = useCallback((token) => {
     if (!token || !coachees) return null;
-    return coachees.find(c => c.portalAccess?.initialToken === token || c.portalAccess?.permanentToken === token);
+    return coachees.find(c => 
+      c.portalAccess?.initialToken === token || 
+      c.portalAccess?.permanentToken === token ||
+      c.portalAccess?.oneTimeToken === token
+    );
   }, [coachees]);
 
   const ensurePermanentTokenForDemo = useCallback((coachee) => {
@@ -218,8 +223,6 @@ const useAppState = () => {
     }, [setTools, coachees]);
 
   const updateCoacheeConsent = useCallback((coacheeId, consentKey, value, pdfBlob) => {
-    console.log('updateCoacheeConsent called:', { coacheeId, consentKey, value, hasPdfBlob: !!pdfBlob });
-    
     setCoachees(prevCoachees => prevCoachees.map(coachee => {
       if (coachee.id === parseInt(coacheeId)) {
         let updatedCoachee = {
@@ -232,58 +235,82 @@ const useAppState = () => {
           }],
         };
 
-        // DSGVO PDF-Archivierung
         if (consentKey === 'gdpr' && value && pdfBlob) {
-          console.log('Processing GDPR PDF for:', coachee.firstName, coachee.lastName);
+          const consentDocument = {
+            id: Date.now() + Math.random(),
+            name: `DSGVO-Einwilligung_${coachee.lastName}_${new Date().toLocaleDateString('de-DE').replace(/\./g, '-')}.pdf`,
+            type: 'contract',
+            uploadDate: new Date().toISOString(),
+            size: `${(pdfBlob.size / 1024).toFixed(2)} KB`,
+            format: 'PDF',
+            coacheeId: coachee.id,
+            coacheeName: `${coachee.firstName} ${coachee.lastName}`,
+            isConsentDocument: true,
+            consentType: 'gdpr',
+            status: 'signed',
+            category: 'Legal'
+          };
           
-          // Sofortige PDF-Verarbeitung mit Promise
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const base64data = e.target.result;
-            const consentDocument = {
-              id: Date.now() + Math.random(), // Unique ID
-              name: `DSGVO-Einwilligung_${coachee.lastName}_${new Date().toLocaleDateString('de-DE').replace(/\./g, '-')}.pdf`,
-              type: 'contract',
-              uploadDate: new Date().toISOString(),
-              size: `${(pdfBlob.size / 1024).toFixed(2)} KB`,
-              format: 'PDF',
-              coacheeId: coachee.id,
-              content: base64data,
-            };
-            
-            console.log('Created consent document:', consentDocument.name);
-            
-            // Dokument zu Coachee hinzufügen
-            setCoachees(currentCoachees => currentCoachees.map(c => {
-              if (c.id === parseInt(coacheeId)) {
-                const updated = {
-                  ...c,
-                  documents: [...(c.documents || []), consentDocument],
-                  auditLog: [...(c.auditLog || []), { 
-                    timestamp: new Date().toISOString(), 
-                    user: 'System', 
-                    action: 'DSGVO-Einwilligungs-PDF automatisch archiviert' 
-                  }],
-                };
-                console.log('Updated coachee documents count:', updated.documents.length);
-                return updated;
-              }
-              return c;
-            }));
-          };
-          reader.onerror = (error) => {
-            console.error('PDF reading failed:', error);
-          };
-          reader.readAsDataURL(pdfBlob);
+          // Speichere sowohl in coachee.documents (alte Struktur) als auch in zentralen documents
+          updatedCoachee.documents = [...(updatedCoachee.documents || []), consentDocument];
+          
+          // Füge auch zu zentralen documents hinzu
+          setDocuments(prevDocs => [...(prevDocs || []), consentDocument]);
+          
+          updatedCoachee.auditLog.push({ 
+            timestamp: new Date().toISOString(), 
+            user: 'System', 
+            action: 'DSGVO-Einwilligungs-Dokument automatisch archiviert' 
+          });
         }
         
         return updatedCoachee;
       }
       return coachee;
     }));
-  }, [setCoachees]);
+  }, [setCoachees, setDocuments]);
 
-  const getAllCoacheeDocuments = useCallback(() => (coachees || []).flatMap(c => c.documents || []), [coachees]);
+  const getAllCoacheeDocuments = useCallback(() => {
+    // Kombiniere alle Dokumente: zentrale documents + coachee.documents + generalDocuments
+    const coacheeDocuments = (coachees || []).flatMap(c => c.documents || []);
+    const centralDocuments = documents || [];
+    const general = generalDocuments || [];
+    
+    // Entferne Duplikate basierend auf ID
+    const allDocs = [...centralDocuments, ...coacheeDocuments, ...general];
+    const uniqueDocs = allDocs.filter((doc, index, self) => 
+      index === self.findIndex(d => d.id === doc.id)
+    );
+    
+    return uniqueDocs;
+  }, [coachees, documents, generalDocuments]);
+
+  // Neue Documents-Funktionen für zentrale Verwaltung
+  const addDocumentToContext = useCallback((documentData) => {
+    const newDocument = { 
+      ...documentData, 
+      id: Date.now() + Math.random(),
+      uploadDate: new Date().toISOString() 
+    };
+    setDocuments(prev => [...(prev || []), newDocument]);
+    return newDocument;
+  }, [setDocuments]);
+
+  const updateDocumentInContext = useCallback((documentId, updates) => {
+    setDocuments(prev => (prev || []).map(doc => 
+      doc.id === documentId ? { ...doc, ...updates } : doc
+    ));
+  }, [setDocuments]);
+
+  const removeDocumentFromContext = useCallback((documentId) => {
+    setDocuments(prev => (prev || []).filter(doc => doc.id !== documentId));
+  }, [setDocuments]);
+
+  const getCoacheeDocuments = useCallback((coacheeId) => {
+    if (!coacheeId) return getAllCoacheeDocuments();
+    const id = parseInt(coacheeId);
+    return getAllCoacheeDocuments().filter(doc => doc.coacheeId === id);
+  }, [getAllCoacheeDocuments]);
 
   const addDocument = useCallback((coacheeId, documentData) => {
     const newDocument = { ...documentData, id: Date.now(), uploadDate: new Date().toISOString() };
@@ -330,7 +357,6 @@ const useAppState = () => {
     });
   }, [setActivePackages, toast]);
 
-  // Task Management Funktionen
   const addTask = useCallback((newTask) => {
     setTasks(prevTasks => [...(prevTasks || []), newTask]);
     toast({
@@ -357,7 +383,7 @@ const useAppState = () => {
   }, [setTasks, tasks, toast]);
 
   const backupData = useCallback(() => {
-    const dataToBackup = { coachees, sessions, invoices, journalEntries, generalDocuments, settings, tools, activePackages, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates };
+    const dataToBackup = { coachees, sessions, invoices, journalEntries, generalDocuments, documents, settings, tools, activePackages, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates };
     const dataStr = JSON.stringify(dataToBackup, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -369,43 +395,36 @@ const useAppState = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     toast({ title: "Backup erfolgreich", description: "Deine Daten wurden als JSON-Datei heruntergeladen." });
-  }, [coachees, sessions, invoices, journalEntries, generalDocuments, settings, tools, activePackages, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates, toast]);
+  }, [coachees, sessions, invoices, journalEntries, generalDocuments, documents, settings, tools, activePackages, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates, toast]);
 
   const contextValue = useMemo(() => ({
-    // Direct access to states and setters for backwards compatibility
     isLoading,
     isCommandOpen,
-    coachees, sessions, invoices, journalEntries, generalDocuments, tools, activePackages, settings, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates,
+    coachees, sessions, invoices, journalEntries, generalDocuments, documents, tools, activePackages, settings, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates,
     setCommandOpen,
-    setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
+    setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
     
-    // Action functions
     addCoachee, updateCoachee, getCoacheeById, getCoacheeByToken, ensurePermanentTokenForDemo,
-    getToolById, updateCoacheeConsent, getAllCoacheeDocuments, addDocument, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
-    activatePackage,
-    
-    // Task Management Functions
-    addTask, updateTask, deleteTask,
+    getToolById, updateCoacheeConsent, getAllCoacheeDocuments, getCoacheeDocuments, addDocument, addDocumentToContext, updateDocumentInContext, removeDocumentFromContext, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
+    activatePackage, addTask, updateTask, deleteTask,
 
-    // Legacy structure for backwards compatibility
     state: {
       isLoading,
       isCommandOpen,
-      coachees, sessions, invoices, journalEntries, generalDocuments, tools, activePackages, settings, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates
+      coachees, sessions, invoices, journalEntries, generalDocuments, documents, tools, activePackages, settings, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates
     },
     actions: {
       setCommandOpen,
-      setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
+      setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
       addCoachee, updateCoachee, getCoacheeById, getCoacheeByToken, ensurePermanentTokenForDemo,
-      getToolById, updateCoacheeConsent, getAllCoacheeDocuments, addDocument, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
-      activatePackage,
-      addTask, updateTask, deleteTask
+      getToolById, updateCoacheeConsent, getAllCoacheeDocuments, getCoacheeDocuments, addDocument, addDocumentToContext, updateDocumentInContext, removeDocumentFromContext, updateSettings, setSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
+      activatePackage, addTask, updateTask, deleteTask
     },
   }), [
-    isLoading, isCommandOpen, coachees, sessions, invoices, journalEntries, generalDocuments, tools, activePackages, settings, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates,
-    setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
+    isLoading, isCommandOpen, coachees, sessions, invoices, journalEntries, generalDocuments, documents, tools, activePackages, settings, serviceRates, tasks, sessionNotes, recurringInvoices, packageTemplates,
+    setCoachees, setSessions, setInvoices, setJournalEntries, setGeneralDocuments, setDocuments, setTools, setActivePackages, setServiceRates, setTasks, setSessionNotes, setRecurringInvoices, setPackageTemplates,
     addCoachee, updateCoachee, getCoacheeById, getCoacheeByToken, ensurePermanentTokenForDemo,
-    getToolById, updateCoacheeConsent, getAllCoacheeDocuments, addDocument, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
+    getToolById, updateCoacheeConsent, getAllCoacheeDocuments, getCoacheeDocuments, addDocument, addDocumentToContext, updateDocumentInContext, removeDocumentFromContext, updateSettings, backupData, deductFromPackage, updateJournalCategories, addToolUsage, updateToolCategories,
     activatePackage, addTask, updateTask, deleteTask
   ]);
 

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Video, Monitor, Settings, Plus, X, Play, Pause, RotateCcw, Eye, Lightbulb, Target } from 'lucide-react';
+import { ArrowLeft, Video, Monitor, Settings, Plus, X, Play, Pause, RotateCcw, Eye, Lightbulb, Target, Bot } from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -14,10 +14,11 @@ const CoachingRoom = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Context mit direkter Struktur (nicht context.state)
+  // Context mit direkter Struktur (nicht context.state) + Feature Flags
   const context = useAppStateContext();
   const sessions = context?.sessions || [];
   const coachees = context?.coachees || [];
+  const { hasFeature, showPremiumFeature } = context;
   
   const [sessionNotes, setSessionNotes] = useState('');
   const [videoProviders, setVideoProviders] = useState([
@@ -324,7 +325,12 @@ const CoachingRoom = () => {
     }
   };
 
+  // KI-Dialog mit Feature-Flag
   const shareKIDialog = () => {
+    if (!hasFeature('aiModule')) {
+      showPremiumFeature('KI-Dialog');
+      return;
+    }
     window.open('/ai-coaching/shared', '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes');
   };
 
@@ -645,12 +651,29 @@ const CoachingRoom = () => {
                 <div className="flex justify-between items-center text-sm text-slate-400">
                   <span>{sessionNotes.length} Zeichen • Automatisch gespeichert</span>
                 </div>
-                <Button
-                  onClick={shareKIDialog}
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                >
-                  🤖 KI-Dialog teilen
-                </Button>
+                
+                {/* KI-Dialog Button mit Feature-Flag */}
+                {hasFeature('aiModule') ? (
+                  <Button
+                    onClick={shareKIDialog}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Bot className="h-4 w-4 mr-2" />
+                    KI-Dialog teilen
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={shareKIDialog}
+                    variant="outline"
+                    className="w-full border-orange-500/30 text-orange-300 hover:bg-orange-500/10 relative"
+                  >
+                    <Bot className="h-4 w-4 mr-2" />
+                    KI-Dialog teilen
+                    <Badge variant="secondary" className="ml-2 bg-orange-500/30 text-orange-300 text-xs">
+                      In Entwicklung
+                    </Badge>
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

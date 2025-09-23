@@ -5,8 +5,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAppStateContext } from '@/context/AppStateContext';
 
 const ReflexionstagebuchApp = () => {
-  // Context für echte Coachees
-  const { coachees } = useAppStateContext();
+  // Context für echte Coachees + Feature Flags
+  const { coachees, hasFeature, showPremiumFeature } = useAppStateContext();
   
   // Navigation und Location für URL-Parameter
   const navigate = useNavigate();
@@ -200,8 +200,13 @@ const ReflexionstagebuchApp = () => {
     }
   };
 
-  // KI Analyse
+  // KI Analyse mit Feature-Flag
   const startKiAnalysis = async (type) => {
+    if (!hasFeature('aiModule')) {
+      showPremiumFeature('KI-Journal-Analyse');
+      return;
+    }
+
     setKiType(type);
     setKiLoading(true);
     setShowKiModal(true);
@@ -277,6 +282,38 @@ const ReflexionstagebuchApp = () => {
       )}
     </button>
   );
+
+  // KI-Analyse Button Komponente
+  const KIAnalysisButton = ({ type, icon: Icon, title, description, onClick }) => {
+    const isDisabled = !hasFeature('aiModule');
+    
+    return (
+      <button 
+        onClick={onClick}
+        disabled={isDisabled}
+        className={`
+          flex flex-col items-center gap-3 p-6 rounded-xl transition-all duration-200 group
+          ${isDisabled 
+            ? 'bg-slate-700/20 border border-slate-600/20 cursor-not-allowed opacity-60' 
+            : 'bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50'
+          }
+        `}
+      >
+        <div className="relative">
+          <Icon className={`h-8 w-8 ${isDisabled ? 'text-slate-500' : 'text-blue-400 group-hover:text-blue-300'}`} />
+          {isDisabled && (
+            <div className="absolute -top-1 -right-1 bg-orange-500/30 text-orange-300 text-xs px-1.5 py-0.5 rounded font-medium">
+              In Entwicklung
+            </div>
+          )}
+        </div>
+        <div className="text-center">
+          <h3 className={`font-medium mb-1 ${isDisabled ? 'text-slate-500' : 'text-white'}`}>{title}</h3>
+          <p className={`text-xs ${isDisabled ? 'text-slate-600' : 'text-slate-400'}`}>{description}</p>
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
@@ -402,56 +439,51 @@ const ReflexionstagebuchApp = () => {
           </div>
         </div>
 
-        {/* KI-Analyse */}
+        {/* KI-Analyse mit Feature-Flags */}
         <div className="bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 mb-6">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Brain className="h-5 w-5 text-purple-400" />
-            KI-gestützte Coach-Analyse
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-400" />
+              KI-gestützte Coach-Analyse
+              {!hasFeature('aiModule') && (
+                <span className="ml-2 px-2 py-1 bg-orange-500/30 text-orange-300 text-xs rounded font-medium">
+                  In Entwicklung
+                </span>
+              )}
+            </h2>
+          </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button 
+            <KIAnalysisButton
+              type="trends"
+              icon={TrendingUp}
+              title="Entwicklungstrends"
+              description="Langfristige Muster und Coaching-Evolution"
               onClick={() => startKiAnalysis('trends')}
-              className="flex flex-col items-center gap-3 p-6 bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50 rounded-xl transition-all duration-200 group"
-            >
-              <TrendingUp className="h-8 w-8 text-blue-400 group-hover:text-blue-300" />
-              <div className="text-center">
-                <h3 className="text-white font-medium mb-1">Entwicklungstrends</h3>
-                <p className="text-xs text-slate-400">Langfristige Muster und Coaching-Evolution</p>
-              </div>
-            </button>
+            />
 
-            <button 
+            <KIAnalysisButton
+              type="blindspots"
+              icon={Eye}
+              title="Blinde Flecken"
+              description="Unbewusste Coaching-Muster erkennen"
               onClick={() => startKiAnalysis('blindspots')}
-              className="flex flex-col items-center gap-3 p-6 bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50 rounded-xl transition-all duration-200 group"
-            >
-              <Eye className="h-8 w-8 text-orange-400 group-hover:text-orange-300" />
-              <div className="text-center">
-                <h3 className="text-white font-medium mb-1">Blinde Flecken</h3>
-                <p className="text-xs text-slate-400">Unbewusste Coaching-Muster erkennen</p>
-              </div>
-            </button>
+            />
 
-            <button 
+            <KIAnalysisButton
+              type="patterns"
+              icon={BarChart3}
+              title="Coaching-Muster"
+              description="Spezifische Reflexion analysieren"
               onClick={() => startKiAnalysis('patterns')}
-              className="flex flex-col items-center gap-3 p-6 bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50 rounded-xl transition-all duration-200 group"
-            >
-              <BarChart3 className="h-8 w-8 text-green-400 group-hover:text-green-300" />
-              <div className="text-center">
-                <h3 className="text-white font-medium mb-1">Coaching-Muster</h3>
-                <p className="text-xs text-slate-400">Spezifische Reflexion analysieren</p>
-              </div>
-            </button>
+            />
 
-            <button 
+            <KIAnalysisButton
+              type="development"
+              icon={Target}
+              title="Entwicklungsplan"
+              description="Persönlicher Coaching-Entwicklungsplan"
               onClick={() => startKiAnalysis('development')}
-              className="flex flex-col items-center gap-3 p-6 bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50 rounded-xl transition-all duration-200 group"
-            >
-              <Target className="h-8 w-8 text-purple-400 group-hover:text-purple-300" />
-              <div className="text-center">
-                <h3 className="text-white font-medium mb-1">Entwicklungsplan</h3>
-                <p className="text-xs text-slate-400">Persönlicher Coaching-Entwicklungsplan</p>
-              </div>
-            </button>
+            />
           </div>
         </div>
 
@@ -504,8 +536,15 @@ const ReflexionstagebuchApp = () => {
                   <div className="flex gap-1">
                     <button 
                       onClick={() => startKiAnalysis('patterns')}
-                      className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-slate-700/50 rounded transition-colors" 
-                      title="KI-Analyse"
+                      disabled={!hasFeature('aiModule')}
+                      className={`
+                        p-1.5 rounded transition-colors 
+                        ${hasFeature('aiModule') 
+                          ? 'text-purple-400 hover:text-purple-300 hover:bg-slate-700/50' 
+                          : 'text-slate-500 cursor-not-allowed opacity-50'
+                        }
+                      `}
+                      title={hasFeature('aiModule') ? 'KI-Analyse' : 'KI-Analyse (In Entwicklung)'}
                     >
                       <Brain className="h-4 w-4" />
                     </button>
