@@ -1,7 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Search, User, Calendar, Filter, X, Check, Clock, BarChart3, FileText, Settings, Plus, Brain, TrendingUp, AlertTriangle, Eye, Target, Save, Copy } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
+import { useAppStateContext } from '@/context/AppStateContext';
 
 const ReflexionstagebuchApp = () => {
+  // Context für echte Coachees
+  const { coachees } = useAppStateContext();
+  
+  // Navigation und Location für URL-Parameter
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  
+  // Filter States
+  const [coacheeFilter, setCoacheeFilter] = useState(null);
+  const [coacheeName, setCoacheeName] = useState('');
+  
   // Basis States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCoachee, setSelectedCoachee] = useState('Alle Coachees');
@@ -23,10 +38,45 @@ const ReflexionstagebuchApp = () => {
   const [newReflection, setNewReflection] = useState({
     title: '',
     content: '',
-    mood: 'neutral'
+    mood: 'neutral',
+    coacheeId: null,
+    coacheeName: ''
   });
 
-  // Demo Daten
+  // URL-Parameter-Auswertung für Coachee-Filter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const coacheeId = urlParams.get('coachee');
+    const name = urlParams.get('name');
+    
+    if (coacheeId && name) {
+      setCoacheeFilter(coacheeId);
+      setCoacheeName(decodeURIComponent(name.replace(/\+/g, ' ')));
+      
+      // Toast für aktiven Filter
+      toast({
+        title: "Filter aktiv",
+        description: `Zeige nur Journal-Einträge von ${decodeURIComponent(name.replace(/\+/g, ' '))}`,
+        className: "bg-green-600 text-white"
+      });
+    }
+  }, [location.search, toast]);
+
+  // Coachee-Filter zurücksetzen
+  const clearCoacheeFilter = () => {
+    setCoacheeFilter(null);
+    setCoacheeName('');
+    // URL ohne Parameter
+    navigate(location.pathname, { replace: true });
+    
+    toast({
+      title: "Filter entfernt",
+      description: "Zeige alle Journal-Einträge",
+      className: "bg-blue-600 text-white"
+    });
+  };
+
+  // Demo Daten - erweitert mit coacheeId (in echten App aus localStorage laden)
   const [reflections, setReflections] = useState([
     {
       id: 1,
@@ -34,7 +84,9 @@ const ReflexionstagebuchApp = () => {
       content: 'Heute hatte ich eine Session mit einem sehr dominanten CEO. Ich habe gemerkt, dass ich mich eingeschüchtert gefühlt habe und nicht meine üblichen systemischen Fragen gestellt habe.',
       date: '2025-01-21',
       mood: 'challenging',
-      tags: ['Führung', 'Machtdynamik', 'Grenzen']
+      tags: ['Führung', 'Machtdynamik', 'Grenzen'],
+      coacheeId: '16',
+      coacheeName: 'Anna Schmidt'
     },
     {
       id: 2,
@@ -42,12 +94,54 @@ const ReflexionstagebuchApp = () => {
       content: 'Eine fantastische Session heute! Durch die Frage "Was würde Ihr Team sagen..." ist bei meiner Coachee ein echter Aha-Moment entstanden.',
       date: '2025-01-20',
       mood: 'positive',
-      tags: ['Systemik', 'Erfolg', 'Kommunikation']
+      tags: ['Systemik', 'Erfolg', 'Kommunikation'],
+      coacheeId: '16',
+      coacheeName: 'Anna Schmidt'
+    },
+    {
+      id: 3,
+      title: 'Reflexion zur Work-Life-Balance',
+      content: 'Session mit Marco über Work-Life-Balance. Interessante Erkenntnisse über seine Prioritäten.',
+      date: '2025-01-19',
+      mood: 'neutral',
+      tags: ['Work-Life-Balance', 'Prioritäten'],
+      coacheeId: '17',
+      coacheeName: 'Marco Müller'
     }
   ]);
 
+  // Gefilterte Reflexionen basierend auf Coachee-Filter und anderen Filtern
+  const filteredReflections = reflections.filter(reflection => {
+    // Coachee-Filter
+    if (coacheeFilter && reflection.coacheeId !== coacheeFilter) {
+      return false;
+    }
+    
+    // Such-Filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        reflection.title.toLowerCase().includes(searchLower) ||
+        reflection.content.toLowerCase().includes(searchLower) ||
+        reflection.tags.some(tag => tag.toLowerCase().includes(searchLower)) ||
+        (reflection.coacheeName && reflection.coacheeName.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    return true;
+  });
+
+  // Dynamische Coachee-Optionen aus echten Daten
+  const coacheeOptions = [
+    { value: '', label: 'Allgemeine Reflexion (kein Coachee)' },
+    ...coachees.map(coachee => ({
+      value: coachee.id.toString(),
+      label: `${coachee.firstName} ${coachee.lastName}`
+    }))
+  ];
+
   // Dropdown Optionen
-  const coachees = ['Alle Coachees', 'Anna Schmidt', 'Marco Müller', 'Sarah Weber'];
+  const coacheeNames = ['Alle Coachees', ...coachees.map(c => `${c.firstName} ${c.lastName}`)];
   const dateOptions = ['Nach Datum', 'Heute', 'Diese Woche', 'Dieser Monat'];
   const statusOptions = ['Alle Status', 'Geplant', 'Abgeschlossen', 'Storniert'];
   const categoryOptions = ['Alle Kategorien', 'Business Coaching', 'Life Coaching', 'Führungskräfte'];
@@ -65,6 +159,26 @@ const ReflexionstagebuchApp = () => {
       case 'category': setSelectedCategory(value); break;
     }
     setOpenDropdown('');
+  };
+
+  // Handler für Coachee-Auswahl in neuer Reflexion
+  const handleCoacheeSelection = (selectedCoacheeId) => {
+    if (selectedCoacheeId === '') {
+      setNewReflection(prev => ({ 
+        ...prev, 
+        coacheeId: null,
+        coacheeName: ''
+      }));
+    } else {
+      const selectedCoachee = coachees.find(c => c.id.toString() === selectedCoacheeId);
+      if (selectedCoachee) {
+        setNewReflection(prev => ({ 
+          ...prev, 
+          coacheeId: selectedCoacheeId,
+          coacheeName: `${selectedCoachee.firstName} ${selectedCoachee.lastName}`
+        }));
+      }
+    }
   };
 
   // KI Analyse
@@ -104,74 +218,114 @@ const ReflexionstagebuchApp = () => {
         content: newReflection.content,
         date: new Date().toISOString().split('T')[0],
         mood: newReflection.mood,
-        tags: []
+        tags: [],
+        coacheeId: newReflection.coacheeId,
+        coacheeName: newReflection.coacheeName
       };
       
       setReflections([reflection, ...reflections]);
-      setNewReflection({ title: '', content: '', mood: 'neutral' });
+      setNewReflection({ title: '', content: '', mood: 'neutral', coacheeId: null, coacheeName: '' });
       setShowNewModal(false);
+
+      // In echter App: Reflexion in localStorage speichern
+      // const existingReflections = JSON.parse(localStorage.getItem('journalReflections') || '[]');
+      // localStorage.setItem('journalReflections', JSON.stringify([reflection, ...existingReflections]));
     }
   };
 
-  // Dropdown Komponente
-  const Dropdown = ({ label, value, options, type, icon: Icon }) => (
-    <div className="relative">
-      <button
-        onClick={() => toggleDropdown(type)}
-        className="
-          min-w-[140px] px-3 py-2.5 
-          bg-slate-700/60 border border-slate-600/60
-          rounded-lg text-slate-200 text-sm font-medium
-          hover:bg-slate-600/60 transition-colors
-          flex items-center justify-between gap-2
-        "
-      >
-        <div className="flex items-center gap-2">
-          {Icon && <Icon className="h-4 w-4 text-slate-400" />}
-          <span className="truncate">{value}</span>
-        </div>
-        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${
-          openDropdown === type ? 'rotate-180' : ''
-        }`} />
-      </button>
-      
-      {openDropdown === type && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-slate-800 border border-slate-600/50 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-          {options.map((option, index) => (
-            <button
-              key={index}
-              onClick={() => selectOption(type, option)}
-              className="w-full px-3 py-2 text-left text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors text-sm"
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  // Dropdown Komponente - Mit korrekter Positionierung unter dem Button
+  const Dropdown = ({ label, value, options, type, icon: Icon }) => {
+    const [buttonRef, setButtonRef] = useState(null);
+    
+    return (
+      <div className="relative">
+        <button
+          ref={setButtonRef}
+          onClick={() => toggleDropdown(type)}
+          className="
+            min-w-[140px] px-3 py-2.5 
+            bg-slate-700/60 border border-slate-600/60
+            rounded-lg text-slate-200 text-sm font-medium
+            hover:bg-slate-600/60 transition-colors
+            flex items-center justify-between gap-2
+          "
+        >
+          <div className="flex items-center gap-2">
+            {Icon && <Icon className="h-4 w-4 text-slate-400" />}
+            <span className="truncate">{value}</span>
+          </div>
+          <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${
+            openDropdown === type ? 'rotate-180' : ''
+          }`} />
+        </button>
+        
+        {/* Dropdown direkt unter dem Button */}
+        {openDropdown === type && (
+          <>
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 z-[998]" 
+              onClick={() => setOpenDropdown('')}
+            />
+            {/* Dropdown Content */}
+            <div className="absolute top-full left-0 mt-1 z-[999] bg-slate-800 border border-slate-600/50 rounded-lg shadow-2xl max-h-40 overflow-y-auto w-48">
+              {options.map((option, index) => (
+                <button
+                  key={index}
+                  onClick={() => selectOption(type, option)}
+                  className="w-full px-3 py-1.5 text-left text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors text-sm"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white mb-1">Reflexionstagebuch</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-1">
+              Reflexionstagebuch
+            </h1>
             <p className="text-slate-400 text-sm">Professionelle Selbstreflexion für Coaches</p>
           </div>
           
           <button
             onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all"
           >
             <Plus className="h-4 w-4" />
             Neue Reflexion
           </button>
         </div>
 
+        {/* Filter-Badges */}
+        {coacheeFilter && (
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-400 rounded-lg text-sm">
+                <User className="h-4 w-4" />
+                <span>Coachee: {coacheeName}</span>
+                <button 
+                  onClick={clearCoacheeFilter}
+                  className="ml-1 hover:bg-green-500/20 rounded p-0.5 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Filter */}
-        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 mb-6">
+        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4 mb-6">
           <div className="mb-4">
             <div className="relative max-w-xl">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -189,7 +343,7 @@ const ReflexionstagebuchApp = () => {
             <Dropdown
               label="Alle Coachees"
               value={selectedCoachee}
-              options={coachees}
+              options={coacheeNames}
               type="coachee"
               icon={User}
             />
@@ -226,7 +380,7 @@ const ReflexionstagebuchApp = () => {
         </div>
 
         {/* KI-Analyse */}
-        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6 mb-6">
+        <div className="bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 mb-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Brain className="h-5 w-5 text-purple-400" />
             KI-gestützte Coach-Analyse
@@ -281,8 +435,15 @@ const ReflexionstagebuchApp = () => {
         {/* Ergebnisse */}
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">Suchergebnisse</h2>
-            <p className="text-slate-400 text-sm">Alle Reflexionen • {reflections.length} gefunden</p>
+            <h2 className="text-lg font-semibold text-white">
+              {coacheeFilter ? `${coacheeName}s Journal-Einträge` : 'Alle Journal-Einträge'}
+            </h2>
+            <p className="text-slate-400 text-sm">
+              {coacheeFilter 
+                ? `Gefilterte Einträge • ${filteredReflections.length} von ${reflections.length} gefunden`
+                : `Alle Reflexionen • ${filteredReflections.length} gefunden`
+              }
+            </p>
           </div>
           
           <div className="relative">
@@ -297,57 +458,89 @@ const ReflexionstagebuchApp = () => {
 
         {/* Reflexions-Liste */}
         <div className="space-y-3">
-          {reflections.map((reflection) => (
-            <div key={reflection.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 hover:bg-slate-700/50 transition-colors">
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-base font-medium text-white">{reflection.title}</h3>
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      reflection.mood === 'positive' ? 'bg-green-600/20 text-green-400' :
-                      reflection.mood === 'challenging' ? 'bg-red-600/20 text-red-400' :
-                      'bg-slate-600/20 text-slate-400'
-                    }`}>
-                      {reflection.mood === 'positive' ? 'Positiv' : 
-                       reflection.mood === 'challenging' ? 'Herausfordernd' : 'Neutral'}
-                    </span>
+          {filteredReflections.length > 0 ? (
+            filteredReflections.map((reflection) => (
+              <div key={reflection.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-lg p-4 hover:bg-slate-700/50 transition-colors">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-base font-medium text-white">{reflection.title}</h3>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        reflection.mood === 'positive' ? 'bg-green-600/20 text-green-400' :
+                        reflection.mood === 'challenging' ? 'bg-red-600/20 text-red-400' :
+                        'bg-slate-600/20 text-slate-400'
+                      }`}>
+                        {reflection.mood === 'positive' ? 'Positiv' : 
+                         reflection.mood === 'challenging' ? 'Herausfordernd' : 'Neutral'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 text-xs text-slate-400 mb-2">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(reflection.date).toLocaleDateString('de-DE')}
+                      </span>
+                      {reflection.coacheeName && (
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {reflection.coacheeName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
-                  <div className="flex items-center gap-3 text-xs text-slate-400 mb-2">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(reflection.date).toLocaleDateString('de-DE')}
-                    </span>
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => startKiAnalysis('patterns')}
+                      className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-slate-700/50 rounded transition-colors" 
+                      title="KI-Analyse"
+                    >
+                      <Brain className="h-4 w-4" />
+                    </button>
+                    <button className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors">
+                      <FileText className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
                 
-                <div className="flex gap-1">
-                  <button 
-                    onClick={() => startKiAnalysis('patterns')}
-                    className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-slate-700/50 rounded transition-colors" 
-                    title="KI-Analyse"
-                  >
-                    <Brain className="h-4 w-4" />
-                  </button>
-                  <button className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors">
-                    <FileText className="h-4 w-4" />
-                  </button>
-                </div>
+                <p className="text-slate-300 text-sm mb-3">{reflection.content.substring(0, 150)}...</p>
+                
+                {reflection.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {reflection.tags.map((tag, index) => (
+                      <span key={index} className="px-2 py-0.5 bg-slate-700/50 text-slate-300 text-xs rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              
-              <p className="text-slate-300 text-sm mb-3">{reflection.content.substring(0, 150)}...</p>
-              
-              {reflection.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {reflection.tags.map((tag, index) => (
-                    <span key={index} className="px-2 py-0.5 bg-slate-700/50 text-slate-300 text-xs rounded">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <Brain className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">
+                {coacheeFilter 
+                  ? `Keine Journal-Einträge für ${coacheeName} gefunden`
+                  : 'Keine Journal-Einträge gefunden'
+                }
+              </h3>
+              <p className="text-slate-400 mb-4">
+                {coacheeFilter 
+                  ? `Noch keine Reflexionen zu ${coacheeName} vorhanden.`
+                  : 'Beginne mit deiner ersten Coaching-Reflexion.'
+                }
+              </p>
+              {coacheeFilter && (
+                <button
+                  onClick={clearCoacheeFilter}
+                  className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                >
+                  Alle Einträge anzeigen
+                </button>
               )}
             </div>
-          ))}
+          )}
         </div>
 
         {/* Neue Reflexion Modal */}
@@ -385,6 +578,26 @@ const ReflexionstagebuchApp = () => {
                 </div>
                 
                 <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Coachee zuweisen</label>
+                  <div className="relative">
+                    <select
+                      value={newReflection.coacheeId || ''}
+                      onChange={(e) => handleCoacheeSelection(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer pr-10"
+                    >
+                      {coacheeOptions.map((option, index) => (
+                        <option key={index} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <User className="absolute right-10 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Optional: Ordne die Reflexion einem spezifischen Coachee zu</p>
+                </div>
+                
+                <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Stimmung/Erfahrung</label>
                   <div className="relative">
                     <select
@@ -405,7 +618,7 @@ const ReflexionstagebuchApp = () => {
                 <button
                   onClick={saveNewReflection}
                   disabled={!newReflection.title || !newReflection.content}
-                  className="flex-1 py-2.5 bg-blue-600 disabled:bg-slate-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-slate-600 transition-colors disabled:cursor-not-allowed"
+                  className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-600 text-white rounded-lg transition-all disabled:cursor-not-allowed"
                 >
                   Reflexion speichern
                 </button>
@@ -499,13 +712,6 @@ const ReflexionstagebuchApp = () => {
           </div>
         )}
 
-        {/* Click Outside Handler */}
-        {openDropdown && (
-          <div 
-            className="fixed inset-0 z-40" 
-            onClick={() => setOpenDropdown('')}
-          />
-        )}
       </div>
     </div>
   );
