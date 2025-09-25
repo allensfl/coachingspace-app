@@ -1,7 +1,6 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { SessionStatus, InvoiceStatus } from '@/types';
 import { useAppStateContext } from '@/context/AppStateContext';
 import * as ics from 'ics';
 import { saveAs } from 'file-saver';
-import { Archive, LayoutList, CalendarDays } from 'lucide-react';
+import { Archive, LayoutList, CalendarDays, X } from 'lucide-react';
 import NewSessionDialog from './sessions/NewSessionDialog';
 import SessionListView from './sessions/SessionListView';
 import SessionCalendarView from './sessions/SessionCalendarView';
@@ -24,9 +23,61 @@ const Sessions = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [viewMode, setViewMode] = useState('list');
   const [date, setDate] = useState(new Date());
+  const [dateFilter, setDateFilter] = useState(null); // NEU: Datum-Filter
   
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // NEU: URL-Parameter auswerten
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const filter = urlParams.get('filter');
+    const coacheeParam = urlParams.get('coachee');
+    const nameParam = urlParams.get('name');
+    
+    if (filter === 'today') {
+      const today = new Date().toISOString().split('T')[0];
+      setDateFilter(today);
+      toast({
+        title: "Filter aktiv",
+        description: "Zeige nur Sessions von heute",
+        className: "bg-blue-600 text-white"
+      });
+    }
+
+    if (coacheeParam) {
+      setFilterStatus('all'); // Reset status filter
+      const coacheeName = nameParam ? nameParam.replace(/\+/g, ' ') : 'Coachee';
+      toast({
+        title: `Filter aktiv: ${coacheeName}`,
+        description: "Zeige nur Sessions für diesen Coachee",
+        className: "bg-blue-600 text-white"
+      });
+    }
+  }, [location.search, toast]);
+
+  // Filter zurücksetzen
+  const clearDateFilter = () => {
+    setDateFilter(null);
+    // URL ohne Parameter
+    navigate('/sessions', { replace: true });
+    toast({
+      title: "Filter entfernt",
+      description: "Zeige alle Sessions",
+    });
+  };
+
+  // NEU: Alle Filter zurücksetzen
+  const clearAllFilters = () => {
+    setDateFilter(null);
+    setFilterStatus('all');
+    navigate('/sessions', { replace: true });
+    toast({
+      title: "Alle Filter entfernt",
+      description: "Zeige alle Sessions",
+    });
+  };
 
   const handleNewSessionSubmit = (newSession) => {
     setSessions(prev => [...prev, newSession].sort((a,b) => new Date(b.date) - new Date(a.date)));
@@ -109,8 +160,8 @@ const Sessions = () => {
   };
 
   const handleCardClick = (session) => {
-  navigate(`/sessions/${session.id}/prepare`);
-};
+    navigate(`/sessions/${session.id}/prepare`);
+  };
   
   const handleToggleArchive = (sessionId) => {
     const sessionToToggle = sessions.find(s => s.id === sessionId);
@@ -139,9 +190,27 @@ const Sessions = () => {
   const activeSessions = useMemo(() => (sessions || []).filter(s => !s.archived), [sessions]);
   const archivedSessions = useMemo(() => (sessions || []).filter(s => s.archived), [sessions]);
 
-  const filteredActiveSessions = useMemo(() => activeSessions
-    .filter(session => filterStatus === 'all' || session.status === filterStatus)
-    .sort((a, b) => new Date(b.date) - new Date(a.date)), [activeSessions, filterStatus]);
+  // ERWEITERT: Filter um Datum-Filter und Coachee-Filter erweitert
+  const filteredActiveSessions = useMemo(() => {
+    let filtered = activeSessions.filter(session => filterStatus === 'all' || session.status === filterStatus);
+    
+    // Datum-Filter anwenden
+    if (dateFilter) {
+      filtered = filtered.filter(session => {
+        const sessionDate = new Date(session.date).toISOString().split('T')[0];
+        return sessionDate === dateFilter;
+      });
+    }
+
+    // NEU: Coachee-Filter anwenden
+    const urlParams = new URLSearchParams(location.search);
+    const coacheeParam = urlParams.get('coachee');
+    if (coacheeParam) {
+      filtered = filtered.filter(session => session.coacheeId === parseInt(coacheeParam));
+    }
+    
+    return filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [activeSessions, filterStatus, dateFilter, location.search]);
 
   const statusFilters = [
     { value: 'all', label: 'Alle' },
@@ -161,6 +230,44 @@ const Sessions = () => {
           <div>
             <h1 className="text-3xl font-bold text-white">Sessions</h1>
             <p className="text-slate-400">Verwalte deine Coaching-Sessions</p>
+            {/* Filter-Anzeigen */}
+            <div className="flex gap-2 mt-2">
+              {dateFilter && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm bg-blue-600 text-white px-2 py-1 rounded-md">
+                    Gefiltert nach: {new Date(dateFilter).toLocaleDateString('de-DE')}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearDateFilter}
+                    className="h-6 w-6 p-0 text-slate-400 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {(() => {
+                const urlParams = new URLSearchParams(location.search);
+                const coacheeParam = urlParams.get('coachee');
+                const nameParam = urlParams.get('name');
+                return coacheeParam && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm bg-green-600 text-white px-2 py-1 rounded-md">
+                      Coachee: {nameParam ? nameParam.replace(/\+/g, ' ') : `ID ${coacheeParam}`}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearAllFilters}
+                      className="h-6 w-6 p-0 text-slate-400 hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
           <NewSessionDialog 
             open={isNewSessionDialogOpen} 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,283 +6,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { Save, Download, Palette, Building, FileText, Calendar, Share, Bot, Upload, X, Eye, EyeOff, Copy, Users } from 'lucide-react';
+import { Save, Download, Building, FileText, Calendar, Share, Bot, Users } from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
 import * as ics from 'ics';
 import { saveAs } from 'file-saver';
 import { SessionStatus } from '@/types';
 
-// Professionelle Farbpaletten für Coaches
-const colorPresets = [
-  { name: 'Vertrauen', primary: '#3B82F6', secondary: '#1E40AF', description: 'Seriös und vertrauensvoll' },
-  { name: 'Wachstum', primary: '#10B981', secondary: '#047857', description: 'Entwicklung und Natur' },
-  { name: 'Energie', primary: '#F59E0B', secondary: '#D97706', description: 'Motivation und Dynamik' },
-  { name: 'Balance', primary: '#8B5CF6', secondary: '#7C3AED', description: 'Harmonie und Weisheit' },
-  { name: 'Klarheit', primary: '#06B6D4', secondary: '#0891B2', description: 'Fokus und Klarheit' },
-  { name: 'Warmth', primary: '#EF4444', secondary: '#DC2626', description: 'Herzlichkeit und Leidenschaft' },
-  { name: 'Eleganz', primary: '#6B7280', secondary: '#374151', description: 'Zeitlos und professionell' },
-  { name: 'Innovation', primary: '#EC4899', secondary: '#DB2777', description: 'Kreativ und modern' }
-];
-
 const SettingsCard = ({ icon, title, description, children, className = "" }) => (
-  <Card className={`glass-card ${className}`}>
+  <Card className={`bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 ${className}`}>
     <CardHeader>
       <CardTitle className="flex items-center gap-3 text-white">
         {icon}
         {title}
       </CardTitle>
-      {description && <CardDescription>{description}</CardDescription>}
+      {description && <CardDescription className="text-slate-400">{description}</CardDescription>}
     </CardHeader>
     <CardContent className="space-y-4">
       {children}
     </CardContent>
   </Card>
 );
-
-const LogoUploader = ({ logoUrl, onLogoChange }) => {
-  const [dragOver, setDragOver] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(logoUrl);
-  const fileInputRef = useRef(null);
-  const { toast } = useToast();
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setDragOver(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFileUpload(files[0]);
-    }
-  };
-
-  const handleFileUpload = (file) => {
-    if (!file.type.startsWith('image/')) {
-      toast({
-        variant: 'destructive',
-        title: "Ungültiges Dateiformat",
-        description: "Bitte wähle eine Bilddatei (PNG, JPG, SVG)."
-      });
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      toast({
-        variant: 'destructive',
-        title: "Datei zu groß",
-        description: "Die Datei darf maximal 5MB groß sein."
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      setPreviewUrl(dataUrl);
-      onLogoChange(dataUrl);
-      toast({
-        title: "Logo hochgeladen",
-        description: "Dein Logo wurde erfolgreich aktualisiert."
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeLogo = () => {
-    setPreviewUrl('');
-    onLogoChange('');
-  };
-
-  return (
-    <div className="space-y-4">
-      <Label>Firmenlogo</Label>
-      
-      {/* Logo Vorschau */}
-      {previewUrl && (
-        <div className="relative inline-block p-4 bg-white rounded-lg border">
-          <img src={previewUrl} alt="Logo Preview" className="h-16 max-w-48 object-contain" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 hover:bg-red-600 text-white"
-            onClick={removeLogo}
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
-      )}
-
-      {/* Upload Bereich */}
-      <div
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-          dragOver 
-            ? 'border-primary bg-primary/10' 
-            : 'border-gray-600 hover:border-gray-500'
-        }`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-        <p className="text-sm text-gray-300">
-          <span className="font-medium text-primary cursor-pointer">Klicken zum Hochladen</span> oder Logo hierher ziehen
-        </p>
-        <p className="text-xs text-gray-400 mt-1">PNG, JPG oder SVG bis 5MB</p>
-      </div>
-
-      {/* URL Input als Alternative */}
-      <div className="space-y-2">
-        <Label htmlFor="logoUrl" className="text-sm">Oder Logo-URL eingeben</Label>
-        <Input
-          id="logoUrl"
-          value={logoUrl}
-          onChange={(e) => {
-            onLogoChange(e.target.value);
-            setPreviewUrl(e.target.value);
-          }}
-          placeholder="https://beispiel.com/logo.png"
-          className="text-sm"
-        />
-      </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0])}
-      />
-    </div>
-  );
-};
-
-const ColorPicker = ({ value, onChange, presets = colorPresets }) => {
-  const [showPresets, setShowPresets] = useState(true);
-  const [customColor, setCustomColor] = useState(value);
-  const { toast } = useToast();
-
-  const copyToClipboard = (color) => {
-    navigator.clipboard.writeText(color);
-    toast({
-      title: "Farbe kopiert",
-      description: `${color} wurde in die Zwischenablage kopiert.`
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Label>Primärfarbe</Label>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowPresets(!showPresets)}
-        >
-          {showPresets ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          {showPresets ? 'Paletten ausblenden' : 'Paletten anzeigen'}
-        </Button>
-      </div>
-
-      {/* Farbpaletten */}
-      {showPresets && (
-        <div className="grid grid-cols-2 gap-3">
-          {presets.map((preset) => (
-            <div
-              key={preset.name}
-              className={`p-3 rounded-lg border cursor-pointer transition-all hover:scale-105 ${
-                value === preset.primary 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-gray-600 hover:border-gray-500'
-              }`}
-              onClick={() => onChange(preset.primary)}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div 
-                  className="w-6 h-6 rounded-full border-2 border-white/20"
-                  style={{ backgroundColor: preset.primary }}
-                />
-                <div 
-                  className="w-4 h-4 rounded-full border border-white/20"
-                  style={{ backgroundColor: preset.secondary }}
-                />
-                <span className="font-medium text-sm text-white">{preset.name}</span>
-              </div>
-              <p className="text-xs text-gray-400">{preset.description}</p>
-              <div className="flex items-center gap-1 mt-1">
-                <span className="text-xs text-gray-500">{preset.primary}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-4 w-4 p-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    copyToClipboard(preset.primary);
-                  }}
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Custom Color Input */}
-      <div className="space-y-2">
-        <Label htmlFor="customColor">Oder eigene Farbe (HEX)</Label>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Input
-              id="customColor"
-              value={customColor}
-              onChange={(e) => {
-                setCustomColor(e.target.value);
-                if (e.target.value.match(/^#[0-9A-F]{6}$/i)) {
-                  onChange(e.target.value);
-                }
-              }}
-              placeholder="#3B82F6"
-              className="pl-10"
-            />
-            <div 
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 rounded border border-white/20"
-              style={{ backgroundColor: customColor.match(/^#[0-9A-F]{6}$/i) ? customColor : '#gray' }}
-            />
-          </div>
-          <input
-            type="color"
-            value={customColor.match(/^#[0-9A-F]{6}$/i) ? customColor : '#3B82F6'}
-            onChange={(e) => {
-              setCustomColor(e.target.value);
-              onChange(e.target.value);
-            }}
-            className="w-12 h-10 rounded border border-gray-600 cursor-pointer"
-          />
-        </div>
-      </div>
-
-      {/* Color Preview */}
-      <div className="p-4 rounded-lg border border-gray-600 bg-gradient-to-r from-gray-800 to-gray-700">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-white">Vorschau</span>
-          <div className="text-xs text-gray-400">{value}</div>
-        </div>
-        <Button style={{ backgroundColor: value }} className="text-white">
-          Beispiel Button
-        </Button>
-      </div>
-    </div>
-  );
-};
 
 export default function SettingsComponent() {
   const { state, actions } = useAppStateContext();
@@ -330,25 +73,12 @@ export default function SettingsComponent() {
     });
   };
 
-  const handleLogoChange = (logoUrl) => {
-    setLocalSettings(prev => ({
-      ...prev,
-      company: { ...prev.company, logoUrl }
-    }));
-  };
-
-  const handleColorChange = (color) => {
-    setLocalSettings(prev => ({
-      ...prev,
-      theme: { ...prev.theme, primaryColor: { hex: color } }
-    }));
-  };
-
   const handleSave = () => {
     setSettings(localSettings);
     toast({
       title: "Einstellungen gespeichert!",
       description: "Deine Änderungen wurden erfolgreich übernommen.",
+      className: "bg-green-600 text-white"
     });
   };
 
@@ -380,9 +110,9 @@ export default function SettingsComponent() {
         duration: { minutes: session.duration },
         title: `Coaching: ${session.topic}`,
         description: `Coaching Session mit ${session.coacheeName}. Notizen: ${session.coachNotes}`,
-        organizer: { name: settings.company.name, email: settings.company.email },
+        organizer: { name: settings.company?.name || 'Coach', email: settings.company?.email || '' },
         attendees: [
-          { name: settings.company.name, email: settings.company.email, rsvp: true, partstat: 'ACCEPTED', role: 'REQ-PARTICIPANT' },
+          { name: settings.company?.name || 'Coach', email: settings.company?.email || '', rsvp: true, partstat: 'ACCEPTED', role: 'REQ-PARTICIPANT' },
           { name: session.coacheeName, email: coachee?.email || '', rsvp: true, partstat: 'NEEDS-ACTION', role: 'REQ-PARTICIPANT' }
         ]
       };
@@ -396,7 +126,11 @@ export default function SettingsComponent() {
       }
       const blob = new Blob([value], { type: 'text/calendar;charset=utf-8' });
       saveAs(blob, 'Coachingspace_Termine.ics');
-      toast({ title: "Kalender-Datei erstellt", description: `${upcomingSessions.length} Sessions wurden exportiert.`});
+      toast({ 
+        title: "Kalender-Datei erstellt", 
+        description: `${upcomingSessions.length} Sessions wurden exportiert.`,
+        className: "bg-green-600 text-white"
+      });
     });
   };
 
@@ -406,228 +140,260 @@ export default function SettingsComponent() {
         <title>Einstellungen - Coachingspace</title>
         <meta name="description" content="Passe dein Coachingspace an deine Bedürfnisse an." />
       </Helmet>
-      <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white">Einstellungen</h2>
-            <p className="text-slate-400">Passe dein Coachingspace an deine Bedürfnisse an.</p>
-          </div>
-          <Button onClick={handleSave} size="lg">
-            <Save className="mr-2 h-4 w-4" /> Änderungen speichern
-          </Button>
-        </div>
-
-        {/* Kompakte, organisierte Layout-Struktur */}
-        <div className="space-y-6">
-          {/* Branding - Vollbreite, kompakt */}
-          <SettingsCard 
-            icon={<Palette className="text-primary" />} 
-            title="Branding & Design"
-            description="Logo, Farben und Design-Einstellungen"
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Logo - kompakte Version */}
-              <div className="space-y-3">
-                <Label>Logo</Label>
-                {localSettings.company?.logoUrl && (
-                  <div className="relative inline-block p-2 bg-white rounded border">
-                    <img src={localSettings.company.logoUrl} alt="Logo" className="h-8 max-w-24 object-contain" />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 hover:bg-red-600 text-white text-xs"
-                      onClick={() => handleLogoChange('')}
-                    >
-                      ×
-                    </Button>
-                  </div>
-                )}
-                <Input
-                  placeholder="Logo-URL"
-                  value={localSettings.company?.logoUrl || ''}
-                  onChange={(e) => handleLogoChange(e.target.value)}
-                  className="text-sm"
-                />
-              </div>
-
-              {/* Farbpaletten - kompakt */}
-              <div className="space-y-3">
-                <Label>Farbpalette</Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {colorPresets.slice(0, 8).map((preset) => (
-                    <button
-                      key={preset.name}
-                      className={`p-2 rounded border cursor-pointer transition-all hover:scale-105 ${
-                        localSettings.theme?.primaryColor?.hex === preset.primary 
-                          ? 'border-primary ring-2 ring-primary/30' 
-                          : 'border-gray-600'
-                      }`}
-                      onClick={() => handleColorChange(preset.primary)}
-                      title={`${preset.name} - ${preset.description}`}
-                    >
-                      <div 
-                        className="w-6 h-6 rounded"
-                        style={{ backgroundColor: preset.primary }}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Custom Color & Dark Mode */}
-              <div className="space-y-3">
-                <Label>Anpassungen</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={localSettings.theme?.primaryColor?.hex || '#3B82F6'}
-                    onChange={(e) => handleColorChange(e.target.value)}
-                    placeholder="#3B82F6"
-                    className="flex-1 text-sm"
-                  />
-                  <input
-                    type="color"
-                    value={localSettings.theme?.primaryColor?.hex || '#3B82F6'}
-                    onChange={(e) => handleColorChange(e.target.value)}
-                    className="w-10 h-10 rounded border border-gray-600 cursor-pointer"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="darkMode" className="text-sm">Dark Mode</Label>
-                  <Switch 
-                    id="darkMode" 
-                    checked={localSettings.darkMode || false} 
-                    onCheckedChange={(checked) => handleSwitchChange('darkMode', checked)} 
-                  />
-                </div>
-              </div>
+      
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-1">
+                Einstellungen
+              </h1>
+              <p className="text-slate-400">Passe dein Coachingspace an deine Bedürfnisse an.</p>
             </div>
-          </SettingsCard>
-
-          {/* Drei-Spalten Layout für den Rest */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Persönliche Daten - NEUE SEKTION */}
-            <SettingsCard icon={<Users className="text-primary" />} title="Persönliche Daten">
-              <div className="space-y-3 text-sm">
-                <div>
-                  <Label htmlFor="personal.firstName">Vorname</Label>
-                  <Input 
-                    id="personal.firstName" 
-                    value={localSettings.personal?.firstName || ''} 
-                    onChange={handleInputChange} 
-                    placeholder="Dein Vorname"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="personal.lastName">Nachname</Label>
-                  <Input 
-                    id="personal.lastName" 
-                    value={localSettings.personal?.lastName || ''} 
-                    onChange={handleInputChange} 
-                    placeholder="Dein Nachname"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="personal.title">Titel/Bezeichnung</Label>
-                  <Input 
-                    id="personal.title" 
-                    value={localSettings.personal?.title || ''} 
-                    onChange={handleInputChange} 
-                    placeholder="z.B. Coach, Berater, Mentor"
-                  />
-                </div>
-              </div>
-            </SettingsCard>
-
-            {/* Unternehmensdaten - kompakter */}
-            <SettingsCard icon={<Building className="text-primary" />} title="Unternehmensdaten">
-              <div className="space-y-3 text-sm">
-                <div>
-                  <Label htmlFor="company.name">Firma</Label>
-                  <Input id="company.name" value={localSettings.company?.name || ''} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <Label htmlFor="company.owner">Inhaber</Label>
-                  <Input id="company.owner" value={localSettings.company?.owner || ''} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <Label htmlFor="company.street">Straße & Nr.</Label>
-                  <Input id="company.street" value={localSettings.company?.street || ''} onChange={handleInputChange} />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label htmlFor="company.zip">PLZ</Label>
-                    <Input id="company.zip" value={localSettings.company?.zip || ''} onChange={handleInputChange} />
-                  </div>
-                  <div>
-                    <Label htmlFor="company.city">Stadt</Label>
-                    <Input id="company.city" value={localSettings.company?.city || ''} onChange={handleInputChange} />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="company.phone">Telefon</Label>
-                  <Input id="company.phone" value={localSettings.company?.phone || ''} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <Label htmlFor="company.email">E-Mail</Label>
-                  <Input id="company.email" type="email" value={localSettings.company?.email || ''} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <Label htmlFor="company.taxId">Steuernummer</Label>
-                  <Input id="company.taxId" value={localSettings.company?.taxId || ''} onChange={handleInputChange} />
-                </div>
-              </div>
-            </SettingsCard>
-
-            {/* Finanzen - kompakter */}
-            <SettingsCard icon={<FileText className="text-primary" />} title="Rechnungen & Finanzen">
-              <div className="space-y-3 text-sm">
-                <div>
-                  <Label htmlFor="company.bankName">Bank</Label>
-                  <Input id="company.bankName" value={localSettings.company?.bankName || ''} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <Label htmlFor="company.iban">IBAN</Label>
-                  <Input id="company.iban" value={localSettings.company?.iban || ''} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <Label htmlFor="company.paymentDeadlineDays">Zahlungsfrist (Tage)</Label>
-                  <Input id="company.paymentDeadlineDays" type="number" value={localSettings.company?.paymentDeadlineDays || 14} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <Label htmlFor="company.defaultTaxRate">Steuersatz (%)</Label>
-                  <Input id="company.defaultTaxRate" type="number" value={localSettings.company?.defaultTaxRate || 19} onChange={handleInputChange} />
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-gray-700">
-                  <Label htmlFor="company.showBankDetailsOnInvoice" className="text-sm">Bankdaten auf Rechnungen</Label>
-                  <Switch 
-                    id="company.showBankDetailsOnInvoice" 
-                    checked={localSettings.company?.showBankDetailsOnInvoice || false} 
-                    onCheckedChange={(checked) => handleSwitchChange('company.showBankDetailsOnInvoice', checked)} 
-                  />
-                </div>
-              </div>
-            </SettingsCard>
+            <Button onClick={handleSave} size="lg" className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
+              <Save className="mr-2 h-4 w-4" /> Änderungen speichern
+            </Button>
           </div>
 
-          {/* Weitere Bereiche - Zwei-Spalten */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Kalender Export - kompakt */}
-            <SettingsCard icon={<Calendar className="text-primary" />} title="Kalender Export">
-              <p className="text-sm text-slate-400 mb-3">Sessions als .ics für externe Kalender exportieren</p>
-              <Button variant="outline" onClick={handleExportAllSessions} className="w-full" size="sm">
-                <Share className="mr-2 h-4 w-4" />
-                Sessions exportieren
-              </Button>
-            </SettingsCard>
+          <div className="space-y-6">
+            {/* Persönliche Daten - für Begrüßung */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <SettingsCard 
+                icon={<Users className="text-blue-400" />} 
+                title="Persönliche Daten"
+                description="Für persönliche Begrüßung und Kontakt"
+              >
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="personal.firstName" className="text-slate-300">Vorname</Label>
+                    <Input 
+                      id="personal.firstName" 
+                      value={localSettings.personal?.firstName || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="Dein Vorname"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="personal.lastName" className="text-slate-300">Nachname</Label>
+                    <Input 
+                      id="personal.lastName" 
+                      value={localSettings.personal?.lastName || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="Dein Nachname"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="personal.title" className="text-slate-300">Titel/Bezeichnung</Label>
+                    <Input 
+                      id="personal.title" 
+                      value={localSettings.personal?.title || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="z.B. Coach, Berater, Mentor"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="personal.email" className="text-slate-300">E-Mail</Label>
+                    <Input 
+                      id="personal.email" 
+                      type="email"
+                      value={localSettings.personal?.email || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="deine@email.de"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                </div>
+              </SettingsCard>
 
-            {/* Backup - kompakt */}
-            <SettingsCard icon={<Bot className="text-primary" />} title="Daten & Backup">
-              <p className="text-sm text-slate-400 mb-3">Alle App-Daten als JSON-Datei sichern</p>
-              <Button variant="outline" onClick={backupData} className="w-full" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Backup herunterladen
-              </Button>
-            </SettingsCard>
+              <SettingsCard 
+                icon={<Building className="text-green-400" />} 
+                title="Unternehmensdaten"
+                description="Für professionelle Rechnungen"
+              >
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="company.name" className="text-slate-300">Firma</Label>
+                    <Input 
+                      id="company.name" 
+                      value={localSettings.company?.name || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="Dein Unternehmensname"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company.street" className="text-slate-300">Straße & Nr.</Label>
+                    <Input 
+                      id="company.street" 
+                      value={localSettings.company?.street || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="Musterstraße 123"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="company.zip" className="text-slate-300">PLZ</Label>
+                      <Input 
+                        id="company.zip" 
+                        value={localSettings.company?.zip || ''} 
+                        onChange={handleInputChange} 
+                        placeholder="12345"
+                        className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="company.city" className="text-slate-300">Stadt</Label>
+                      <Input 
+                        id="company.city" 
+                        value={localSettings.company?.city || ''} 
+                        onChange={handleInputChange} 
+                        placeholder="Musterstadt"
+                        className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="company.phone" className="text-slate-300">Telefon</Label>
+                    <Input 
+                      id="company.phone" 
+                      value={localSettings.company?.phone || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="+49 123 456789"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company.email" className="text-slate-300">E-Mail</Label>
+                    <Input 
+                      id="company.email" 
+                      type="email" 
+                      value={localSettings.company?.email || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="info@firma.de"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company.taxId" className="text-slate-300">Steuernummer</Label>
+                    <Input 
+                      id="company.taxId" 
+                      value={localSettings.company?.taxId || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="123/456/78901"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                </div>
+              </SettingsCard>
+
+              <SettingsCard 
+                icon={<FileText className="text-purple-400" />} 
+                title="Rechnungen & Finanzen"
+                description="Bankdaten und Rechnungseinstellungen"
+              >
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="company.bankName" className="text-slate-300">Bank</Label>
+                    <Input 
+                      id="company.bankName" 
+                      value={localSettings.company?.bankName || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="Musterbank AG"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company.iban" className="text-slate-300">IBAN</Label>
+                    <Input 
+                      id="company.iban" 
+                      value={localSettings.company?.iban || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="DE12 3456 7890 1234 5678 90"
+                      className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="company.paymentDeadlineDays" className="text-slate-300">Zahlungsfrist (Tage)</Label>
+                      <Input 
+                        id="company.paymentDeadlineDays" 
+                        type="number" 
+                        value={localSettings.company?.paymentDeadlineDays || 14} 
+                        onChange={handleInputChange} 
+                        className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="company.defaultTaxRate" className="text-slate-300">Steuersatz (%)</Label>
+                      <Input 
+                        id="company.defaultTaxRate" 
+                        type="number" 
+                        value={localSettings.company?.defaultTaxRate || 19} 
+                        onChange={handleInputChange} 
+                        className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-700">
+                    <Label htmlFor="company.showBankDetailsOnInvoice" className="text-slate-300">
+                      Bankdaten auf Rechnungen anzeigen
+                    </Label>
+                    <Switch 
+                      id="company.showBankDetailsOnInvoice" 
+                      checked={localSettings.company?.showBankDetailsOnInvoice || false} 
+                      onCheckedChange={(checked) => handleSwitchChange('company.showBankDetailsOnInvoice', checked)} 
+                    />
+                  </div>
+                </div>
+              </SettingsCard>
+            </div>
+
+            {/* Tools - Zwei-Spalten */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <SettingsCard 
+                icon={<Calendar className="text-orange-400" />} 
+                title="Kalender Export"
+                description="Sessions als .ics für externe Kalender exportieren"
+              >
+                <div className="text-center">
+                  <p className="text-sm text-slate-400 mb-4">
+                    Exportiere alle geplanten Sessions als Kalender-Datei für Outlook, Google Calendar oder andere Kalender-Apps.
+                  </p>
+                  <Button 
+                    onClick={handleExportAllSessions} 
+                    variant="outline" 
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                  >
+                    <Share className="mr-2 h-4 w-4" />
+                    Sessions exportieren (.ics)
+                  </Button>
+                </div>
+              </SettingsCard>
+
+              <SettingsCard 
+                icon={<Bot className="text-cyan-400" />} 
+                title="Daten & Backup"
+                description="Alle App-Daten als JSON-Datei sichern"
+              >
+                <div className="text-center">
+                  <p className="text-sm text-slate-400 mb-4">
+                    Lade eine vollständige Sicherung aller deiner Coachees, Sessions, Dokumente und Einstellungen herunter.
+                  </p>
+                  <Button 
+                    onClick={backupData} 
+                    variant="outline" 
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Backup herunterladen (.json)
+                  </Button>
+                </div>
+              </SettingsCard>
+            </div>
           </div>
         </div>
       </div>

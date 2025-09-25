@@ -1,26 +1,35 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from 'lucide-react';
 import SessionCard from './SessionCard';
 
-const SessionListView = ({ sessions, onCardClick, onToggleArchive, onStatusChange, onCreateInvoice, activePackages, onAddToCalendar }) => {
+const SessionListView = ({ 
+  sessions, 
+  onCardClick, 
+  onDirectStart, // NEU: Direktstart-Handler
+  onToggleArchive, 
+  onStatusChange, 
+  onCreateInvoice, 
+  activePackages, 
+  onAddToCalendar 
+}) => {
   return (
     <Card className="glass-card mt-6">
       <CardHeader><CardTitle className="text-white">Session-Liste</CardTitle></CardHeader>
       <CardContent>
         <div className="space-y-4">
           {sessions.map((session, index) => (
-            <SessionCard 
-              key={session.id} 
-              session={session} 
-              index={index} 
-              onCardClick={onCardClick} 
-              onToggleArchive={onToggleArchive} 
-              onStatusChange={onStatusChange} 
-              onCreateInvoice={onCreateInvoice} 
-              activePackages={activePackages} 
-              onAddToCalendar={onAddToCalendar} 
+            <SessionCard
+              key={session.id}
+              session={session}
+              index={index}
+              onCardClick={onCardClick}
+              onDirectStart={onDirectStart} // NEU: An SessionCard weiterleiten
+              onToggleArchive={onToggleArchive}
+              onStatusChange={onStatusChange}
+              onCreateInvoice={onCreateInvoice}
+              activePackages={activePackages}
+              onAddToCalendar={onAddToCalendar}
             />
           ))}
           {sessions.length === 0 && (

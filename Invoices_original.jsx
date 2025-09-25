@@ -270,55 +270,6 @@ const InvoicesApp = () => {
       });
     }
   };
-// DELETE-HANDLER für Abonnements und Honorarsätze
-  const handleDeleteRate = (rateId) => {
-    if (window.confirm('Sind Sie sicher, dass Sie diesen Honorarsatz löschen möchten?')) {
-      setServiceRates((serviceRates || []).filter(rate => rate.id !== rateId));
-      toast({
-        title: "Honorarsatz gelöscht",
-        description: "Der Honorarsatz wurde erfolgreich gelöscht",
-        className: "bg-green-600 text-white"
-      });
-    }
-  };
-
-  const handleDeleteRecurring = (recurringId) => {
-    if (window.confirm('Sind Sie sicher, dass Sie dieses Abonnement löschen möchten?')) {
-      setRecurringInvoices((recurringInvoices || []).filter(recurring => recurring.id !== recurringId));
-      toast({
-        title: "Abonnement gelöscht",
-        description: "Das Abonnement wurde erfolgreich gelöscht",
-        className: "bg-green-600 text-white"
-      });
-    }
-  };
-// RECHNUNGS-ACTION-HANDLER
-const handleEditInvoice = (invoice) => {
-  toast({
-    title: "Bearbeiten",
-    description: `${invoice.invoiceNumber} bearbeiten - Feature kommt bald`,
-    className: "bg-blue-600 text-white"
-  });
-};
-
-const handleDownloadInvoice = (invoice) => {
-  toast({
-    title: "Download gestartet",
-    description: `${invoice.invoiceNumber} wird heruntergeladen`,
-    className: "bg-green-600 text-white"
-  });
-};
-
-const handleDeleteInvoice = (invoice) => {
-  if (window.confirm(`Sind Sie sicher, dass Sie ${invoice.invoiceNumber} löschen möchten?`)) {
-    setInvoices((invoices || []).filter(inv => inv.id !== invoice.id));
-    toast({
-      title: "Rechnung gelöscht",
-      description: `${invoice.invoiceNumber} wurde erfolgreich gelöscht`,
-      className: "bg-green-600 text-white"
-    });
-  }
-};
 
   // Neuen Honorarsatz speichern
   const saveNewRate = () => {
@@ -673,27 +624,15 @@ const handleDeleteInvoice = (invoice) => {
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                         <button 
-  onClick={() => handleEditInvoice(invoice)}
-  className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors" 
-  title="Bearbeiten"
->
-  <Edit className="h-4 w-4" />
-</button>
-<button 
-  onClick={() => handleDownloadInvoice(invoice)}
-  className="p-1.5 text-green-400 hover:text-green-300 hover:bg-slate-700/50 rounded transition-colors" 
-  title="Download"
->
-  <Download className="h-4 w-4" />
-</button>
-<button 
-  onClick={() => handleDeleteInvoice(invoice)}
-  className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors" 
-  title="Löschen"
->
-  <Trash2 className="h-4 w-4" />
-</button>
+                          <button className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors" title="Bearbeiten">
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button className="p-1.5 text-green-400 hover:text-green-300 hover:bg-slate-700/50 rounded transition-colors" title="Download">
+                            <Download className="h-4 w-4" />
+                          </button>
+                          <button className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors" title="Löschen">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                       
@@ -779,13 +718,6 @@ const handleDeleteInvoice = (invoice) => {
                             <p className="text-lg font-bold text-blue-400">
                               {formatCurrency((rate?.price || 0) * recurring.quantity, recurring.currency)}
                             </p>
-                            <button 
-                              onClick={() => handleDeleteRecurring(recurring.id)}
-                              className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors"
-                              title="Löschen"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -840,12 +772,8 @@ const handleDeleteInvoice = (invoice) => {
                             <p className="text-sm text-slate-400 mt-2">{rate.description}</p>
                           )}
                         </div>
-                        <button 
-                          onClick={() => handleDeleteRate(rate.id)}
-                          className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors"
-                          title="Löschen"
-                        >
-                          <Trash2 className="h-4 w-4" />
+                        <button className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors">
+                          <Edit className="h-4 w-4" />
                         </button>
                       </div>
                     </div>

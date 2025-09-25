@@ -1,18 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Search, User, Calendar, Filter, X, Plus, Upload, Settings, Edit, Trash2, CheckCircle, AlertCircle, FileText, Download, Eye, Share2, FolderOpen } from 'lucide-react';
+import { Search, User, Calendar, Filter, X, Plus, Upload, Settings, Edit, Trash2, CheckCircle, AlertCircle, FileText, Download, Eye, Share2, FolderOpen, AlertTriangle } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useAppStateContext } from '@/context/AppStateContext';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const DocumentsApp = () => {
-  // Context für echte Daten
+  // Context für echte Daten + Action-Handler
   const { state, actions } = useAppStateContext();
   const { coachees, documents: contextDocuments } = state;
-  const { addDocumentToContext, getAllCoacheeDocuments, getCoacheeDocuments } = actions;
+  const { addDocumentToContext, getAllCoacheeDocuments, getCoacheeDocuments, updateDocumentInContext, removeDocumentFromContext } = actions;
   
   // Navigation und Location für URL-Parameter
   const navigate = useNavigate();
@@ -32,7 +43,12 @@ const DocumentsApp = () => {
   // Modal States
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingDocument, setEditingDocument] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
+  
+  // Delete State
+  const [deletingId, setDeletingId] = useState(null);
   
   // Upload States
   const [uploadFiles, setUploadFiles] = useState([]);
@@ -64,6 +80,120 @@ const DocumentsApp = () => {
     const allDocuments = getAllCoacheeDocuments();
     setDocuments(allDocuments);
   }, [contextDocuments, getAllCoacheeDocuments]);
+
+  // Action-Handler für Documents
+  const handleViewDocument = (doc) => {
+    toast({
+      title: "Dokument nicht verfügbar",
+      description: `${doc.name} kann im Demo-Modus nicht angezeigt werden. In der Vollversion würde das Dokument hier geöffnet.`,
+      variant: "destructive",
+      duration: 4000
+    });
+  };
+
+  const handleDownloadDocument = (doc) => {
+    toast({
+      title: "Download nicht verfügbar",
+      description: `${doc.name} kann im Demo-Modus nicht heruntergeladen werden. In der Vollversion würde der Download hier starten.`,
+      variant: "destructive", 
+      duration: 4000
+    });
+  };
+
+  const handleShareDocument = (doc) => {
+    if (doc.shared) {
+      toast({
+        title: "Bereits geteilt",
+        description: `${doc.name} wurde bereits mit ${doc.coacheeName || 'dem Team'} geteilt.`,
+        className: "bg-yellow-600 text-white"
+      });
+      return;
+    }
+
+    // Update document as shared
+    const updatedDoc = { ...doc, shared: true };
+    updateDocumentInContext(doc.id, updatedDoc);
+    
+    // Update local state
+    setDocuments(prev => prev.map(d => d.id === doc.id ? updatedDoc : d));
+    
+    // Realistische Benachrichtigung mit Details
+    toast({
+      title: "Dokument erfolgreich geteilt",
+      description: doc.coacheeName 
+        ? `${doc.name} wurde mit ${doc.coacheeName} geteilt. Eine Benachrichtigung wurde versendet.`
+        : `${doc.name} wurde geteilt und ist jetzt für alle Coachees verfügbar.`,
+      className: "bg-green-600 text-white",
+      duration: 5000
+    });
+  };
+
+  const handleEditDocument = (doc) => {
+    setEditingDocument({...doc});
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateDocument = async () => {
+    if (!editingDocument.name.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Dokumentname ist erforderlich"
+      });
+      return;
+    }
+
+    try {
+      // Update in Context
+      updateDocumentInContext(editingDocument.id, editingDocument);
+      
+      // Update local state
+      setDocuments(prev => prev.map(d => d.id === editingDocument.id ? editingDocument : d));
+      
+      setShowEditDialog(false);
+      setEditingDocument(null);
+      
+      toast({
+        title: "Dokument aktualisiert",
+        description: "Die Änderungen wurden gespeichert.",
+        className: "bg-blue-600 text-white"
+      });
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren des Dokuments:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Aktualisieren",
+        description: "Das Dokument konnte nicht gespeichert werden."
+      });
+    }
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    setDeletingId(docId);
+    
+    try {
+      // Remove from Context
+      removeDocumentFromContext(docId);
+      
+      // Update local state
+      setDocuments(prev => prev.filter(d => d.id !== docId));
+      
+      toast({
+        title: "Dokument gelöscht",
+        description: "Das Dokument wurde erfolgreich entfernt.",
+        className: "bg-green-600 text-white"
+      });
+    } catch (error) {
+      console.error('Fehler beim Löschen des Dokuments:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Löschen",
+        description: "Das Dokument konnte nicht gelöscht werden."
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // URL-Parameter-Auswertung für Coachee-Filter
   useEffect(() => {
@@ -165,7 +295,7 @@ const DocumentsApp = () => {
     return true;
   });
 
-  // Datei-Icon Funktion
+  // Utility functions
   const getFileIcon = (type) => {
     switch(type) {
       case 'pdf': return '📄';
@@ -178,7 +308,6 @@ const DocumentsApp = () => {
     }
   };
 
-  // Datei-Typ erkennen
   const getFileType = (fileName) => {
     const extension = fileName.split('.').pop().toLowerCase();
     
@@ -192,7 +321,7 @@ const DocumentsApp = () => {
     return 'other';
   };
 
-  // Upload-Funktionen
+  // Upload functions
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     setUploadFiles([...uploadFiles, ...files]);
@@ -214,7 +343,6 @@ const DocumentsApp = () => {
     setUploadFiles(uploadFiles.filter((_, i) => i !== index));
   };
 
-  // REPARIERT: Upload-Funktion speichert jetzt persistent
   const handleUpload = () => {
     if (uploadFiles.length === 0) {
       toast({
@@ -234,7 +362,6 @@ const DocumentsApp = () => {
       return;
     }
 
-    // Verarbeite jede Datei und speichere im Context
     uploadFiles.forEach(file => {
       const selectedCoachee = uploadMetadata.assignedTo ? 
         coachees.find(c => c.id.toString() === uploadMetadata.assignedTo) : null;
@@ -242,7 +369,7 @@ const DocumentsApp = () => {
       const newDocument = {
         name: file.name,
         type: getFileType(file.name),
-        size: (file.size / (1024 * 1024)).toFixed(1), // Convert to MB
+        size: (file.size / (1024 * 1024)).toFixed(1),
         category: uploadMetadata.category,
         coacheeId: selectedCoachee ? selectedCoachee.id : null,
         coacheeName: selectedCoachee ? `${selectedCoachee.firstName} ${selectedCoachee.lastName}` : null,
@@ -251,7 +378,6 @@ const DocumentsApp = () => {
         shared: false
       };
 
-      // Speichere das Dokument im Context
       addDocumentToContext(newDocument);
     });
 
@@ -261,17 +387,14 @@ const DocumentsApp = () => {
       className: "bg-green-600 text-white"
     });
     
-    // Reset Upload State
     setUploadFiles([]);
     setUploadMetadata({ category: '', description: '', assignedTo: '' });
     setShowUploadDialog(false);
     
-    // Aktualisiere die lokale Dokumentenliste
     const updatedDocuments = getAllCoacheeDocuments();
     setDocuments(updatedDocuments);
   };
 
-  // Handler für Coachee-Auswahl
   const handleCoacheeSelection = (selectedCoacheeId) => {
     setUploadMetadata(prev => ({ 
       ...prev, 
@@ -279,7 +402,7 @@ const DocumentsApp = () => {
     }));
   };
 
-  // Kategorie-Management
+  // Category management
   const handleAddCategory = () => {
     if (!newCategoryData.name.trim()) {
       toast({
@@ -328,7 +451,7 @@ const DocumentsApp = () => {
     });
   };
 
-  // Button-Filter Komponente
+  // FilterButton component
   const FilterButton = ({ active, onClick, children, icon: Icon, count }) => (
     <button
       onClick={onClick}
@@ -357,7 +480,7 @@ const DocumentsApp = () => {
     </button>
   );
 
-  // Statistiken berechnen
+  // Statistics
   const stats = {
     total: filteredDocuments.length,
     shared: filteredDocuments.filter(doc => doc.shared).length,
@@ -410,72 +533,12 @@ const DocumentsApp = () => {
           </div>
         </div>
 
-        {/* Statistiken */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-600/20 rounded-lg">
-                <FileText className="h-5 w-5 text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-400">Gesamt</p>
-                <p className="text-xl font-bold text-white">{stats.total}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-600/20 rounded-lg">
-                <Share2 className="h-5 w-5 text-green-400" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-400">Geteilt</p>
-                <p className="text-xl font-bold text-white">{stats.shared}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-600/20 rounded-lg">
-                <Calendar className="h-5 w-5 text-orange-400" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-400">Neu (7 Tage)</p>
-                <p className="text-xl font-bold text-white">{stats.recent}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-600/20 rounded-lg">
-                <FolderOpen className="h-5 w-5 text-purple-400" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-400">Kategorien</p>
-                <p className="text-xl font-bold text-white">{stats.categories}</p>
-              </div>
-            </div>
-          </div>
+        {/* Quick stats display */}
+        <div className="flex gap-4 mb-6 text-sm text-slate-400">
+          <span>📁 {stats.total} Dokumente</span>
+          <span>🔗 {stats.shared} geteilt</span>
+          <span>🆕 {stats.recent} neu</span>
         </div>
-
-        {/* Coachee Filter Badge */}
-        {coacheeFilter && (
-          <div className="mb-4">
-            <div className="inline-flex items-center gap-2 px-3 py-2 bg-green-600/20 border border-green-600/30 rounded-lg">
-              <User className="h-4 w-4 text-green-400" />
-              <span className="text-green-400 text-sm font-medium">Coachee: {coacheeName}</span>
-              <button
-                onClick={clearCoacheeFilter}
-                className="text-green-400 hover:text-green-300 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Search */}
         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4 mb-6">
@@ -491,123 +554,7 @@ const DocumentsApp = () => {
           </div>
         </div>
 
-        {/* Button-Filter */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4 mb-6">
-          {/* Coachee Filter */}
-          <div className="mb-4">
-            <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Nach Coachee filtern
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <FilterButton
-                active={!coacheeFilter}
-                onClick={() => clearCoacheeFilter()}
-                count={documents.length}
-              >
-                Alle Coachees
-              </FilterButton>
-              {(coachees || []).map(coachee => {
-                const coacheeDocuments = documents.filter(doc => doc.coacheeId === coachee.id);
-                const isActive = coacheeFilter === coachee.id.toString();
-                return (
-                  <FilterButton
-                    key={coachee.id}
-                    active={isActive}
-                    onClick={() => handleCoacheeFilter(coachee.id.toString(), `${coachee.firstName} ${coachee.lastName}`)}
-                    count={coacheeDocuments.length}
-                  >
-                    {coachee.firstName} {coachee.lastName}
-                  </FilterButton>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Weitere Filter */}
-          <div className="grid md:grid-cols-3 gap-4">
-            {/* Kategorie Filter */}
-            <div>
-              <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                <FolderOpen className="h-4 w-4" />
-                Nach Kategorie filtern
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {categories.slice(0, 4).map(category => (
-                  <FilterButton
-                    key={category.id}
-                    active={categoryFilter === category.id}
-                    onClick={() => handleCategoryFilter(category.id)}
-                    count={documents.filter(doc => doc.category === category.id).length}
-                  >
-                    {category.name}
-                  </FilterButton>
-                ))}
-              </div>
-            </div>
-
-            {/* Typ Filter */}
-            <div>
-              <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Nach Typ filtern
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                <FilterButton
-                  active={typeFilter === 'pdf'}
-                  onClick={() => handleTypeFilter('pdf')}
-                  count={documents.filter(doc => doc.type === 'pdf').length}
-                >
-                  PDF
-                </FilterButton>
-                <FilterButton
-                  active={typeFilter === 'word'}
-                  onClick={() => handleTypeFilter('word')}
-                  count={documents.filter(doc => doc.type === 'word').length}
-                >
-                  Word
-                </FilterButton>
-                <FilterButton
-                  active={typeFilter === 'text'}
-                  onClick={() => handleTypeFilter('text')}
-                  count={documents.filter(doc => doc.type === 'text').length}
-                >
-                  Text
-                </FilterButton>
-              </div>
-            </div>
-
-            {/* Datum Filter */}
-            <div>
-              <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Nach Datum filtern
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                <FilterButton
-                  active={dateFilter === 'today'}
-                  onClick={() => handleDateFilter('today')}
-                >
-                  Heute
-                </FilterButton>
-                <FilterButton
-                  active={dateFilter === 'week'}
-                  onClick={() => handleDateFilter('week')}
-                >
-                  Diese Woche
-                </FilterButton>
-                <FilterButton
-                  active={dateFilter === 'month'}
-                  onClick={() => handleDateFilter('month')}
-                >
-                  Dieser Monat
-                </FilterButton>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Ergebnisse */}
+        {/* Results header */}
         <div className="flex justify-between items-center mb-4">
           <div>
             <h2 className="text-lg font-semibold text-white">
@@ -615,7 +562,6 @@ const DocumentsApp = () => {
             </h2>
             <p className="text-slate-400 text-sm">
               {filteredDocuments.length} von {documents.length} Dokumenten
-              {coacheeFilter && ` • Gefiltert nach ${coacheeName}`}
             </p>
           </div>
         </div>
@@ -665,22 +611,83 @@ const DocumentsApp = () => {
                       </div>
                     </div>
                     
+                    {/* Action-Buttons */}
                     <div className="flex gap-1">
-                      <button className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-slate-700/50 rounded transition-colors" title="Ansehen">
+                      <button 
+                        onClick={() => handleViewDocument(doc)}
+                        className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-slate-700/50 rounded transition-colors" 
+                        title="Ansehen"
+                      >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button className="p-1.5 text-green-400 hover:text-green-300 hover:bg-slate-700/50 rounded transition-colors" title="Download">
+                      
+                      <button 
+                        onClick={() => handleDownloadDocument(doc)}
+                        className="p-1.5 text-green-400 hover:text-green-300 hover:bg-slate-700/50 rounded transition-colors" 
+                        title="Download"
+                      >
                         <Download className="h-4 w-4" />
                       </button>
-                      <button className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-slate-700/50 rounded transition-colors" title="Teilen">
+                      
+                      <button 
+                        onClick={() => handleShareDocument(doc)}
+                        className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-slate-700/50 rounded transition-colors" 
+                        title="Teilen"
+                      >
                         <Share2 className="h-4 w-4" />
                       </button>
-                      <button className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors" title="Bearbeiten">
+                      
+                      <button 
+                        onClick={() => handleEditDocument(doc)}
+                        className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors" 
+                        title="Bearbeiten"
+                      >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors" title="Löschen">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+
+                      {/* Delete-Button mit Bestätigungs-Dialog */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button 
+                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors" 
+                            title="Löschen"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-slate-800/95 backdrop-blur-xl border-slate-700/50">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-white flex items-center gap-2">
+                              <AlertTriangle className="h-5 w-5 text-red-400" />
+                              Dokument löschen?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-slate-400">
+                              Möchtest du das Dokument <strong className="text-white">"{doc.name}"</strong> wirklich dauerhaft löschen?
+                              <br /><br />
+                              <span className="text-red-400">Diese Aktion kann nicht rückgängig gemacht werden.</span>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600">
+                              Abbrechen
+                            </AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteDocument(doc.id)}
+                              disabled={deletingId === doc.id}
+                              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+                            >
+                              {deletingId === doc.id ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2" />
+                                  Lösche...
+                                </>
+                              ) : (
+                                'Dauerhaft löschen'
+                              )}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 </div>
@@ -695,102 +702,141 @@ const DocumentsApp = () => {
               <p className="text-slate-400 mb-4">
                 Für die aktuellen Filter gibt es keine Dokumente.
               </p>
-              <button
-                onClick={() => {
-                  clearCoacheeFilter();
-                  setCategoryFilter('all');
-                  setTypeFilter('all');
-                  setDateFilter('all');
-                  setSearchTerm('');
-                }}
-                className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
-              >
-                Alle Filter zurücksetzen
-              </button>
             </div>
           )}
         </div>
 
+        {/* Edit Document Modal */}
+        {showEditDialog && editingDocument && (
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-white">Dokument bearbeiten</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Name</Label>
+                  <Input
+                    value={editingDocument.name}
+                    onChange={(e) => setEditingDocument(prev => ({ ...prev, name: e.target.value }))}
+                    className="bg-slate-700/50 border-slate-600/50 text-white"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Beschreibung</Label>
+                  <textarea
+                    value={editingDocument.description || ''}
+                    onChange={(e) => setEditingDocument(prev => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Kategorie</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map(category => (
+                      <button
+                        key={category.id}
+                        onClick={() => setEditingDocument(prev => ({ ...prev, category: category.id }))}
+                        className={`
+                          px-3 py-2 rounded-lg text-sm font-medium transition-all
+                          ${editingDocument.category === category.id
+                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
+                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                          }
+                        `}
+                      >
+                        {category.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                    Abbrechen
+                  </Button>
+                </DialogClose>
+                <Button 
+                  onClick={handleUpdateDocument}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                >
+                  Änderungen speichern
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
         {/* Upload Dialog */}
         {showUploadDialog && (
           <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-3xl">
               <DialogHeader>
                 <DialogTitle className="text-white">Dokumente hochladen</DialogTitle>
                 <DialogDescription className="text-slate-400">
-                  Laden Sie neue Dokumente hoch und ordnen Sie diese zu.
+                  Laden Sie neue Dokumente für Ihre Coachees hoch.
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-6">
-                {/* Drag & Drop Zone */}
+              <div className="space-y-4">
+                {/* File Drop Zone */}
                 <div 
-                  className="border-2 border-dashed border-slate-600 rounded-xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer bg-slate-700/30"
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
-                  onClick={() => document.getElementById('fileInput').click()}
+                  className="border-2 border-dashed border-slate-600/50 rounded-lg p-8 text-center hover:border-blue-500/50 transition-colors"
                 >
-                  <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-white mb-2">Dateien hochladen</h3>
-                  <p className="text-slate-400 mb-4">
-                    Ziehen Sie Dateien hierher oder klicken Sie zum Auswählen
-                  </p>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Dateien auswählen
-                  </Button>
+                  <Upload className="mx-auto h-8 w-8 text-slate-400 mb-2" />
+                  <p className="text-slate-300 mb-2">Dateien hierher ziehen oder klicken zum Auswählen</p>
                   <input
-                    id="fileInput"
                     type="file"
                     multiple
                     onChange={handleFileChange}
                     className="hidden"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif"
+                    id="file-input"
                   />
+                  <label htmlFor="file-input" className="cursor-pointer text-blue-400 hover:text-blue-300">
+                    Dateien auswählen
+                  </label>
                 </div>
 
-                {/* Dateiliste */}
+                {/* Selected Files */}
                 {uploadFiles.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-white mb-3">Ausgewählte Dateien ({uploadFiles.length})</h4>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {uploadFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-slate-700 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{getFileIcon(getFileType(file.name))}</span>
-                            <div>
-                              <p className="font-medium text-white">{file.name}</p>
-                              <p className="text-sm text-slate-400">{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveUploadFile(index)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-900/30"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-slate-300">Ausgewählte Dateien:</h4>
+                    {uploadFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-slate-700/50 p-2 rounded">
+                        <span className="text-sm text-white">{file.name}</span>
+                        <button
+                          onClick={() => handleRemoveUploadFile(index)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {/* Metadaten */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Metadata */}
+                <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-300 mb-2 block">Kategorie*</Label>
-                    <div className="flex flex-wrap gap-2">
+                    <Label className="text-slate-300 mb-2 block">Kategorie *</Label>
+                    <div className="flex flex-wrap gap-1">
                       {categories.map(category => (
                         <button
                           key={category.id}
                           onClick={() => setUploadMetadata(prev => ({ ...prev, category: category.id }))}
                           className={`
-                            px-3 py-2 rounded-lg text-sm font-medium transition-all
+                            px-2 py-1 rounded text-xs font-medium transition-all
                             ${uploadMetadata.category === category.id
                               ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 border border-slate-600/50'
                             }
                           `}
                         >
@@ -801,29 +847,29 @@ const DocumentsApp = () => {
                   </div>
 
                   <div>
-                    <Label className="text-slate-300 mb-2 block">Zuweisen an</Label>
-                    <div className="flex flex-wrap gap-2">
+                    <Label className="text-slate-300 mb-2 block">Coachee zuweisen</Label>
+                    <div className="flex flex-wrap gap-1">
                       <button
                         onClick={() => handleCoacheeSelection('')}
                         className={`
-                          px-3 py-2 rounded-lg text-sm font-medium transition-all
+                          px-2 py-1 rounded text-xs font-medium transition-all
                           ${!uploadMetadata.assignedTo 
                             ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 border border-slate-600/50'
                           }
                         `}
                       >
-                        Nicht zugewiesen
+                        Allgemein
                       </button>
                       {(coachees || []).map(coachee => (
                         <button
                           key={coachee.id}
                           onClick={() => handleCoacheeSelection(coachee.id.toString())}
                           className={`
-                            px-3 py-2 rounded-lg text-sm font-medium transition-all
+                            px-2 py-1 rounded text-xs font-medium transition-all
                             ${uploadMetadata.assignedTo === coachee.id.toString()
                               ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 border border-slate-600/50'
                             }
                           `}
                         >
@@ -835,13 +881,13 @@ const DocumentsApp = () => {
                 </div>
 
                 <div>
-                  <Label className="text-slate-300 mb-2 block">Beschreibung</Label>
+                  <Label className="text-slate-300 mb-2 block">Beschreibung (optional)</Label>
                   <textarea
+                    placeholder="Kurze Beschreibung der Dokumente..."
                     value={uploadMetadata.description}
                     onChange={(e) => setUploadMetadata(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Optional: Beschreibung des Dokuments..."
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    rows="3"
+                    rows={3}
+                    className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   />
                 </div>
               </div>
@@ -858,46 +904,42 @@ const DocumentsApp = () => {
                   className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  {uploadFiles.length} Dokument(e) hochladen
+                  Hochladen
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
 
-        {/* Kategorie-Manager Dialog */}
+        {/* Category Manager Dialog */}
         {showCategoryManager && (
           <Dialog open={showCategoryManager} onOpenChange={setShowCategoryManager}>
-            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="text-white">Kategorien verwalten</DialogTitle>
                 <DialogDescription className="text-slate-400">
-                  Erstellen und verwalten Sie Kategorien für Ihre Dokumente.
+                  Erstellen Sie neue Kategorien oder bearbeiten Sie bestehende.
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-6">
-                {/* Neue Kategorie hinzufügen */}
-                <div className="p-6 bg-slate-700/50 rounded-xl border border-slate-600/50">
-                  <h3 className="text-lg font-semibold mb-4 text-white">
-                    Neue Kategorie hinzufügen
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Add New Category */}
+                <div className="border border-slate-600/50 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-slate-300 mb-3">Neue Kategorie hinzufügen</h4>
+                  <div className="space-y-3">
                     <div>
                       <Label className="text-slate-300 mb-2 block">Name</Label>
                       <Input
+                        placeholder="z.B. Führungskompetenz"
                         value={newCategoryData.name}
                         onChange={(e) => setNewCategoryData(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="z.B. Leadership"
                         className="bg-slate-700/50 border-slate-600/50 text-white"
                       />
                     </div>
-
                     <div>
                       <Label className="text-slate-300 mb-2 block">Farbe</Label>
                       <div className="flex flex-wrap gap-2">
-                        {availableColors.slice(0, 4).map(color => (
+                        {availableColors.map(color => (
                           <button
                             key={color.class}
                             onClick={() => setNewCategoryData(prev => ({ ...prev, color: color.class }))}
@@ -905,47 +947,42 @@ const DocumentsApp = () => {
                               px-3 py-2 rounded-lg text-sm font-medium transition-all
                               ${newCategoryData.color === color.class
                                 ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                                : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                                : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 border border-slate-600/50'
                               }
                             `}
                           >
-                            {color.name}
+                            <span className={color.class}>●</span> {color.name}
                           </button>
                         ))}
                       </div>
                     </div>
+                    <Button 
+                      onClick={handleAddCategory}
+                      disabled={!newCategoryData.name.trim()}
+                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Kategorie hinzufügen
+                    </Button>
                   </div>
-
-                  <Button
-                    onClick={handleAddCategory}
-                    className="mt-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                    disabled={!newCategoryData.name.trim()}
-                  >
-                    Kategorie hinzufügen
-                  </Button>
                 </div>
 
-                {/* Bestehende Kategorien */}
+                {/* Existing Categories */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4 text-white">Bestehende Kategorien ({categories.length})</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <h4 className="text-sm font-medium text-slate-300 mb-3">Bestehende Kategorien</h4>
+                  <div className="space-y-2">
                     {categories.map(category => (
-                      <div key={category.id} className="bg-slate-700/50 border border-slate-600/50 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className={`${category.color} font-medium`}>
-                            {category.name}
-                          </div>
-                          <button
-                            onClick={() => handleDeleteCategory(category.id)}
-                            className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                      <div key={category.id} className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <span className={`text-lg ${category.color}`}>●</span>
+                          <span className="text-white">{category.name}</span>
                         </div>
-                        
-                        <div className="text-xs text-slate-400">
-                          {documents.filter(doc => doc.category === category.id).length} Dokument(e)
-                        </div>
+                        <button
+                          onClick={() => handleDeleteCategory(category.id)}
+                          className="text-red-400 hover:text-red-300 p-1"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -954,14 +991,15 @@ const DocumentsApp = () => {
               
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-                    Fertig
+                  <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                    Schließen
                   </Button>
                 </DialogClose>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
+
       </div>
     </div>
   );

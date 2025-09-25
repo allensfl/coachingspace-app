@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Search, User, Calendar, Filter, X, Check, Clock, BarChart3, FileText, Settings, Plus, Brain, TrendingUp, AlertTriangle, Eye, Target, Save, Copy } from 'lucide-react';
+import { Search, User, Calendar, Filter, X, Check, Clock, BarChart3, FileText, Settings, Plus, Brain, TrendingUp, AlertTriangle, Eye, Target, Save, Copy } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useAppStateContext } from '@/context/AppStateContext';
 
 const ReflexionstagebuchApp = () => {
-  // Context für echte Coachees
-  const { coachees } = useAppStateContext();
+  // Context für echte Coachees + Feature Flags
+  const { coachees, hasFeature, showPremiumFeature } = useAppStateContext();
   
   // Navigation und Location für URL-Parameter
   const navigate = useNavigate();
@@ -16,16 +16,12 @@ const ReflexionstagebuchApp = () => {
   // Filter States
   const [coacheeFilter, setCoacheeFilter] = useState(null);
   const [coacheeName, setCoacheeName] = useState('');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   
   // Basis States
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCoachee, setSelectedCoachee] = useState('Alle Coachees');
-  const [selectedDate, setSelectedDate] = useState('Nach Datum');
-  const [selectedStatus, setSelectedStatus] = useState('Alle Status');
-  const [selectedCategory, setSelectedCategory] = useState('Alle Kategorien');
-  
-  // Dropdown States
-  const [openDropdown, setOpenDropdown] = useState('');
   
   // Modal States
   const [showNewModal, setShowNewModal] = useState(false);
@@ -76,7 +72,7 @@ const ReflexionstagebuchApp = () => {
     });
   };
 
-  // Demo Daten - erweitert mit coacheeId (in echten App aus localStorage laden)
+  // Demo Daten - erweitert mit coacheeId
   const [reflections, setReflections] = useState([
     {
       id: 1,
@@ -86,7 +82,8 @@ const ReflexionstagebuchApp = () => {
       mood: 'challenging',
       tags: ['Führung', 'Machtdynamik', 'Grenzen'],
       coacheeId: '16',
-      coacheeName: 'Anna Schmidt'
+      coacheeName: 'Anna Schmidt',
+      category: 'business'
     },
     {
       id: 2,
@@ -96,7 +93,8 @@ const ReflexionstagebuchApp = () => {
       mood: 'positive',
       tags: ['Systemik', 'Erfolg', 'Kommunikation'],
       coacheeId: '16',
-      coacheeName: 'Anna Schmidt'
+      coacheeName: 'Anna Schmidt',
+      category: 'business'
     },
     {
       id: 3,
@@ -106,14 +104,65 @@ const ReflexionstagebuchApp = () => {
       mood: 'neutral',
       tags: ['Work-Life-Balance', 'Prioritäten'],
       coacheeId: '17',
-      coacheeName: 'Marco Müller'
+      coacheeName: 'Marco Müller',
+      category: 'life'
     }
   ]);
 
-  // Gefilterte Reflexionen basierend auf Coachee-Filter und anderen Filtern
+  // Filter Funktionen
+  const handleCoacheeFilter = (coacheeId, coacheeName) => {
+    if (coacheeFilter === coacheeId) {
+      // Filter entfernen wenn bereits aktiv
+      clearCoacheeFilter();
+    } else {
+      setCoacheeFilter(coacheeId);
+      setCoacheeName(coacheeName);
+      
+      toast({
+        title: "Filter gesetzt",
+        description: `Zeige nur Einträge von ${coacheeName}`,
+        className: "bg-blue-600 text-white"
+      });
+    }
+  };
+
+  const handleDateFilter = (filter) => {
+    setDateFilter(filter === dateFilter ? 'all' : filter);
+  };
+
+  const handleStatusFilter = (filter) => {
+    setStatusFilter(filter === statusFilter ? 'all' : filter);
+  };
+
+  const handleCategoryFilter = (filter) => {
+    setCategoryFilter(filter === categoryFilter ? 'all' : filter);
+  };
+
+  // Gefilterte Reflexionen
   const filteredReflections = reflections.filter(reflection => {
     // Coachee-Filter
     if (coacheeFilter && reflection.coacheeId !== coacheeFilter) {
+      return false;
+    }
+    
+    // Datum-Filter
+    if (dateFilter !== 'all') {
+      const today = new Date();
+      const reflectionDate = new Date(reflection.date);
+      
+      if (dateFilter === 'today') {
+        if (today.toDateString() !== reflectionDate.toDateString()) return false;
+      } else if (dateFilter === 'week') {
+        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        if (reflectionDate < weekAgo) return false;
+      } else if (dateFilter === 'month') {
+        const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+        if (reflectionDate < monthAgo) return false;
+      }
+    }
+    
+    // Kategorie-Filter
+    if (categoryFilter !== 'all' && reflection.category !== categoryFilter) {
       return false;
     }
     
@@ -130,36 +179,6 @@ const ReflexionstagebuchApp = () => {
     
     return true;
   });
-
-  // Dynamische Coachee-Optionen aus echten Daten
-  const coacheeOptions = [
-    { value: '', label: 'Allgemeine Reflexion (kein Coachee)' },
-    ...coachees.map(coachee => ({
-      value: coachee.id.toString(),
-      label: `${coachee.firstName} ${coachee.lastName}`
-    }))
-  ];
-
-  // Dropdown Optionen
-  const coacheeNames = ['Alle Coachees', ...coachees.map(c => `${c.firstName} ${c.lastName}`)];
-  const dateOptions = ['Nach Datum', 'Heute', 'Diese Woche', 'Dieser Monat'];
-  const statusOptions = ['Alle Status', 'Geplant', 'Abgeschlossen', 'Storniert'];
-  const categoryOptions = ['Alle Kategorien', 'Business Coaching', 'Life Coaching', 'Führungskräfte'];
-
-  // Dropdown Handler
-  const toggleDropdown = (dropdown) => {
-    setOpenDropdown(openDropdown === dropdown ? '' : dropdown);
-  };
-
-  const selectOption = (type, value) => {
-    switch(type) {
-      case 'coachee': setSelectedCoachee(value); break;
-      case 'date': setSelectedDate(value); break;
-      case 'status': setSelectedStatus(value); break;
-      case 'category': setSelectedCategory(value); break;
-    }
-    setOpenDropdown('');
-  };
 
   // Handler für Coachee-Auswahl in neuer Reflexion
   const handleCoacheeSelection = (selectedCoacheeId) => {
@@ -181,8 +200,13 @@ const ReflexionstagebuchApp = () => {
     }
   };
 
-  // KI Analyse
+  // KI Analyse mit Feature-Flag
   const startKiAnalysis = async (type) => {
+    if (!hasFeature('aiModule')) {
+      showPremiumFeature('KI-Journal-Analyse');
+      return;
+    }
+
     setKiType(type);
     setKiLoading(true);
     setShowKiModal(true);
@@ -220,68 +244,74 @@ const ReflexionstagebuchApp = () => {
         mood: newReflection.mood,
         tags: [],
         coacheeId: newReflection.coacheeId,
-        coacheeName: newReflection.coacheeName
+        coacheeName: newReflection.coacheeName,
+        category: 'business'
       };
       
       setReflections([reflection, ...reflections]);
       setNewReflection({ title: '', content: '', mood: 'neutral', coacheeId: null, coacheeName: '' });
       setShowNewModal(false);
-
-      // In echter App: Reflexion in localStorage speichern
-      // const existingReflections = JSON.parse(localStorage.getItem('journalReflections') || '[]');
-      // localStorage.setItem('journalReflections', JSON.stringify([reflection, ...existingReflections]));
     }
   };
 
-  // Dropdown Komponente - Mit korrekter Positionierung unter dem Button
-  const Dropdown = ({ label, value, options, type, icon: Icon }) => {
-    const [buttonRef, setButtonRef] = useState(null);
+  // Button-Filter Komponente
+  const FilterButton = ({ active, onClick, children, icon: Icon, count }) => (
+    <button
+      onClick={onClick}
+      className={`
+        relative px-4 py-2 rounded-lg text-sm font-medium transition-all
+        flex items-center gap-2
+        ${active 
+          ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' 
+          : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+        }
+      `}
+    >
+      {Icon && <Icon className="h-4 w-4" />}
+      <span>{children}</span>
+      {count !== undefined && (
+        <span className={`
+          px-1.5 py-0.5 rounded text-xs
+          ${active ? 'bg-white/20' : 'bg-slate-600/50'}
+        `}>
+          {count}
+        </span>
+      )}
+      {active && (
+        <X className="h-3 w-3 ml-1 opacity-70 hover:opacity-100" />
+      )}
+    </button>
+  );
+
+  // KI-Analyse Button Komponente
+  const KIAnalysisButton = ({ type, icon: Icon, title, description, onClick }) => {
+    const isDisabled = !hasFeature('aiModule');
     
     return (
-      <div className="relative">
-        <button
-          ref={setButtonRef}
-          onClick={() => toggleDropdown(type)}
-          className="
-            min-w-[140px] px-3 py-2.5 
-            bg-slate-700/60 border border-slate-600/60
-            rounded-lg text-slate-200 text-sm font-medium
-            hover:bg-slate-600/60 transition-colors
-            flex items-center justify-between gap-2
-          "
-        >
-          <div className="flex items-center gap-2">
-            {Icon && <Icon className="h-4 w-4 text-slate-400" />}
-            <span className="truncate">{value}</span>
-          </div>
-          <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${
-            openDropdown === type ? 'rotate-180' : ''
-          }`} />
-        </button>
-        
-        {/* Dropdown direkt unter dem Button */}
-        {openDropdown === type && (
-          <>
-            {/* Backdrop */}
-            <div 
-              className="fixed inset-0 z-[998]" 
-              onClick={() => setOpenDropdown('')}
-            />
-            {/* Dropdown Content */}
-            <div className="absolute top-full left-0 mt-1 z-[999] bg-slate-800 border border-slate-600/50 rounded-lg shadow-2xl max-h-40 overflow-y-auto w-48">
-              {options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => selectOption(type, option)}
-                  className="w-full px-3 py-1.5 text-left text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors text-sm"
-                >
-                  {option}
-                </button>
-              ))}
+      <button 
+        onClick={onClick}
+        disabled={isDisabled}
+        className={`
+          flex flex-col items-center gap-3 p-6 rounded-xl transition-all duration-200 group
+          ${isDisabled 
+            ? 'bg-slate-700/20 border border-slate-600/20 cursor-not-allowed opacity-60' 
+            : 'bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50'
+          }
+        `}
+      >
+        <div className="relative">
+          <Icon className={`h-8 w-8 ${isDisabled ? 'text-slate-500' : 'text-blue-400 group-hover:text-blue-300'}`} />
+          {isDisabled && (
+            <div className="absolute -top-1 -right-1 bg-orange-500/30 text-orange-300 text-xs px-1.5 py-0.5 rounded font-medium">
+              In Entwicklung
             </div>
-          </>
-        )}
-      </div>
+          )}
+        </div>
+        <div className="text-center">
+          <h3 className={`font-medium mb-1 ${isDisabled ? 'text-slate-500' : 'text-white'}`}>{title}</h3>
+          <p className={`text-xs ${isDisabled ? 'text-slate-600' : 'text-slate-400'}`}>{description}</p>
+        </div>
+      </button>
     );
   };
 
@@ -306,129 +336,154 @@ const ReflexionstagebuchApp = () => {
           </button>
         </div>
 
-        {/* Filter-Badges */}
-        {coacheeFilter && (
-          <div className="mb-4">
-            <div className="flex flex-wrap gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-400 rounded-lg text-sm">
-                <User className="h-4 w-4" />
-                <span>Coachee: {coacheeName}</span>
-                <button 
-                  onClick={clearCoacheeFilter}
-                  className="ml-1 hover:bg-green-500/20 rounded p-0.5 transition-colors"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Filter */}
+        {/* Search */}
         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4 mb-6">
-          <div className="mb-4">
-            <div className="relative max-w-xl">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Reflexionen, Coachees, Notizen oder Tags durchsuchen..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-700/40 border border-slate-600/40 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3 items-center">
-            <Dropdown
-              label="Alle Coachees"
-              value={selectedCoachee}
-              options={coacheeNames}
-              type="coachee"
-              icon={User}
+          <div className="relative max-w-xl">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Reflexionen, Coachees, Notizen oder Tags durchsuchen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-700/40 border border-slate-600/40 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50"
             />
-            
-            <Dropdown
-              label="Nach Datum"
-              value={selectedDate}
-              options={dateOptions}
-              type="date"
-              icon={Calendar}
-            />
-            
-            <Dropdown
-              label="Alle Status"
-              value={selectedStatus}
-              options={statusOptions}
-              type="status"
-              icon={BarChart3}
-            />
-            
-            <Dropdown
-              label="Alle Kategorien"
-              value={selectedCategory}
-              options={categoryOptions}
-              type="category"
-              icon={FileText}
-            />
-
-            <button className="px-4 py-2.5 text-sm font-medium bg-blue-600/80 hover:bg-blue-600 border border-blue-500/50 rounded-lg text-white transition-colors flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Erweitert
-            </button>
           </div>
         </div>
 
-        {/* KI-Analyse */}
+        {/* Button-Filter */}
+        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4 mb-6">
+          {/* Coachee Filter */}
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Nach Coachee filtern
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <FilterButton
+                active={!coacheeFilter}
+                onClick={() => clearCoacheeFilter()}
+                count={reflections.length}
+              >
+                Alle Coachees
+              </FilterButton>
+              {coachees.map(coachee => {
+                const coacheeReflections = reflections.filter(r => r.coacheeId === coachee.id.toString());
+                const isActive = coacheeFilter === coachee.id.toString();
+                return (
+                  <FilterButton
+                    key={coachee.id}
+                    active={isActive}
+                    onClick={() => handleCoacheeFilter(coachee.id.toString(), `${coachee.firstName} ${coachee.lastName}`)}
+                    count={coacheeReflections.length}
+                  >
+                    {coachee.firstName} {coachee.lastName}
+                  </FilterButton>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Datum & Kategorie Filter */}
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Datum Filter */}
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Nach Datum filtern
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                <FilterButton
+                  active={dateFilter === 'today'}
+                  onClick={() => handleDateFilter('today')}
+                >
+                  Heute
+                </FilterButton>
+                <FilterButton
+                  active={dateFilter === 'week'}
+                  onClick={() => handleDateFilter('week')}
+                >
+                  Diese Woche
+                </FilterButton>
+                <FilterButton
+                  active={dateFilter === 'month'}
+                  onClick={() => handleDateFilter('month')}
+                >
+                  Dieser Monat
+                </FilterButton>
+              </div>
+            </div>
+
+            {/* Kategorie Filter */}
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Nach Kategorie filtern
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                <FilterButton
+                  active={categoryFilter === 'business'}
+                  onClick={() => handleCategoryFilter('business')}
+                  count={reflections.filter(r => r.category === 'business').length}
+                >
+                  Business Coaching
+                </FilterButton>
+                <FilterButton
+                  active={categoryFilter === 'life'}
+                  onClick={() => handleCategoryFilter('life')}
+                  count={reflections.filter(r => r.category === 'life').length}
+                >
+                  Life Coaching
+                </FilterButton>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* KI-Analyse mit Feature-Flags */}
         <div className="bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 mb-6">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Brain className="h-5 w-5 text-purple-400" />
-            KI-gestützte Coach-Analyse
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-400" />
+              KI-gestützte Coach-Analyse
+              {!hasFeature('aiModule') && (
+                <span className="ml-2 px-2 py-1 bg-orange-500/30 text-orange-300 text-xs rounded font-medium">
+                  In Entwicklung
+                </span>
+              )}
+            </h2>
+          </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button 
+            <KIAnalysisButton
+              type="trends"
+              icon={TrendingUp}
+              title="Entwicklungstrends"
+              description="Langfristige Muster und Coaching-Evolution"
               onClick={() => startKiAnalysis('trends')}
-              className="flex flex-col items-center gap-3 p-6 bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50 rounded-xl transition-all duration-200 group"
-            >
-              <TrendingUp className="h-8 w-8 text-blue-400 group-hover:text-blue-300" />
-              <div className="text-center">
-                <h3 className="text-white font-medium mb-1">Entwicklungstrends</h3>
-                <p className="text-xs text-slate-400">Langfristige Muster und Coaching-Evolution</p>
-              </div>
-            </button>
+            />
 
-            <button 
+            <KIAnalysisButton
+              type="blindspots"
+              icon={Eye}
+              title="Blinde Flecken"
+              description="Unbewusste Coaching-Muster erkennen"
               onClick={() => startKiAnalysis('blindspots')}
-              className="flex flex-col items-center gap-3 p-6 bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50 rounded-xl transition-all duration-200 group"
-            >
-              <Eye className="h-8 w-8 text-orange-400 group-hover:text-orange-300" />
-              <div className="text-center">
-                <h3 className="text-white font-medium mb-1">Blinde Flecken</h3>
-                <p className="text-xs text-slate-400">Unbewusste Coaching-Muster erkennen</p>
-              </div>
-            </button>
+            />
 
-            <button 
+            <KIAnalysisButton
+              type="patterns"
+              icon={BarChart3}
+              title="Coaching-Muster"
+              description="Spezifische Reflexion analysieren"
               onClick={() => startKiAnalysis('patterns')}
-              className="flex flex-col items-center gap-3 p-6 bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50 rounded-xl transition-all duration-200 group"
-            >
-              <BarChart3 className="h-8 w-8 text-green-400 group-hover:text-green-300" />
-              <div className="text-center">
-                <h3 className="text-white font-medium mb-1">Coaching-Muster</h3>
-                <p className="text-xs text-slate-400">Spezifische Reflexion analysieren</p>
-              </div>
-            </button>
+            />
 
-            <button 
+            <KIAnalysisButton
+              type="development"
+              icon={Target}
+              title="Entwicklungsplan"
+              description="Persönlicher Coaching-Entwicklungsplan"
               onClick={() => startKiAnalysis('development')}
-              className="flex flex-col items-center gap-3 p-6 bg-slate-700/40 hover:bg-slate-600/50 border border-slate-600/40 hover:border-slate-500/50 rounded-xl transition-all duration-200 group"
-            >
-              <Target className="h-8 w-8 text-purple-400 group-hover:text-purple-300" />
-              <div className="text-center">
-                <h3 className="text-white font-medium mb-1">Entwicklungsplan</h3>
-                <p className="text-xs text-slate-400">Persönlicher Coaching-Entwicklungsplan</p>
-              </div>
-            </button>
+            />
           </div>
         </div>
 
@@ -439,20 +494,9 @@ const ReflexionstagebuchApp = () => {
               {coacheeFilter ? `${coacheeName}s Journal-Einträge` : 'Alle Journal-Einträge'}
             </h2>
             <p className="text-slate-400 text-sm">
-              {coacheeFilter 
-                ? `Gefilterte Einträge • ${filteredReflections.length} von ${reflections.length} gefunden`
-                : `Alle Reflexionen • ${filteredReflections.length} gefunden`
-              }
+              {filteredReflections.length} von {reflections.length} Einträgen
+              {coacheeFilter && ` • Gefiltert nach ${coacheeName}`}
             </p>
-          </div>
-          
-          <div className="relative">
-            <select className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white text-sm focus:outline-none appearance-none pr-10 cursor-pointer">
-              <option>Neueste zuerst</option>
-              <option>Älteste zuerst</option>
-              <option>Nach Stimmung</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
@@ -492,8 +536,15 @@ const ReflexionstagebuchApp = () => {
                   <div className="flex gap-1">
                     <button 
                       onClick={() => startKiAnalysis('patterns')}
-                      className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-slate-700/50 rounded transition-colors" 
-                      title="KI-Analyse"
+                      disabled={!hasFeature('aiModule')}
+                      className={`
+                        p-1.5 rounded transition-colors 
+                        ${hasFeature('aiModule') 
+                          ? 'text-purple-400 hover:text-purple-300 hover:bg-slate-700/50' 
+                          : 'text-slate-500 cursor-not-allowed opacity-50'
+                        }
+                      `}
+                      title={hasFeature('aiModule') ? 'KI-Analyse' : 'KI-Analyse (In Entwicklung)'}
                     >
                       <Brain className="h-4 w-4" />
                     </button>
@@ -520,25 +571,22 @@ const ReflexionstagebuchApp = () => {
             <div className="text-center py-12">
               <Brain className="mx-auto h-12 w-12 text-slate-400 mb-4" />
               <h3 className="text-lg font-medium text-white mb-2">
-                {coacheeFilter 
-                  ? `Keine Journal-Einträge für ${coacheeName} gefunden`
-                  : 'Keine Journal-Einträge gefunden'
-                }
+                Keine Journal-Einträge gefunden
               </h3>
               <p className="text-slate-400 mb-4">
-                {coacheeFilter 
-                  ? `Noch keine Reflexionen zu ${coacheeName} vorhanden.`
-                  : 'Beginne mit deiner ersten Coaching-Reflexion.'
-                }
+                Für die aktuellen Filter gibt es keine Einträge.
               </p>
-              {coacheeFilter && (
-                <button
-                  onClick={clearCoacheeFilter}
-                  className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
-                >
-                  Alle Einträge anzeigen
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  clearCoacheeFilter();
+                  setDateFilter('all');
+                  setCategoryFilter('all');
+                  setSearchTerm('');
+                }}
+                className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
+              >
+                Alle Filter zurücksetzen
+              </button>
             </div>
           )}
         </div>
@@ -579,37 +627,77 @@ const ReflexionstagebuchApp = () => {
                 
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Coachee zuweisen</label>
-                  <div className="relative">
-                    <select
-                      value={newReflection.coacheeId || ''}
-                      onChange={(e) => handleCoacheeSelection(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer pr-10"
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleCoacheeSelection('')}
+                      className={`
+                        px-3 py-2 rounded-lg text-sm font-medium transition-all
+                        ${!newReflection.coacheeId 
+                          ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
+                          : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                        }
+                      `}
                     >
-                      {coacheeOptions.map((option, index) => (
-                        <option key={index} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <User className="absolute right-10 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                      Allgemeine Reflexion
+                    </button>
+                    {coachees.map(coachee => (
+                      <button
+                        key={coachee.id}
+                        onClick={() => handleCoacheeSelection(coachee.id.toString())}
+                        className={`
+                          px-3 py-2 rounded-lg text-sm font-medium transition-all
+                          ${newReflection.coacheeId === coachee.id.toString()
+                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
+                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                          }
+                        `}
+                      >
+                        {coachee.firstName} {coachee.lastName}
+                      </button>
+                    ))}
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">Optional: Ordne die Reflexion einem spezifischen Coachee zu</p>
+                  <p className="text-xs text-slate-400 mt-2">Optional: Ordne die Reflexion einem spezifischen Coachee zu</p>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Stimmung/Erfahrung</label>
-                  <div className="relative">
-                    <select
-                      value={newReflection.mood}
-                      onChange={(e) => setNewReflection(prev => ({ ...prev, mood: e.target.value }))}
-                      className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer pr-10"
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setNewReflection(prev => ({ ...prev, mood: 'positive' }))}
+                      className={`
+                        px-3 py-2 rounded-lg text-sm font-medium transition-all
+                        ${newReflection.mood === 'positive'
+                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white' 
+                          : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                        }
+                      `}
                     >
-                      <option value="positive">Positive Erfahrung</option>
-                      <option value="neutral">Neutrale Erfahrung</option>
-                      <option value="challenging">Herausfordernde Erfahrung</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                      Positive Erfahrung
+                    </button>
+                    <button
+                      onClick={() => setNewReflection(prev => ({ ...prev, mood: 'neutral' }))}
+                      className={`
+                        px-3 py-2 rounded-lg text-sm font-medium transition-all
+                        ${newReflection.mood === 'neutral'
+                          ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white' 
+                          : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                        }
+                      `}
+                    >
+                      Neutrale Erfahrung
+                    </button>
+                    <button
+                      onClick={() => setNewReflection(prev => ({ ...prev, mood: 'challenging' }))}
+                      className={`
+                        px-3 py-2 rounded-lg text-sm font-medium transition-all
+                        ${newReflection.mood === 'challenging'
+                          ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' 
+                          : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                        }
+                      `}
+                    >
+                      Herausfordernde Erfahrung
+                    </button>
                   </div>
                 </div>
               </div>
@@ -711,7 +799,6 @@ const ReflexionstagebuchApp = () => {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

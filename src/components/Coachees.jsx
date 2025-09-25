@@ -2,30 +2,18 @@ import React, { useState } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, User, Mail, ShieldCheck, ShieldOff, ClipboardCopy, Send, Calendar, Trash2, AlertTriangle, Users, Filter } from 'lucide-react';
+import { Plus, Search, User, Mail, ShieldCheck, ShieldOff, ClipboardCopy, Send, Calendar, Users, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { CoacheeStatus } from '@/types';
 import { useAppStateContext } from '@/context/AppStateContext';
-import { supabase } from '@/supabaseConfig';
 
 const CustomFieldInput = ({ field, value, onChange }) => {
   const commonProps = {
@@ -289,78 +277,11 @@ export default function Coachees() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [isNewCoacheeDialogOpen, setIsNewCoacheeDialogOpen] = useState(false);
-  const [deletingCoacheeId, setDeletingCoacheeId] = useState(null);
   
   const { toast } = useToast();
   const { state, actions } = useAppStateContext();
   const { coachees, settings } = state;
-  const { addCoachee, removeCoachee } = actions;
-
-  // Coachee löschen mit allen verknüpften Daten
-  const handleDeleteCoachee = async (coacheeId) => {
-    const coachee = coachees.find(c => c.id === coacheeId);
-    if (!coachee) return;
-    
-    setDeletingCoacheeId(coacheeId);
-    
-    try {
-      // Tasks aus localStorage löschen
-      const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-      const filteredTasks = allTasks.filter(task => 
-        task.coacheeId !== coacheeId && 
-        task.assignedTo !== coacheeId
-      );
-      localStorage.setItem('tasks', JSON.stringify(filteredTasks));
-
-      // Supabase pushed_tasks löschen
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user) {
-          await supabase
-            .from('pushed_tasks')
-            .delete()
-            .eq('coachee_id', coacheeId)
-            .eq('coach_id', userData.user.id);
-          
-          await supabase
-            .from('tasks')
-            .delete()
-            .eq('coachee_id', coacheeId)
-            .eq('user_id', userData.user.id);
-        }
-      } catch (supabaseError) {
-        console.log('Supabase Tasks konnten nicht gelöscht werden:', supabaseError);
-      }
-
-      // Sessions und Rechnungen löschen
-      const allSessions = JSON.parse(localStorage.getItem('sessions') || '[]');
-      const filteredSessions = allSessions.filter(session => session.coacheeId !== coacheeId);
-      localStorage.setItem('sessions', JSON.stringify(filteredSessions));
-
-      const allInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-      const filteredInvoices = allInvoices.filter(invoice => invoice.coacheeId !== coacheeId);
-      localStorage.setItem('invoices', JSON.stringify(filteredInvoices));
-
-      // Coachee aus AppStateContext entfernen
-      removeCoachee(coacheeId);
-
-      toast({
-        title: "Coachee gelöscht",
-        description: `${coachee.firstName} ${coachee.lastName} und alle verknüpften Daten wurden gelöscht.`,
-        className: "bg-red-600 text-white"
-      });
-      
-    } catch (error) {
-      console.error('Fehler beim Löschen des Coachees:', error);
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Löschen",
-        description: "Der Coachee konnte nicht gelöscht werden. Versuche es erneut."
-      });
-    } finally {
-      setDeletingCoacheeId(null);
-    }
-  };
+  const { addCoachee } = actions;
 
   const handleCopyConsentLink = (coacheeId) => {
     const consentLink = `${window.location.origin}/consent/${coacheeId}`;
@@ -524,65 +445,6 @@ export default function Coachees() {
                             <ShieldOff className="h-5 w-5 text-red-400" title="DSGVO-Zustimmung fehlt" />
                           </div>
                         )}
-                        
-                        {/* Löschen-Button */}
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-400 hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
-                              onClick={(e) => e.preventDefault()}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-slate-800 border-slate-700 backdrop-blur-xl">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="text-white flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-red-400" />
-                                Coachee löschen?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription className="text-slate-400 space-y-3">
-                                <p>
-                                  Möchtest du <strong className="text-white">{coachee.firstName} {coachee.lastName}</strong> wirklich dauerhaft löschen?
-                                </p>
-                                <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-3">
-                                  <p className="text-red-400 font-medium mb-2">Folgende Daten werden unwiderruflich gelöscht:</p>
-                                  <ul className="text-sm text-red-300 space-y-1">
-                                    <li>• Alle persönlichen Daten und Ziele</li>
-                                    <li>• Alle Aufgaben und Deadlines</li>
-                                    <li>• Alle Sessions mit diesem Coachee</li>
-                                    <li>• Alle Rechnungen</li>
-                                    <li>• Portal-Zugang und geteilte Tasks</li>
-                                  </ul>
-                                </div>
-                                <p className="text-sm">
-                                  Diese Aktion kann nicht rückgängig gemacht werden.
-                                </p>
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600">
-                                Abbrechen
-                              </AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDeleteCoachee(coachee.id)}
-                                disabled={deletingCoacheeId === coachee.id}
-                                className="bg-red-600 hover:bg-red-700 text-white"
-                              >
-                                {deletingCoacheeId === coachee.id ? (
-                                  <>
-                                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2" />
-                                    Lösche...
-                                  </>
-                                ) : (
-                                  'Ja, dauerhaft löschen'
-                                )}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                       </div>
                     </div>
                   </Link>

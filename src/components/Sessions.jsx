@@ -17,19 +17,18 @@ import SessionCalendarView from './sessions/SessionCalendarView';
 const Sessions = () => {
   const { state, actions } = useAppStateContext();
   const { sessions, coachees, invoices, activePackages, serviceRates, settings } = state;
-  const { setSessions, setInvoices, deductFromPackage } = actions;
+  const { setSessions, setInvoices, deductFromPackage, removeSession } = actions; // ← removeSession hinzugefügt
   
   const [isNewSessionDialogOpen, setIsNewSessionDialogOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [viewMode, setViewMode] = useState('list');
   const [date, setDate] = useState(new Date());
-  const [dateFilter, setDateFilter] = useState(null); // NEU: Datum-Filter
+  const [dateFilter, setDateFilter] = useState(null);
   
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // NEU: URL-Parameter auswerten
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const filter = urlParams.get('filter');
@@ -47,7 +46,7 @@ const Sessions = () => {
     }
 
     if (coacheeParam) {
-      setFilterStatus('all'); // Reset status filter
+      setFilterStatus('all');
       const coacheeName = nameParam ? nameParam.replace(/\+/g, ' ') : 'Coachee';
       toast({
         title: `Filter aktiv: ${coacheeName}`,
@@ -57,10 +56,8 @@ const Sessions = () => {
     }
   }, [location.search, toast]);
 
-  // Filter zurücksetzen
   const clearDateFilter = () => {
     setDateFilter(null);
-    // URL ohne Parameter
     navigate('/sessions', { replace: true });
     toast({
       title: "Filter entfernt",
@@ -68,7 +65,6 @@ const Sessions = () => {
     });
   };
 
-  // NEU: Alle Filter zurücksetzen
   const clearAllFilters = () => {
     setDateFilter(null);
     setFilterStatus('all');
@@ -173,6 +169,24 @@ const Sessions = () => {
       description: `Die Session "${sessionToToggle.topic}" wurde ${isArchiving ? 'ins Archiv verschoben' : 'aus dem Archiv entfernt'}.`,
     });
   };
+
+  // ← NEUE handleDeleteSession Funktion hinzugefügt
+  const handleDeleteSession = async (sessionId) => {
+    const sessionToDelete = sessions.find(s => s.id === sessionId);
+    if (!sessionToDelete) return;
+    
+    try {
+      await removeSession(sessionId);
+      // removeSession macht bereits die Toast-Benachrichtigung
+    } catch (error) {
+      console.error('Fehler beim Löschen der Session:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Löschen",
+        description: "Die Session konnte nicht gelöscht werden."
+      });
+    }
+  };
   
   const handleSessionStatusChange = (sessionId, newStatus) => {
      setSessions(prev => prev.map(s => {
@@ -190,11 +204,9 @@ const Sessions = () => {
   const activeSessions = useMemo(() => (sessions || []).filter(s => !s.archived), [sessions]);
   const archivedSessions = useMemo(() => (sessions || []).filter(s => s.archived), [sessions]);
 
-  // ERWEITERT: Filter um Datum-Filter und Coachee-Filter erweitert
   const filteredActiveSessions = useMemo(() => {
     let filtered = activeSessions.filter(session => filterStatus === 'all' || session.status === filterStatus);
     
-    // Datum-Filter anwenden
     if (dateFilter) {
       filtered = filtered.filter(session => {
         const sessionDate = new Date(session.date).toISOString().split('T')[0];
@@ -202,7 +214,6 @@ const Sessions = () => {
       });
     }
 
-    // NEU: Coachee-Filter anwenden
     const urlParams = new URLSearchParams(location.search);
     const coacheeParam = urlParams.get('coachee');
     if (coacheeParam) {
@@ -230,7 +241,6 @@ const Sessions = () => {
           <div>
             <h1 className="text-3xl font-bold text-white">Sessions</h1>
             <p className="text-slate-400">Verwalte deine Coaching-Sessions</p>
-            {/* Filter-Anzeigen */}
             <div className="flex gap-2 mt-2">
               {dateFilter && (
                 <div className="flex items-center gap-2">
@@ -302,6 +312,7 @@ const Sessions = () => {
                 sessions={filteredActiveSessions}
                 onCardClick={handleCardClick}
                 onToggleArchive={handleToggleArchive}
+                onDeleteSession={handleDeleteSession} // ← NEU: Delete-Handler übergeben
                 onStatusChange={handleSessionStatusChange}
                 onCreateInvoice={handleCreateInvoiceFromSession}
                 activePackages={activePackages}
@@ -322,6 +333,7 @@ const Sessions = () => {
                 sessions={archivedSessions}
                 onCardClick={handleCardClick}
                 onToggleArchive={handleToggleArchive}
+                onDeleteSession={handleDeleteSession} // ← NEU: Auch im Archiv
                 onStatusChange={handleSessionStatusChange}
                 onCreateInvoice={handleCreateInvoiceFromSession}
                 activePackages={activePackages}

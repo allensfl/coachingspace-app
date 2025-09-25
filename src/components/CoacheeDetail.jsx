@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import ProfileCard from "./coachee-detail/ProfileCard";
 import { useAppStateContext } from '@/context/AppStateContext';
-import { supabase } from '@/supabaseConfig';
 
 // Lazy import für TasksTab
 import TasksTab from "./coachee-detail/TasksTab.jsx";
@@ -66,69 +65,22 @@ export default function CoacheeDetail() {
     }
   }, [id, getCoacheeById]);
 
-  // Coachee löschen mit allen verknüpften Daten
+  // Coachee löschen - Verwendet jetzt die komplexe removeCoachee Funktion aus AppStateContext
   const handleDeleteCoachee = async () => {
     if (!coachee) return;
     
     setIsDeleting(true);
     
     try {
-      // Tasks aus localStorage löschen
-      const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-      const filteredTasks = allTasks.filter(task => 
-        task.coacheeId !== coachee.id && 
-        task.assignedTo !== coachee.id
-      );
-      localStorage.setItem('tasks', JSON.stringify(filteredTasks));
-
-      // Supabase pushed_tasks löschen
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user) {
-          await supabase
-            .from('pushed_tasks')
-            .delete()
-            .eq('coachee_id', coachee.id)
-            .eq('coach_id', userData.user.id);
-          
-          await supabase
-            .from('tasks')
-            .delete()
-            .eq('coachee_id', coachee.id)
-            .eq('user_id', userData.user.id);
-        }
-      } catch (supabaseError) {
-        console.log('Supabase Tasks konnten nicht gelöscht werden:', supabaseError);
-      }
-
-      // Sessions und Rechnungen löschen
-      const allSessions = JSON.parse(localStorage.getItem('sessions') || '[]');
-      const filteredSessions = allSessions.filter(session => session.coacheeId !== coachee.id);
-      localStorage.setItem('sessions', JSON.stringify(filteredSessions));
-
-      const allInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-      const filteredInvoices = allInvoices.filter(invoice => invoice.coacheeId !== coachee.id);
-      localStorage.setItem('invoices', JSON.stringify(filteredInvoices));
-
-      // Coachee aus AppStateContext entfernen
-      removeCoachee(coachee.id);
-
-      toast({
-        title: "Coachee gelöscht",
-        description: `${coachee.firstName} ${coachee.lastName} und alle verknüpften Daten wurden gelöscht.`,
-        className: "bg-red-600 text-white"
-      });
-
+      // Die komplexe removeCoachee Funktion macht jetzt die gesamte Bereinigung
+      await removeCoachee(coachee.id);
+      
       // Zurück zur Coachees-Liste
       navigate('/coachees');
       
     } catch (error) {
       console.error('Fehler beim Löschen des Coachees:', error);
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Löschen",
-        description: "Der Coachee konnte nicht gelöscht werden. Versuche es erneut."
-      });
+      // Error-Handling wird bereits in removeCoachee gemacht
     } finally {
       setIsDeleting(false);
     }
@@ -149,6 +101,7 @@ export default function CoacheeDetail() {
         // Supabase Tasks
         let supabaseTasks = [];
         try {
+          const { supabase } = await import('@/supabaseConfig');
           const { data: userData } = await supabase.auth.getUser();
           if (userData?.user) {
             const { data } = await supabase
@@ -417,6 +370,7 @@ export default function CoacheeDetail() {
                             <li>• Alle Aufgaben und Deadlines</li>
                             <li>• Alle Sessions mit diesem Coachee</li>
                             <li>• Alle Rechnungen</li>
+                            <li>• Alle Dokumente und Journal-Einträge</li>
                             <li>• Portal-Zugang und geteilte Tasks</li>
                           </ul>
                         </div>

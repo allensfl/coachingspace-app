@@ -1,649 +1,844 @@
 import React, { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import * as LucideIcons from 'lucide-react';
-import { 
-  Video, 
-  Mic, 
-  PhoneMissed,
-  Users,
-  Wrench,
-  BookOpen,
-  FileText,
-  ExternalLink,
-  LogOut,
-  Info,
-  Package,
-  Presentation,
-  History,
-  Calendar,
-  Target,
-  Trophy,
-  CheckCircle,
-  Loader2,
-  BrainCircuit,
-  ZoomIn,
-  ClipboardCheck,
-  Zap,
-  Play,
-  Monitor,
-  Settings,
-  Clock
-} from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from '@/components/ui/use-toast';
-import { SessionStatus } from '@/types';
-import TaskManager from '@/components/TaskManager';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Video, Monitor, Settings, Plus, X, Play, Pause, RotateCcw, Eye, Lightbulb, Target, Bot } from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
+import { useToast } from '@/components/ui/use-toast';
 
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  if (isNaN(date)) return 'N/A';
-  return new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(date);
-};
-
-const RemoteToolIcon = ({ toolName }) => {
-  const name = toolName.toLowerCase();
-  if (name.includes('zoom')) {
-    return <ZoomIn className="mr-2 h-4 w-4" />;
-  }
-  if (name.includes('google meet')) {
-    return <LucideIcons.MessageSquare className="mr-2 h-4 w-4" />;
-  }
-  if (name.includes('teams')) {
-    return <LucideIcons.Users className="mr-2 h-4 w-4" />;
-  }
-  return <ExternalLink className="mr-2 h-4 w-4" />;
-};
-
-export default function CoachingRoom() {
+const CoachingRoom = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { state, actions } = useAppStateContext();
-  const { getCoacheeById } = actions;
-  const { settings, tools } = state;
-  const { remoteTools } = settings;
-  const toolbox = tools;
   
-  // Temporäre externe Tools bis Settings funktioniert
-  const testExternalTools = [
-    { name: 'Miro', url: 'https://miro.com/app/board/uXjVK-6-nts=/', icon: 'ExternalLink' },
-    { name: 'CoSpaces', url: 'https://cospaces.io/edu/', icon: 'Cube' },
-    { name: 'Jamboard', url: 'https://jamboard.google.com/', icon: 'PenTool' },
-    { name: 'Figma', url: 'https://figma.com', icon: 'Figma' }
-  ];
+  // Context mit direkter Struktur (nicht context.state) + Feature Flags
+  const context = useAppStateContext();
+  const sessions = context?.sessions || [];
+  const coachees = context?.coachees || [];
+  const { hasFeature, showPremiumFeature } = context;
   
-  const allExternalTools = [...(remoteTools || []), ...testExternalTools];
+  const [sessionNotes, setSessionNotes] = useState('');
+  const [videoProviders, setVideoProviders] = useState([
+    { id: 1, name: 'Zoom', url: 'https://zoom.us/', description: 'Video-Konferenz mit Zoom' },
+    { id: 2, name: 'Google Meet', url: 'https://meet.google.com/', description: 'Google Meet Video-Chat' },
+    { id: 3, name: 'Microsoft Teams', url: 'https://teams.microsoft.com/', description: 'Microsoft Teams Meeting' },
+    { id: 4, name: 'Integriert', url: '#', description: 'Integrierte Video-Lösung' }
+  ]);
+  const [displayTools, setDisplayTools] = useState([
+    { id: 1, name: 'Miro', url: 'https://miro.com/', description: 'Kollaboratives Whiteboard' },
+    { id: 2, name: 'CoSpaces', url: 'https://cospaces.io/', description: 'VR/AR Lernumgebung' },
+    { id: 3, name: 'Jamboard', url: 'https://jamboard.google.com/', description: 'Google Jamboard' },
+    { id: 4, name: 'Figma', url: 'https://figma.com/', description: 'Design und Prototyping' }
+  ]);
+  const [showProviderManager, setShowProviderManager] = useState(false);
+  const [showToolManager, setShowToolManager] = useState(false);
+  const [showCoachingToolManager, setShowCoachingToolManager] = useState(false);
+  const [newTool, setNewTool] = useState({ name: '', url: '', description: '' });
+  const [newProvider, setNewProvider] = useState({ name: '', url: '', description: '' });
+  const [newCoachingTool, setNewCoachingTool] = useState({ name: '', icon: '', description: '' });
   
-  const [coachee, setCoachee] = useState(null);
-  const [videoWindowOpen, setVideoWindowOpen] = useState(false);
-  const [sessionStarted, setSessionStarted] = useState(false);
-  const [sessionStartTime, setSessionStartTime] = useState(null);
-  const [showProviderSelect, setShowProviderSelect] = useState(false);
+  // ============ ECHTE COACHING-TOOLS + DYNAMISCHE INTEGRATION ============
+  const [coachingTools, setCoachingTools] = useState([]);
 
+  // Tools laden: Hardcoded + aus localStorage
   useEffect(() => {
-    if (state.isLoading) return;
-    const foundCoachee = getCoacheeById(id);
-    if (foundCoachee) {
-      setCoachee(foundCoachee);
-    } else {
-      toast({
-        title: 'Fehler',
-        description: 'Coachee für diese Session konnte nicht gefunden werden.',
-        variant: 'destructive',
-      });
-      navigate('/');
-    }
-  }, [id, getCoacheeById, navigate, toast, state.isLoading]);
-
-  const handleStartVideoCall = () => {
-    setShowProviderSelect(true);
-  };
-
-  const handleProviderSelect = (provider) => {
-    // Starte Video-Call je nach Provider
-    if (provider.url) {
-      // Externe Provider (Zoom, Google Meet) - öffne deren URL
-      window.open(provider.url, '_blank', 'noopener,noreferrer');
-      toast({
-        title: `${provider.name} gestartet`,
-        description: 'Der externe Video-Service wurde geöffnet.',
-      });
-    } else {
-      // Integrierter Video-Call - öffne Coachee Display
-      try {
-        const displayWindow = window.open(
-          `/coachee-display/${id}`, 
-          'coacheeDisplay',
-          'width=1200,height=800,resizable=yes,scrollbars=yes,menubar=no,toolbar=yes,location=yes'
-        );
-        
-        if (displayWindow) {
-          setVideoWindowOpen(true);
-          toast({
-            title: 'Coachee Display geöffnet',
-            description: 'Das Display-Fenster für Video und geteilte Inhalte wurde gestartet.',
-          });
-        } else {
-          toast({
-            title: 'Popup wurde blockiert',
-            description: 'Bitte erlaube Popups für diese Seite in deinen Browser-Einstellungen.',
-            variant: 'destructive',
-          });
-          return;
+    const loadAllTools = () => {
+      // 1. Die 5 Basis-Tools (mit IDs die im Tool-Presenter verfügbar sind)
+      const baseTools = [
+        { 
+          id: 2, // Skalenfrage im Tool-Presenter
+          name: 'Skalenarbeit', 
+          icon: '📊', 
+          description: 'Visualisierung von Fortschritt und Zielen durch Skalenbewertung', 
+          order: 1,
+          type: 'built-in'
+        },
+        { 
+          id: 1, // Lebensrad im Tool-Presenter
+          name: 'Lebensrad', 
+          icon: '⚖️', 
+          description: 'Ganzheitliche Bewertung verschiedener Lebensbereiche', 
+          order: 2,
+          type: 'built-in'
+        },
+        { 
+          id: 3, // Ressourcen-Liste im Tool-Presenter
+          name: 'Ressourcen-Liste', 
+          icon: '📝', 
+          description: 'Sammle deine verfügbaren Ressourcen und Stärken', 
+          order: 3,
+          type: 'built-in'
+        },
+        { 
+          id: 4, // Zielbaum im Tool-Presenter
+          name: 'Zielbaum', 
+          icon: '🌳', 
+          description: 'Visualisiere deine Ziele in einer Baumstruktur', 
+          order: 4,
+          type: 'built-in'
+        },
+        { 
+          id: 5, // Werte-Kompass im Tool-Presenter
+          name: 'Werte-Kompass', 
+          icon: '🧭', 
+          description: 'Erkunde und definiere deine wichtigsten Werte', 
+          order: 5,
+          type: 'built-in'
         }
-      } catch (error) {
-        toast({
-          title: 'Fehler beim Öffnen',
-          description: 'Das Display-Fenster konnte nicht geöffnet werden. Bitte prüfe deine Browser-Einstellungen.',
-          variant: 'destructive',
+      ];
+
+      // 2. Hochgeladene Tools aus localStorage hinzufügen
+      try {
+        // Die richtigen localStorage-Keys aus der Toolbox verwenden
+        const possibleKeys = ['professional_toolbox_tools', 'toolbox_data', 'saved_tools'];
+        let customTools = [];
+        
+        for (const key of possibleKeys) {
+          const customToolsData = localStorage.getItem(key);
+          if (customToolsData) {
+            try {
+              const parsedData = JSON.parse(customToolsData);
+              
+              // Verschiedene Datenstrukturen handhaben
+              let toolsArray = [];
+              if (Array.isArray(parsedData)) {
+                toolsArray = parsedData;
+              } else if (parsedData.customTools && Array.isArray(parsedData.customTools)) {
+                toolsArray = parsedData.customTools;
+              } else if (parsedData.tools && Array.isArray(parsedData.tools)) {
+                toolsArray = parsedData.tools;
+              }
+              
+              if (toolsArray.length > 0) {
+                customTools = toolsArray
+                  .filter(tool => tool.type === 'custom') // Nur hochgeladene Tools
+                  .map((tool, index) => ({
+                    id: 100 + index, // Startet bei 100 um Konflikte zu vermeiden
+                    name: tool.name || 'Unbenanntes Tool',
+                    icon: tool.icon || '📄',
+                    description: tool.description || 'Hochgeladenes Tool',
+                    order: baseTools.length + index + 1,
+                    type: 'custom',
+                    fileData: tool.fileData,
+                    fileName: tool.fileName,
+                    fileType: tool.fileType
+                  }));
+                console.log(`Custom Tools gefunden in localStorage key: ${key}`, customTools);
+                break; // Ersten gefundenen Key verwenden
+              }
+            } catch (parseError) {
+              console.log(`Parse error for key ${key}:`, parseError);
+            }
+          }
+        }
+        
+        // TEMPORÄRER WORKAROUND: Hochgeladene Tools manuell hinzufügen
+        // bis die Toolbox-Speicherung repariert ist
+        customTools = [
+          {
+            id: 100,
+            name: 'Die 12 Schritte des triadischen KI-Coachings',
+            icon: '📋',
+            description: 'Hochgeladenes PDF-Tool aus der Toolbox',
+            order: 6,
+            type: 'custom',
+            fileName: 'ki-coaching-12-schritte.pdf',
+            fileType: 'application/pdf',
+            fileData: 'data:application/pdf;base64,placeholder' // Placeholder bis echte Daten verfügbar
+          }
+        ];
+        
+        console.log('WORKAROUND: Manuell hinzugefügtes Tool:', customTools);
+
+        // 3. Alle Tools kombinieren
+        const allTools = [...baseTools, ...customTools];
+        setCoachingTools(allTools);
+        
+        console.log('Tools geladen:', {
+          baseTools: baseTools.length,
+          customTools: customTools.length,
+          total: allTools.length
         });
-        return;
+        
+      } catch (error) {
+        console.error('Fehler beim Laden der Custom Tools:', error);
+        setCoachingTools(baseTools); // Fallback nur Basis-Tools
       }
+    };
+
+    loadAllTools();
+  }, []);
+  
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  // Session und Coachee laden
+  const session = sessions.find(s => s.id === parseInt(id));
+  const coachee = coachees.find(c => c.id === session?.coacheeId);
+
+  // Debug-Logs
+  console.log('CoachingRoom Debug:');
+  console.log('- Session ID from URL:', id);
+  console.log('- Sessions available:', sessions.length);
+  console.log('- Found session:', session ? 'Yes' : 'No', session);
+  console.log('- Session coacheeId:', session?.coacheeId);
+  console.log('- Coachees available:', coachees.length);
+  console.log('- Available coachee IDs:', coachees.map(c => c.id));
+  console.log('- Found coachee:', coachee ? 'Yes' : 'No', coachee);
+  console.log('- Coaching Tools loaded:', coachingTools.length);
+
+  // Robuste Notizen-Speicherung - funktioniert auch ohne Context
+  const saveSessionNotes = (notes) => {
+    if (!notes.trim()) return;
+
+    // Mehrere Speicher-Strategien für maximale Robustheit
+    const storageKeys = [];
+    
+    // 1. Preferred: Mit Coachee-ID (falls verfügbar)
+    if (coachee?.id) {
+      storageKeys.push(`session-notes-${coachee.id}-${id}`);
+      console.log('Saving with coachee ID:', coachee.id);
     }
     
-    // Session als gestartet markieren
-    setSessionStarted(true);
-    setSessionStartTime(new Date());
-    setShowProviderSelect(false);
+    // 2. Fallback: Mit Session-ID only
+    storageKeys.push(`session-notes-session-${id}`);
+    
+    // 3. Fallback: Mit Coachee-Namen (falls verfügbar)
+    if (session?.coacheeName) {
+      const nameKey = session.coacheeName.replace(/\s+/g, '-').toLowerCase();
+      storageKeys.push(`session-notes-name-${nameKey}-${id}`);
+    }
+    
+    // Alle Keys speichern für maximale Auffindbarkeit
+    storageKeys.forEach(key => {
+      localStorage.setItem(key, notes);
+      console.log(`Notizen gespeichert - Key: ${key}`);
+    });
+
+    // Metadata für SessionNotes speichern
+    const metadata = {
+      sessionId: id,
+      coacheeId: coachee?.id || null,
+      coacheeName: session?.coacheeName || coachee?.firstName + ' ' + coachee?.lastName || 'Unbekannter Coachee',
+      sessionTitle: session?.topic || 'Untitled Session',
+      timestamp: new Date().toISOString(),
+      keys: storageKeys
+    };
+    
+    localStorage.setItem(`session-metadata-${id}`, JSON.stringify(metadata));
+    console.log('Metadata gespeichert:', metadata);
   };
 
-  const handleShareAiDialog = () => {
-    window.open('/ai-coaching/shared', '_blank', 'width=800,height=600,resizable=yes,scrollbars=yes');
-    toast({ title: 'Freigabe-Fenster geöffnet', description: 'Das Fenster für den Coachee ist bereit.' });
+  // Notizen beim Laden wiederherstellen
+  useEffect(() => {
+    const loadSessionNotes = () => {
+      // Versuche verschiedene Keys in Prioritäts-Reihenfolge
+      const possibleKeys = [
+        coachee?.id ? `session-notes-${coachee.id}-${id}` : null,
+        `session-notes-session-${id}`,
+        session?.coacheeName ? `session-notes-name-${session.coacheeName.replace(/\s+/g, '-').toLowerCase()}-${id}` : null
+      ].filter(Boolean);
+
+      for (const key of possibleKeys) {
+        const notes = localStorage.getItem(key);
+        if (notes) {
+          setSessionNotes(notes);
+          console.log(`Notizen geladen von Key: ${key}`);
+          return;
+        }
+      }
+      console.log('Keine gespeicherten Notizen gefunden');
+    };
+
+    loadSessionNotes();
+  }, [id, coachee?.id, session?.coacheeName]);
+
+  // Auto-Speichern bei Änderungen
+  useEffect(() => {
+    if (sessionNotes.trim()) {
+      const timeoutId = setTimeout(() => {
+        saveSessionNotes(sessionNotes);
+      }, 1000); // 1 Sekunde Debounce
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [sessionNotes, coachee?.id, session?.coacheeName, id]);
+
+  // Timer
+  useEffect(() => {
+    let interval;
+    if (isTimerRunning) {
+      interval = setInterval(() => {
+        setTimerSeconds(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning]);
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getSessionDuration = () => {
-    if (!sessionStartTime) return '00:00';
-    const now = new Date();
-    const diff = now - sessionStartTime;
-    const minutes = Math.floor(diff / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  const openVideoProvider = (provider) => {
+    if (provider.url !== '#') {
+      window.open(provider.url, '_blank');
+    }
   };
 
-  if (state.isLoading || !coachee) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-white p-4">
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-lg text-slate-400">Coaching Raum wird vorbereitet...</p>
-      </div>
-    );
-  }
+  const openDisplayTool = (tool) => {
+    window.open(tool.url, '_blank');
+  };
 
-  const handleToolClick = (tool) => {
-    window.open(tool.url, '_blank', 'noopener,noreferrer');
-    toast({
-        title: `Öffne ${tool.name}`,
-        description: `Das Tool wird in einem neuen Tab geöffnet.`
+  // ============ DIREKTER TOOL-ZUGANG ============
+  const openCoachingTool = (tool) => {
+    console.log('Opening coaching tool:', tool);
+    
+    if (tool.type === 'built-in') {
+      // Interaktive Tools -> Große Toolbox öffnen mit Anweisung
+      console.log(`Opening ${tool.name} in toolbox`);
+      
+      // Große Toolbox öffnen für bessere Bedienbarkeit
+      window.open('/toolbox', '_blank', 'width=1400,height=900,scrollbars=yes,resizable=yes');
+      
+      toast && toast({
+        title: `${tool.name} öffnen`,
+        description: `Klicke in der Toolbox auf "${tool.name}" um das Tool zu starten`,
+        duration: 5000,
+      });
+    } else if (tool.type === 'custom') {
+      // Custom Tools -> Zur Toolbox weiterleiten
+      console.log('Opening custom tool - redirecting to toolbox');
+      
+      window.open('/toolbox', '_blank', 'width=1400,height=900,scrollbars=yes,resizable=yes');
+      
+      toast && toast({
+        title: "Hochgeladenes Tool öffnen",
+        description: `Suche "${tool.name}" in der Toolbox und klicke darauf`,
+        duration: 5000,
+      });
+    }
+  };
+
+  // KI-Dialog mit Feature-Flag
+  const shareKIDialog = () => {
+    if (!hasFeature('aiModule')) {
+      showPremiumFeature('KI-Dialog');
+      return;
+    }
+    window.open('/ai-coaching/shared', '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes');
+  };
+
+  const addVideoProvider = () => {
+    if (newProvider.name && newProvider.url) {
+      const provider = {
+        id: Date.now(),
+        ...newProvider
+      };
+      setVideoProviders(prev => [...prev, provider]);
+      setNewProvider({ name: '', url: '', description: '' });
+    }
+  };
+
+  const removeVideoProvider = (id) => {
+    setVideoProviders(prev => prev.filter(p => p.id !== id));
+  };
+
+  const addDisplayTool = () => {
+    if (newTool.name && newTool.url) {
+      const tool = {
+        id: Date.now(),
+        ...newTool
+      };
+      setDisplayTools(prev => [...prev, tool]);
+      setNewTool({ name: '', url: '', description: '' });
+    }
+  };
+
+  const removeDisplayTool = (id) => {
+    setDisplayTools(prev => prev.filter(t => t.id !== id));
+  };
+
+  const addCoachingTool = () => {
+    if (newCoachingTool.name && newCoachingTool.icon) {
+      const tool = {
+        id: Date.now(),
+        ...newCoachingTool,
+        order: coachingTools.length + 1,
+        toolboxTool: false // Markiere als manuell hinzugefügt
+      };
+      setCoachingTools(prev => [...prev, tool].sort((a, b) => a.order - b.order));
+      setNewCoachingTool({ name: '', icon: '', description: '' });
+    }
+  };
+
+  const removeCoachingTool = (id) => {
+    setCoachingTools(prev => prev.filter(t => t.id !== id));
+  };
+
+  const moveCoachingTool = (id, direction) => {
+    setCoachingTools(prev => {
+      const tools = [...prev];
+      const currentIndex = tools.findIndex(t => t.id === id);
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      
+      if (newIndex >= 0 && newIndex < tools.length) {
+        [tools[currentIndex], tools[newIndex]] = [tools[newIndex], tools[currentIndex]];
+        // Update order values
+        tools.forEach((tool, index) => {
+          tool.order = index + 1;
+        });
+      }
+      return tools;
     });
   };
 
-  const handlePresentTool = (tool) => {
-    console.log('Presenting tool:', tool);
-    
-    // Wenn Display-Fenster offen ist, zeige Tool dort an
-    if (videoWindowOpen) {
-      // Sende Message an Coachee Display um Tool zu zeigen
-      try {
-        const displayWindow = window.open('', 'coacheeDisplay');
-        console.log('Display window found:', displayWindow);
-        console.log('Display window closed?', displayWindow.closed);
-        
-        if (displayWindow && !displayWindow.closed) {
-          displayWindow.postMessage({
-            type: 'SHOW_TOOL',
-            tool: tool
-          }, window.location.origin);
-          
-          console.log('Message sent to display window');
-          
-          toast({
-            title: `${tool.name} wird präsentiert`,
-            description: 'Das Tool wird im Coachee Display angezeigt.',
-          });
-        } else {
-          console.log('Display window not found or closed, opening tool presenter');
-          // Fallback: Tool in neuem Tab öffnen
-          navigate(`/tool-presenter/${tool.id}`);
-        }
-      } catch (e) {
-        console.error('Error sending message:', e);
-        navigate(`/tool-presenter/${tool.id}`);
-      }
-    } else {
-      console.log('No video window open, opening tool presenter');
-      // Kein Display-Fenster offen, normal öffnen
-      navigate(`/tool-presenter/${tool.id}`);
-      toast({
-        title: `Präsentiere: ${tool.name}`,
-        description: 'Tool wird im Präsentationsmodus geöffnet.'
-      });
-    }
+  const editCoachingTool = (id, updates) => {
+    setCoachingTools(prev => prev.map(tool => 
+      tool.id === id ? { ...tool, ...updates } : tool
+    ));
   };
 
-  const previousSessions = (coachee.sessions || []).filter(s => s.status === SessionStatus.COMPLETED);
-  const openGoals = (coachee.goals || []).filter(g => g.subGoals.some(sg => !sg.completed));
-  const usedTools = toolbox.filter(t => t.usageHistory.some(h => h.coachee === `${coachee.firstName} ${coachee.lastName}`));
+  // Funktion um zur Toolbox zu navigieren
+  const openToolbox = () => {
+    window.open('/toolbox', '_blank');
+  };
+
+  const quickNoteButtons = [
+    { label: 'Beobachtung', icon: Eye, text: '📋 Beobachtung: ' },
+    { label: 'Erkenntnis', icon: Lightbulb, text: '💡 Erkenntnis: ' },
+    { label: 'Aktion', icon: Target, text: '🎯 Aktion: ' }
+  ];
+
+  const addQuickNote = (quickText) => {
+    setSessionNotes(prev => prev ? `${prev}\n\n${quickText}` : quickText);
+  };
+
+  // Display Name für Coachee
+  const displayCoacheeName = coachee 
+    ? `${coachee.firstName} ${coachee.lastName}`
+    : session?.coacheeName 
+    ? session.coacheeName
+    : 'Unbekannter Coachee';
 
   return (
-    <>
-      <Helmet>
-        <title>Coaching Session - {coachee.firstName} {coachee.lastName} - Coachingspace</title>
-        <meta name="description" content={`Session-Management für ${coachee.firstName} ${coachee.lastName}.`} />
-      </Helmet>
-      
-      <div className="min-h-screen bg-slate-950 text-white p-6">
-        {/* Session Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+    <div className="min-h-screen bg-slate-900 text-white p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/sessions')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Zurück zu Sessions
+            </Button>
             <div>
-              <h1 className="text-3xl font-bold text-white">Session Management</h1>
-              <p className="text-slate-400">Coaching mit <span className="text-primary font-semibold">{coachee.firstName} {coachee.lastName}</span></p>
+              <h1 className="text-2xl font-bold">Coaching Session</h1>
+              <p className="text-slate-400">
+                {displayCoacheeName} • Session #{id}
+              </p>
             </div>
-            <div className="flex items-center gap-4">
-              {sessionStarted && (
-                <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <Clock className="h-4 w-4 text-green-400" />
-                  <span className="text-green-400 font-mono text-sm">{getSessionDuration()}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-2xl font-mono">{formatTime(timerSeconds)}</div>
+              <div className="text-sm text-slate-400">Session-Zeit</div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={isTimerRunning ? "secondary" : "default"}
+                onClick={() => setIsTimerRunning(!isTimerRunning)}
+              >
+                {isTimerRunning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setTimerSeconds(0);
+                  setIsTimerRunning(false);
+                }}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Video-Provider */}
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center gap-2">
+              <Video className="h-5 w-5 text-blue-400" />
+              <CardTitle className="text-white">Video-Provider wählen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {videoProviders.map((provider) => (
+                  <Button
+                    key={provider.id}
+                    variant="outline"
+                    className="h-16 flex flex-col items-center justify-center gap-1 text-sm"
+                    onClick={() => openVideoProvider(provider)}
+                  >
+                    <span className="font-medium">{provider.name}</span>
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowProviderManager(!showProviderManager)}
+                className="w-full"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Provider verwalten
+              </Button>
+
+              {showProviderManager && (
+                <div className="mt-4 p-4 bg-slate-800 rounded-lg space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      placeholder="Name"
+                      value={newProvider.name}
+                      onChange={(e) => setNewProvider(prev => ({ ...prev, name: e.target.value }))}
+                      className="px-3 py-2 bg-slate-700 rounded text-sm"
+                    />
+                    <input
+                      placeholder="URL"
+                      value={newProvider.url}
+                      onChange={(e) => setNewProvider(prev => ({ ...prev, url: e.target.value }))}
+                      className="px-3 py-2 bg-slate-700 rounded text-sm"
+                    />
+                  </div>
+                  <input
+                    placeholder="Beschreibung"
+                    value={newProvider.description}
+                    onChange={(e) => setNewProvider(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-700 rounded text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={addVideoProvider}>
+                      <Plus className="h-4 w-4 mr-1" /> Hinzufügen
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {videoProviders.map((provider) => (
+                      <div key={provider.id} className="flex items-center justify-between p-2 bg-slate-700 rounded">
+                        <span className="text-sm">{provider.name}</span>
+                        <Button size="sm" variant="ghost" onClick={() => removeVideoProvider(provider.id)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              <Link to={`/coachees/${coachee.id}`}>
-                <Button variant="outline" className="bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Session beenden
-                </Button>
-              </Link>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Video Call Control */}
-          {!sessionStarted ? (
-            <Card className="glass-card bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30">
-              <CardContent className="p-6">
-                {!showProviderSelect ? (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-semibold text-white mb-2">Video-Call starten</h3>
-                      <p className="text-slate-400">Wähle deinen Video-Provider und beginne die Session mit {coachee.firstName}</p>
-                    </div>
-                    <Button size="lg" className="bg-primary hover:bg-primary/80 text-white px-8" onClick={handleStartVideoCall}>
-                      <Monitor className="mr-2 h-5 w-5" />
-                      Provider wählen
-                    </Button>
+          {/* Display-Tools */}
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center gap-2">
+              <Monitor className="h-5 w-5 text-green-400" />
+              <CardTitle className="text-white">Display-Tools</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 mb-4">
+                {displayTools.map((tool) => (
+                  <Button
+                    key={tool.id}
+                    variant="outline"
+                    className="w-full justify-between h-12"
+                    onClick={() => openDisplayTool(tool)}
+                  >
+                    <span>{tool.name}</span>
+                    <span className="text-xs opacity-60">↗</span>
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowToolManager(!showToolManager)}
+                className="w-full"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Tools verwalten
+              </Button>
+
+              {showToolManager && (
+                <div className="mt-4 p-4 bg-slate-800 rounded-lg space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      placeholder="Name"
+                      value={newTool.name}
+                      onChange={(e) => setNewTool(prev => ({ ...prev, name: e.target.value }))}
+                      className="px-3 py-2 bg-slate-700 rounded text-sm"
+                    />
+                    <input
+                      placeholder="URL"
+                      value={newTool.url}
+                      onChange={(e) => setNewTool(prev => ({ ...prev, url: e.target.value }))}
+                      className="px-3 py-2 bg-slate-700 rounded text-sm"
+                    />
                   </div>
-                ) : (
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-4">Video-Provider wählen</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {/* Externe Provider aus Settings */}
-                      {remoteTools.map((tool, index) => (
-                        <Button 
-                          key={index}
-                          variant="outline" 
-                          className="h-16 flex flex-col items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 border-slate-600"
-                          onClick={() => handleProviderSelect(tool)}
-                        >
-                          <RemoteToolIcon toolName={tool.name} />
-                          <span className="mt-1 text-sm">{tool.name}</span>
-                        </Button>
-                      ))}
-                      
-                      {/* Integrierter Video-Call */}
-                      <Button 
-                        variant="outline" 
-                        className="h-16 flex flex-col items-center justify-center bg-primary/10 hover:bg-primary/20 border-primary/50"
-                        onClick={() => handleProviderSelect({ name: 'Integriert', url: null })}
-                      >
-                        <Monitor className="h-6 w-6 mb-1" />
-                        <span className="text-sm">Integriert</span>
-                      </Button>
-                    </div>
-                    
-                    <div className="flex justify-end mt-4">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setShowProviderSelect(false)}
-                        className="text-slate-400 hover:text-white"
-                      >
-                        Abbrechen
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="glass-card bg-green-500/5 border-green-500/30">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-green-400 font-semibold">Video-Call aktiv</span>
-                    <span className="text-slate-400">- Session läuft seit {getSessionDuration()}</span>
-                  </div>
+                  <input
+                    placeholder="Beschreibung"
+                    value={newTool.description}
+                    onChange={(e) => setNewTool(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-700 rounded text-sm"
+                    />
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => {
-                      try {
-                        window.open(`/coachee-display/${id}`, 'coacheeDisplay', 'width=1200,height=800,resizable=yes');
-                      } catch (e) {
-                        toast({ title: 'Popup blockiert', description: 'Bitte erlaube Popups und versuche es erneut.', variant: 'destructive' });
-                      }
-                    }}>
-                      <Monitor className="mr-2 h-4 w-4" />
-                      Display öffnen
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-orange-400 border-orange-400/50">
-                      <Settings className="mr-2 h-4 w-4" />
-                      Einstellungen
+                    <Button size="sm" onClick={addDisplayTool}>
+                      <Plus className="h-4 w-4 mr-1" /> Hinzufügen
                     </Button>
                   </div>
+                  <div className="space-y-2">
+                    {displayTools.map((tool) => (
+                      <div key={tool.id} className="flex items-center justify-between p-2 bg-slate-700 rounded">
+                        <span className="text-sm">{tool.name}</span>
+                        <Button size="sm" variant="ghost" onClick={() => removeDisplayTool(tool.id)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-[calc(100vh-280px)]">
-          
-          {/* Left Column - Session Control */}
-          <div className="xl:col-span-1">
-            <Tabs defaultValue="info" className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="info">Info</TabsTrigger>
-                <TabsTrigger value="tools">Tools</TabsTrigger>
-                <TabsTrigger value="history">Verlauf</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="info" className="flex-1 overflow-y-auto mt-4 space-y-4">
-                <Card className="glass-card">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <Users className="mr-2 h-5 w-5" /> Teilnehmer
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
-                        <span className="font-bold">C</span>
-                      </div>
-                      <p className="font-medium">Coach (Du)</p>
-                      <Badge variant="outline" className="ml-auto text-green-400 border-green-400/50">Host</Badge>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-primary to-purple-600 rounded-full flex items-center justify-center">
-                        <span className="font-bold">{coachee.firstName[0]}{coachee.lastName[0]}</span>
-                      </div>
-                      <p className="font-medium">{coachee.firstName} {coachee.lastName}</p>
-                      {sessionStarted && <Badge variant="outline" className="text-green-400 border-green-400/50">Online</Badge>}
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* Live Session-Notizen */}
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="text-white">Live Session-Notizen</CardTitle>
+              <div className="flex gap-2 flex-wrap">
+                {quickNoteButtons.map((button) => (
+                  <Button
+                    key={button.label}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => addQuickNote(button.text)}
+                    className="text-xs"
+                  >
+                    <button.icon className="h-3 w-3 mr-1" />
+                    {button.label}
+                  </Button>
+                ))}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="text-sm text-slate-400">
+                  Notizen für: {displayCoacheeName} • Session #{id}
+                </div>
+                <Textarea
+                  placeholder="Session-Notizen werden automatisch gespeichert..."
+                  value={sessionNotes}
+                  onChange={(e) => setSessionNotes(e.target.value)}
+                  className="min-h-48 bg-slate-800 border-slate-600 text-white"
+                />
+                <div className="flex justify-between items-center text-sm text-slate-400">
+                  <span>{sessionNotes.length} Zeichen • Automatisch gespeichert</span>
+                </div>
+                
+                {/* KI-Dialog Button mit Feature-Flag */}
+                {hasFeature('aiModule') ? (
+                  <Button
+                    onClick={shareKIDialog}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Bot className="h-4 w-4 mr-2" />
+                    KI-Dialog teilen
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={shareKIDialog}
+                    variant="outline"
+                    className="w-full border-orange-500/30 text-orange-300 hover:bg-orange-500/10 relative"
+                  >
+                    <Bot className="h-4 w-4 mr-2" />
+                    KI-Dialog teilen
+                    <Badge variant="secondary" className="ml-2 bg-orange-500/30 text-orange-300 text-xs">
+                      In Entwicklung
+                    </Badge>
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-                <Card className="glass-card">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <FileText className="mr-2 h-5 w-5" /> Coachee-Kontext
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <h4 className="font-semibold text-slate-300 mb-1">Vertrauliche Notizen</h4>
-                      <p className="text-sm text-slate-400 bg-slate-800/50 p-3 rounded-md">
-                        {coachee.confidentialNotes || "Keine vertraulichen Notizen vorhanden."}
-                      </p>
-                    </div>
-                    {coachee.quickNotes && coachee.quickNotes.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold text-slate-300 mb-2">Schnellnotizen</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {coachee.quickNotes.map((note, index) => (
-                            <Badge key={index} variant="secondary">{note}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="tools" className="flex-1 overflow-y-auto mt-4 space-y-4">
-                <Card className="glass-card">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <Wrench className="mr-2 h-5 w-5" /> Externe Tools
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {remoteTools.map((tool, index) => (
-                      <Button key={index} variant="outline" className="w-full justify-start" onClick={() => handleToolClick(tool)}>
-                        <RemoteToolIcon toolName={tool.name} />
-                        {tool.name}
+          {/* ============ ÜBERARBEITETE COACHING-TOOLS SEKTION ============ */}
+          <Card className="glass-card lg:col-span-1">
+            <CardHeader className="flex flex-row items-center gap-2">
+              <Settings className="h-5 w-5 text-orange-400" />
+              <CardTitle className="text-white">Coaching-Tools</CardTitle>
+              <Badge variant="secondary" className="ml-auto">
+                {coachingTools.filter(t => t.type === 'built-in').length} INT + {coachingTools.filter(t => t.type === 'custom').length} FILE
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              {coachingTools.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {coachingTools.sort((a, b) => a.order - b.order).map((tool) => (
+                      <Button
+                        key={tool.id}
+                        variant="outline"
+                        className="h-20 flex flex-col items-center justify-center gap-1 text-sm hover:bg-slate-700 relative"
+                        onClick={() => openCoachingTool(tool)}
+                      >
+                        <Badge 
+                          variant={tool.type === 'built-in' ? 'default' : 'secondary'} 
+                          className="absolute top-1 right-1 text-xs px-1 py-0"
+                        >
+                          {tool.type === 'built-in' ? 'INT' : 'FILE'}
+                        </Badge>
+                        <span className="text-lg">{tool.icon}</span>
+                        <span className="font-medium text-center leading-tight">{tool.name}</span>
+                        <span className="text-xs text-slate-400 text-center">
+                          {tool.type === 'built-in' ? 'Präsentieren' : 'Öffnen'}
+                        </span>
                       </Button>
                     ))}
-                    {remoteTools.length === 0 && (
-                      <p className="text-sm text-slate-400 text-center py-2">Keine Tools konfiguriert.</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-card">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <BrainCircuit className="mr-2 h-5 w-5" /> KI-Tools
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Button className="w-full" onClick={handleShareAiDialog}>
-                      <ExternalLink className="mr-2 h-4 w-4" /> KI-Dialog teilen
+                  </div>
+                  
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={openToolbox}
+                      className="flex-1"
+                    >
+                      🧰 Zur Toolbox
                     </Button>
-                  </CardContent>
-                </Card>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCoachingToolManager(!showCoachingToolManager)}
+                      className="flex-1"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Verwalten
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-slate-400 mb-4">
+                    Keine Tools verfügbar
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={openToolbox}
+                    className="mb-2"
+                  >
+                    🧰 Toolbox öffnen
+                  </Button>
+                  <p className="text-xs text-slate-500">
+                    Erstelle Tools in der Toolbox und sie erscheinen hier automatisch
+                  </p>
+                </div>
+              )}
 
-                <Card className="glass-card">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <Package className="mr-2 h-5 w-5" /> Coaching-Tools
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {toolbox.filter(t => t.status === 'active').map(tool => { 
-                      const Icon = LucideIcons[tool.icon] || Package; 
-                      return (
-                        <Card key={tool.id} className="glass-card hover:bg-slate-800/50 transition-colors">
-                          <CardContent className="p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Icon className="h-5 w-5 text-primary" />
-                              <div>
-                                <p className="font-semibold text-white text-sm">{tool.name}</p>
-                                <p className="text-xs text-slate-400">{tool.category}</p>
+              {showCoachingToolManager && (
+                <div className="mt-4 p-4 bg-slate-800 rounded-lg space-y-4">
+                  <div className="text-sm font-medium text-white mb-3">Manuelle Tool hinzufügen</div>
+                  <div className="space-y-3">
+                    <input
+                      placeholder="Tool-Name"
+                      value={newCoachingTool.name}
+                      onChange={(e) => setNewCoachingTool(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-700 rounded text-sm"
+                    />
+                    <input
+                      placeholder="Icon (Emoji)"
+                      value={newCoachingTool.icon}
+                      onChange={(e) => setNewCoachingTool(prev => ({ ...prev, icon: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-700 rounded text-sm"
+                    />
+                    <input
+                      placeholder="Beschreibung"
+                      value={newCoachingTool.description}
+                      onChange={(e) => setNewCoachingTool(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-700 rounded text-sm"
+                    />
+                    <Button size="sm" onClick={addCoachingTool} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" /> Tool hinzufügen
+                    </Button>
+                  </div>
+
+                  <div className="border-t border-slate-600 pt-4">
+                    <div className="text-sm font-medium text-white mb-3">Bestehende Tools verwalten</div>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {coachingTools.sort((a, b) => a.order - b.order).map((tool, index) => (
+                        <div key={tool.id} className="flex items-center justify-between p-3 bg-slate-700 rounded">
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="text-lg">{tool.icon}</span>
+                            <div className="flex-1">
+                              <div className="text-sm font-medium">
+                                {tool.name}
+                                {tool.toolboxTool && (
+                                  <Badge variant="secondary" className="ml-2 text-xs">
+                                    Toolbox
+                                  </Badge>
+                                )}
                               </div>
+                              <div className="text-xs text-slate-400">{tool.description}</div>
                             </div>
-                            <Button size="sm" variant="outline" onClick={() => handlePresentTool(tool)} className="text-primary border-primary/50 hover:bg-primary/10">
-                              <Presentation className="h-4 w-4 mr-1" />
-                              Präsentieren
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => moveCoachingTool(tool.id, 'up')}
+                              disabled={index === 0}
+                              className="p-1 h-8 w-8"
+                            >
+                              ↑
                             </Button>
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
-                    {toolbox.filter(t => t.status === 'active').length === 0 && (
-                      <p className="text-sm text-slate-400 text-center py-2">Keine aktiven Tools verfügbar.</p>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="history" className="flex-1 overflow-y-auto mt-4 space-y-4">
-                <Card className="glass-card">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <Target className="mr-2 h-5 w-5" /> Aktuelle Ziele
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    {openGoals.length > 0 ? 
-                      openGoals.slice(0, 2).map(g => (
-                        <div key={g.id}>
-                          <p className="text-slate-300 font-semibold">{g.title}</p>
-                          <ul className="list-disc list-inside pl-2 text-slate-400">
-                            {g.subGoals.filter(sg => !sg.completed).slice(0, 2).map(sg => 
-                              <li key={sg.id}>{sg.title}</li>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => moveCoachingTool(tool.id, 'down')}
+                              disabled={index === coachingTools.length - 1}
+                              className="p-1 h-8 w-8"
+                            >
+                              ↓
+                            </Button>
+                            {!tool.toolboxTool && (
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => removeCoachingTool(tool.id)}
+                                className="p-1 h-8 w-8 text-red-400 hover:text-red-300"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
                             )}
-                          </ul>
+                          </div>
                         </div>
-                      )) : 
-                      <p className="text-slate-500">Keine offenen Ziele.</p>
-                    }
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-card">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <Calendar className="mr-2 h-5 w-5" /> Letzte Sessions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    {previousSessions.slice(0, 3).map(s => (
-                      <div key={s.id} className="flex justify-between items-center">
-                        <p className="text-slate-300 truncate">{s.topic}</p>
-                        <p className="text-slate-500">{formatDate(s.date)}</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          {/* Center + Right Columns - Live Notizen */}
-          <div className="xl:col-span-2">
-            <Card className="glass-card h-full flex flex-col">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-white flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Zap className="mr-2 h-5 w-5 text-yellow-400" />
-                    Live Session-Notizen
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    {new Date().toLocaleDateString('de-DE')} - {coachee.firstName} {coachee.lastName}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col space-y-4 overflow-hidden">
-                {/* Kompakte Schnell-Buttons */}
-                <div className="flex gap-3">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="text-blue-400 border-blue-400/50 hover:bg-blue-400/10"
-                    onClick={() => {
-                      const timestamp = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                      const textarea = document.getElementById('live-notes-textarea');
-                      const newNote = `[${timestamp}] 👁️ BEOBACHTUNG: `;
-                      textarea.value += (textarea.value ? '\n\n' : '') + newNote;
-                      textarea.focus();
-                      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-                    }}
-                  >
-                    👁️ Beobachtung
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="text-yellow-400 border-yellow-400/50 hover:bg-yellow-400/10"
-                    onClick={() => {
-                      const timestamp = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                      const textarea = document.getElementById('live-notes-textarea');
-                      const newNote = `[${timestamp}] 💡 ERKENNTNIS: `;
-                      textarea.value += (textarea.value ? '\n\n' : '') + newNote;
-                      textarea.focus();
-                      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-                    }}
-                  >
-                    💡 Erkenntnis
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="text-green-400 border-green-400/50 hover:bg-green-400/10"
-                    onClick={() => {
-                      const timestamp = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                      const textarea = document.getElementById('live-notes-textarea');
-                      const newNote = `[${timestamp}] ✅ AKTION: `;
-                      textarea.value += (textarea.value ? '\n\n' : '') + newNote;
-                      textarea.focus();
-                      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-                    }}
-                  >
-                    ✅ Aktion
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="text-purple-400 border-purple-400/50 hover:bg-purple-400/10 ml-auto"
-                    onClick={() => {
-                      const timestamp = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                      const textarea = document.getElementById('live-notes-textarea');
-                      const newNote = `\n--- PAUSE [${timestamp}] ---\n`;
-                      textarea.value += newNote;
-                    }}
-                  >
-                    ⏸️ Pause
-                  </Button>
-                </div>
-                
-                {/* Großes Live-Notizen Textarea */}
-                <textarea 
-                  id="live-notes-textarea"
-                  className="w-full flex-1 bg-slate-800/30 border border-slate-600 rounded-lg p-6 text-base text-slate-300 focus:ring-2 focus:ring-primary focus:border-primary font-mono leading-relaxed resize-none"
-                  placeholder={`Session-Notizen für ${coachee.firstName} ${coachee.lastName}
-${new Date().toLocaleDateString('de-DE')} - ${new Date().toLocaleTimeString('de-DE')}
-
-💡 Nutze die Buttons für strukturierte Einträge:
-👁️ Beobachtung - Was fällt dir auf?
-💡 Erkenntnis - Aha-Momente und Durchbrüche
-✅ Aktion - Vereinbarte nächste Schritte
-⏸️ Pause - Abschnitte markieren
-
-Deine Live-Notizen hier...`}
-                ></textarea>
-                
-                {/* Session Status */}
-                <div className="flex justify-between items-center text-sm text-slate-500 pt-2 border-t border-slate-700">
-                  <div className="flex items-center gap-2">
-                    {sessionStarted ? (
-                      <>
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <span>Live Session aktiv</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-2 h-2 bg-slate-500 rounded-full"></div>
-                        <span>Session vorbereitet</span>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex gap-4">
-                    <span>Dauer: {getSessionDuration()}</span>
-                    <span>Autosave aktiv</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </>
+    </div>
   );
-}
+};
+
+export default CoachingRoom;

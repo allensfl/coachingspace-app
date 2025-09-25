@@ -1,60 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Search, User, Calendar, Filter, X, Plus, Upload, Settings, Edit, Trash2, CheckCircle, AlertCircle, FileText, Download, Eye, Share2, FolderOpen } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
+import { useAppStateContext } from '@/context/AppStateContext';
 import { Button } from '@/components/ui/button';
-import { Upload, Settings, Filter, X, Edit, Trash2, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
-// Toast-Komponente im App-Design
-const ToastContainer = ({ toasts, removeToast }) => (
-  <div className="fixed top-4 right-4 z-50 space-y-2">
-    {toasts.map(toast => (
-      <div
-        key={toast.id}
-        className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border-l-4 bg-gray-800 text-white max-w-sm transform transition-all duration-300 ${
-          toast.type === 'success' 
-            ? 'border-l-green-400' 
-            : 'border-l-red-400'
-        }`}
-      >
-        {toast.type === 'success' ? (
-          <CheckCircle className="h-5 w-5 text-green-400" />
-        ) : (
-          <AlertCircle className="h-5 w-5 text-red-400" />
-        )}
-        <span className="text-sm font-medium">{toast.message}</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => removeToast(toast.id)}
-          className="ml-auto p-1 h-6 w-6 text-gray-400 hover:text-white"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    ))}
-  </div>
-);
-
-export default function Documents() {
-  // Toast-System
-  const [toasts, setToasts] = useState([]);
+const DocumentsApp = () => {
+  // Context für echte Daten
+  const { state, actions } = useAppStateContext();
+  const { coachees, documents: contextDocuments } = state;
+  const { addDocumentToContext, getAllCoacheeDocuments, getCoacheeDocuments } = actions;
   
-  const addToast = (message, type = 'success') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, 4000);
-  };
+  // Navigation und Location für URL-Parameter
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
   
-  const removeToast = (id) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  };
+  // Filter States
+  const [coacheeFilter, setCoacheeFilter] = useState(null);
+  const [coacheeName, setCoacheeName] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  
+  // Basis States
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Modal States
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  
+  // Upload States
+  const [uploadFiles, setUploadFiles] = useState([]);
+  const [uploadMetadata, setUploadMetadata] = useState({
+    category: '',
+    description: '',
+    assignedTo: ''
+  });
 
-  const toast = {
-    success: (message) => addToast(message, 'success'),
-    error: (message) => addToast(message, 'error')
-  };
-
-  // Kategorien-System
+  // Kategorie States
   const [categories, setCategories] = useState([
     { id: 'personality', name: 'Persönlichkeit', color: 'text-blue-400' },
     { id: 'leadership', name: 'Führung', color: 'text-purple-400' },
@@ -66,35 +54,143 @@ export default function Documents() {
     { id: 'wellbeing', name: 'Work-Life-Balance', color: 'text-pink-400' }
   ]);
 
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
-  const [editingCategoryId, setEditingCategoryId] = useState(null);
-  const [newCategoryData, setNewCategoryData] = useState({ name: '', color: 'text-gray-400' });
+  const [newCategoryData, setNewCategoryData] = useState({ name: '', color: 'text-blue-400' });
 
-  // Upload-System
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const [uploadFiles, setUploadFiles] = useState([]);
-  const [uploadMetadata, setUploadMetadata] = useState({
-    category: '',
-    description: '',
-    assignedTo: ''
+  // Echte Dokumente aus Context laden
+  const [documents, setDocuments] = useState([]);
+
+  useEffect(() => {
+    // Lade alle Dokumente aus dem Context
+    const allDocuments = getAllCoacheeDocuments();
+    setDocuments(allDocuments);
+  }, [contextDocuments, getAllCoacheeDocuments]);
+
+  // URL-Parameter-Auswertung für Coachee-Filter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const coacheeId = urlParams.get('coachee');
+    const name = urlParams.get('name');
+    
+    if (coacheeId && name) {
+      setCoacheeFilter(coacheeId);
+      setCoacheeName(decodeURIComponent(name.replace(/\+/g, ' ')));
+      
+      toast({
+        title: "Filter aktiv",
+        description: `Zeige nur Dokumente von ${decodeURIComponent(name.replace(/\+/g, ' '))}`,
+        className: "bg-green-600 text-white"
+      });
+    }
+  }, [location.search, toast]);
+
+  // Coachee-Filter zurücksetzen
+  const clearCoacheeFilter = () => {
+    setCoacheeFilter(null);
+    setCoacheeName('');
+    navigate(location.pathname, { replace: true });
+    
+    toast({
+      title: "Filter entfernt",
+      description: "Zeige alle Dokumente",
+      className: "bg-blue-600 text-white"
+    });
+  };
+
+  // Filter Funktionen
+  const handleCoacheeFilter = (coacheeId, coacheeName) => {
+    if (coacheeFilter === coacheeId) {
+      clearCoacheeFilter();
+    } else {
+      setCoacheeFilter(coacheeId);
+      setCoacheeName(coacheeName);
+      
+      toast({
+        title: "Filter gesetzt",
+        description: `Zeige nur Dokumente von ${coacheeName}`,
+        className: "bg-blue-600 text-white"
+      });
+    }
+  };
+
+  const handleCategoryFilter = (category) => {
+    setCategoryFilter(category === categoryFilter ? 'all' : category);
+  };
+
+  const handleTypeFilter = (type) => {
+    setTypeFilter(type === typeFilter ? 'all' : type);
+  };
+
+  const handleDateFilter = (filter) => {
+    setDateFilter(filter === dateFilter ? 'all' : filter);
+  };
+
+  // Gefilterte Dokumente
+  const filteredDocuments = documents.filter(doc => {
+    if (coacheeFilter && doc.coacheeId !== parseInt(coacheeFilter)) {
+      return false;
+    }
+    
+    if (categoryFilter !== 'all' && doc.category !== categoryFilter) {
+      return false;
+    }
+    
+    if (typeFilter !== 'all' && doc.type !== typeFilter) {
+      return false;
+    }
+    
+    if (dateFilter !== 'all') {
+      const today = new Date();
+      const docDate = new Date(doc.date || doc.uploadDate);
+      
+      if (dateFilter === 'today') {
+        if (today.toDateString() !== docDate.toDateString()) return false;
+      } else if (dateFilter === 'week') {
+        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        if (docDate < weekAgo) return false;
+      } else if (dateFilter === 'month') {
+        const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+        if (docDate < monthAgo) return false;
+      }
+    }
+    
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        doc.name.toLowerCase().includes(searchLower) ||
+        doc.description?.toLowerCase().includes(searchLower) ||
+        (doc.coacheeName && doc.coacheeName.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    return true;
   });
 
-  // Verfügbare Farben
-  const availableColors = [
-    { name: 'Blau', class: 'text-blue-400' },
-    { name: 'Grün', class: 'text-green-400' },
-    { name: 'Orange', class: 'text-orange-400' },
-    { name: 'Lila', class: 'text-purple-400' },
-    { name: 'Grau', class: 'text-gray-400' }
-  ];
+  // Datei-Icon Funktion
+  const getFileIcon = (type) => {
+    switch(type) {
+      case 'pdf': return '📄';
+      case 'word': return '📝';
+      case 'excel': return '📊';
+      case 'powerpoint': return '📽️';
+      case 'image': return '🖼️';
+      case 'text': return '📋';
+      default: return '📎';
+    }
+  };
 
-  // Mock Coachees
-  const coachees = [
-    { id: '1', name: 'Anna Schmidt' },
-    { id: '2', name: 'Max Weber' },
-    { id: '3', name: 'Lisa Müller' },
-    { id: '4', name: 'Tom Johnson' }
-  ];
+  // Datei-Typ erkennen
+  const getFileType = (fileName) => {
+    const extension = fileName.split('.').pop().toLowerCase();
+    
+    if (['pdf'].includes(extension)) return 'pdf';
+    if (['doc', 'docx'].includes(extension)) return 'word';
+    if (['xls', 'xlsx'].includes(extension)) return 'excel';
+    if (['ppt', 'pptx'].includes(extension)) return 'powerpoint';
+    if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(extension)) return 'image';
+    if (['txt', 'md'].includes(extension)) return 'text';
+    
+    return 'other';
+  };
 
   // Upload-Funktionen
   const handleFileChange = (e) => {
@@ -118,42 +214,79 @@ export default function Documents() {
     setUploadFiles(uploadFiles.filter((_, i) => i !== index));
   };
 
-  const getFileIcon = (file) => {
-    const type = file.type || file.name.split('.').pop();
-    if (type.includes('image')) return '🖼️';
-    if (type.includes('pdf')) return '📄';
-    if (type.includes('word') || type.includes('doc')) return '📝';
-    if (type.includes('excel') || type.includes('sheet')) return '📊';
-    if (type.includes('powerpoint') || type.includes('presentation')) return '📽️';
-    return '📎';
-  };
-
+  // REPARIERT: Upload-Funktion speichert jetzt persistent
   const handleUpload = () => {
     if (uploadFiles.length === 0) {
-      toast.error('Bitte wählen Sie mindestens eine Datei aus');
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie mindestens eine Datei aus",
+        variant: "destructive"
+      });
       return;
     }
 
     if (!uploadMetadata.category) {
-      toast.error('Bitte wählen Sie eine Kategorie aus');
+      toast({
+        title: "Fehler", 
+        description: "Bitte wählen Sie eine Kategorie aus",
+        variant: "destructive"
+      });
       return;
     }
 
-    toast.success(`${uploadFiles.length} Dokument(e) erfolgreich hochgeladen`);
-    
-    setUploadFiles([]);
-    setUploadMetadata({
-      category: '',
-      description: '',
-      assignedTo: ''
+    // Verarbeite jede Datei und speichere im Context
+    uploadFiles.forEach(file => {
+      const selectedCoachee = uploadMetadata.assignedTo ? 
+        coachees.find(c => c.id.toString() === uploadMetadata.assignedTo) : null;
+
+      const newDocument = {
+        name: file.name,
+        type: getFileType(file.name),
+        size: (file.size / (1024 * 1024)).toFixed(1), // Convert to MB
+        category: uploadMetadata.category,
+        coacheeId: selectedCoachee ? selectedCoachee.id : null,
+        coacheeName: selectedCoachee ? `${selectedCoachee.firstName} ${selectedCoachee.lastName}` : null,
+        date: new Date().toISOString().split('T')[0],
+        description: uploadMetadata.description || '',
+        shared: false
+      };
+
+      // Speichere das Dokument im Context
+      addDocumentToContext(newDocument);
     });
+
+    toast({
+      title: "Erfolgreich",
+      description: `${uploadFiles.length} Dokument(e) erfolgreich hochgeladen und gespeichert`,
+      className: "bg-green-600 text-white"
+    });
+    
+    // Reset Upload State
+    setUploadFiles([]);
+    setUploadMetadata({ category: '', description: '', assignedTo: '' });
     setShowUploadDialog(false);
+    
+    // Aktualisiere die lokale Dokumentenliste
+    const updatedDocuments = getAllCoacheeDocuments();
+    setDocuments(updatedDocuments);
+  };
+
+  // Handler für Coachee-Auswahl
+  const handleCoacheeSelection = (selectedCoacheeId) => {
+    setUploadMetadata(prev => ({ 
+      ...prev, 
+      assignedTo: selectedCoacheeId
+    }));
   };
 
   // Kategorie-Management
   const handleAddCategory = () => {
     if (!newCategoryData.name.trim()) {
-      toast.error('Kategoriename ist erforderlich');
+      toast({
+        title: "Fehler",
+        description: "Kategoriename ist erforderlich",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -162,7 +295,11 @@ export default function Documents() {
     );
     
     if (categoryExists) {
-      toast.error('Diese Kategorie existiert bereits');
+      toast({
+        title: "Fehler",
+        description: "Diese Kategorie existiert bereits",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -173,216 +310,432 @@ export default function Documents() {
     };
     
     setCategories([...categories, newCat]);
-    setNewCategoryData({ name: '', color: 'text-gray-400' });
-    toast.success('Kategorie wurde hinzugefügt');
-  };
-
-  const handleEditCategory = (category) => {
-    setEditingCategoryId(category.id);
-    setNewCategoryData({
-      name: category.name,
-      color: category.color
-    });
-  };
-
-  const handleUpdateCategory = () => {
-    if (!newCategoryData.name.trim()) {
-      toast.error('Kategoriename ist erforderlich');
-      return;
-    }
-
-    setCategories(categories.map(cat => 
-      cat.id === editingCategoryId 
-        ? { ...cat, name: newCategoryData.name.trim(), color: newCategoryData.color }
-        : cat
-    ));
+    setNewCategoryData({ name: '', color: 'text-blue-400' });
     
-    setEditingCategoryId(null);
-    setNewCategoryData({ name: '', color: 'text-gray-400' });
-    toast.success('Kategorie wurde aktualisiert');
+    toast({
+      title: "Erfolgreich",
+      description: "Kategorie wurde hinzugefügt",
+      className: "bg-green-600 text-white"
+    });
   };
 
   const handleDeleteCategory = (categoryId) => {
     setCategories(categories.filter(cat => cat.id !== categoryId));
-    toast.success('Kategorie wurde gelöscht');
+    toast({
+      title: "Erfolgreich",
+      description: "Kategorie wurde gelöscht",
+      className: "bg-green-600 text-white"
+    });
   };
 
+  // Button-Filter Komponente
+  const FilterButton = ({ active, onClick, children, icon: Icon, count }) => (
+    <button
+      onClick={onClick}
+      className={`
+        relative px-3 py-2 rounded-lg text-sm font-medium transition-all
+        flex items-center gap-2
+        ${active 
+          ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' 
+          : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+        }
+      `}
+    >
+      {Icon && <Icon className="h-4 w-4" />}
+      <span>{children}</span>
+      {count !== undefined && (
+        <span className={`
+          px-1.5 py-0.5 rounded text-xs
+          ${active ? 'bg-white/20' : 'bg-slate-600/50'}
+        `}>
+          {count}
+        </span>
+      )}
+      {active && (
+        <X className="h-3 w-3 ml-1 opacity-70 hover:opacity-100" />
+      )}
+    </button>
+  );
+
+  // Statistiken berechnen
+  const stats = {
+    total: filteredDocuments.length,
+    shared: filteredDocuments.filter(doc => doc.shared).length,
+    recent: filteredDocuments.filter(doc => {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      return new Date(doc.date || doc.uploadDate) > weekAgo;
+    }).length,
+    categories: categories.length
+  };
+
+  const availableColors = [
+    { name: 'Blau', class: 'text-blue-400' },
+    { name: 'Grün', class: 'text-green-400' },
+    { name: 'Orange', class: 'text-orange-400' },
+    { name: 'Lila', class: 'text-purple-400' },
+    { name: 'Rot', class: 'text-red-400' },
+    { name: 'Gelb', class: 'text-yellow-400' },
+    { name: 'Indigo', class: 'text-indigo-400' },
+    { name: 'Pink', class: 'text-pink-400' }
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white">Dokumente</h1>
-            <p className="text-gray-400 mt-2">Organisieren, teilen und verwalten Sie Ihre Coaching-Materialien</p>
-          </div>
-          <Button 
-            onClick={() => setShowUploadDialog(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Upload className="mr-2 h-5 w-5" />
-            Dokumente hochladen
-          </Button>
-        </div>
-
-        {/* Statistik-Cards im App-Design */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-blue-900/50 rounded-full">
-                <FileText className="h-6 w-6 text-blue-400" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-400">Gesamt</p>
-                <p className="text-2xl font-bold text-white">0</p>
-              </div>
-            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-1">
+              Dokumente
+            </h1>
+            <p className="text-slate-400 text-sm">Organisieren, teilen und verwalten Sie Ihre Coaching-Materialien</p>
           </div>
           
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-900/50 rounded-full">
-                <span className="text-lg">⭐</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-400">Templates</p>
-                <p className="text-2xl font-bold text-white">0</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-purple-900/50 rounded-full">
-                <span className="text-lg">👥</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-400">Geteilt</p>
-                <p className="text-2xl font-bold text-white">0</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-orange-900/50 rounded-full">
-                <span className="text-lg">🕒</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-400">Neu (7 Tage)</p>
-                <p className="text-2xl font-bold text-white">0</p>
-              </div>
-            </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowUploadDialog(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all text-sm"
+            >
+              <Upload className="h-4 w-4" />
+              Hochladen
+            </button>
+            
+            <button
+              onClick={() => setShowCategoryManager(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50 rounded-lg transition-all text-sm"
+            >
+              <Settings className="h-4 w-4" />
+              Kategorien
+            </button>
           </div>
         </div>
 
-        {/* Suchleiste und Aktionen */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-            <div className="flex-1 flex gap-4 items-center">
-              <div className="relative flex-1 max-w-md">
-                <input
-                  type="text"
-                  placeholder="Dokumente durchsuchen..."
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+        {/* Statistiken */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-600/20 rounded-lg">
+                <FileText className="h-5 w-5 text-blue-400" />
               </div>
-              
-              <select className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                  backgroundPosition: 'right 0.75rem center',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundSize: '1.5em 1.5em'
-                }}
+              <div>
+                <p className="text-sm text-slate-400">Gesamt</p>
+                <p className="text-xl font-bold text-white">{stats.total}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-600/20 rounded-lg">
+                <Share2 className="h-5 w-5 text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Geteilt</p>
+                <p className="text-xl font-bold text-white">{stats.shared}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-600/20 rounded-lg">
+                <Calendar className="h-5 w-5 text-orange-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Neu (7 Tage)</p>
+                <p className="text-xl font-bold text-white">{stats.recent}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-600/20 rounded-lg">
+                <FolderOpen className="h-5 w-5 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Kategorien</p>
+                <p className="text-xl font-bold text-white">{stats.categories}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Coachee Filter Badge */}
+        {coacheeFilter && (
+          <div className="mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-2 bg-green-600/20 border border-green-600/30 rounded-lg">
+              <User className="h-4 w-4 text-green-400" />
+              <span className="text-green-400 text-sm font-medium">Coachee: {coacheeName}</span>
+              <button
+                onClick={clearCoacheeFilter}
+                className="text-green-400 hover:text-green-300 transition-colors"
               >
-                <option value="date">Nach Datum</option>
-                <option value="name">Nach Name</option>
-                <option value="size">Nach Größe</option>
-                <option value="type">Nach Typ</option>
-              </select>
+                <X className="h-4 w-4" />
+              </button>
             </div>
+          </div>
+        )}
 
+        {/* Search */}
+        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4 mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Dokumente, Coachees oder Beschreibungen durchsuchen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-700/40 border border-slate-600/40 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            />
+          </div>
+        </div>
+
+        {/* Button-Filter */}
+        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4 mb-6">
+          {/* Coachee Filter */}
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Nach Coachee filtern
+            </h3>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCategoryManager(true)}
-                className="border-blue-500/50 text-blue-400 hover:bg-blue-900/50"
+              <FilterButton
+                active={!coacheeFilter}
+                onClick={() => clearCoacheeFilter()}
+                count={documents.length}
               >
-                <Settings className="mr-2 h-4 w-4" />
-                Kategorien verwalten
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toast.success('Filter werden implementiert...')}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
-              >
-                <Filter className="mr-2 h-4 w-4" />
-                Filter anzeigen
-              </Button>
+                Alle Coachees
+              </FilterButton>
+              {(coachees || []).map(coachee => {
+                const coacheeDocuments = documents.filter(doc => doc.coacheeId === coachee.id);
+                const isActive = coacheeFilter === coachee.id.toString();
+                return (
+                  <FilterButton
+                    key={coachee.id}
+                    active={isActive}
+                    onClick={() => handleCoacheeFilter(coachee.id.toString(), `${coachee.firstName} ${coachee.lastName}`)}
+                    count={coacheeDocuments.length}
+                  >
+                    {coachee.firstName} {coachee.lastName}
+                  </FilterButton>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Weitere Filter */}
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* Kategorie Filter */}
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Nach Kategorie filtern
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {categories.slice(0, 4).map(category => (
+                  <FilterButton
+                    key={category.id}
+                    active={categoryFilter === category.id}
+                    onClick={() => handleCategoryFilter(category.id)}
+                    count={documents.filter(doc => doc.category === category.id).length}
+                  >
+                    {category.name}
+                  </FilterButton>
+                ))}
+              </div>
+            </div>
+
+            {/* Typ Filter */}
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Nach Typ filtern
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                <FilterButton
+                  active={typeFilter === 'pdf'}
+                  onClick={() => handleTypeFilter('pdf')}
+                  count={documents.filter(doc => doc.type === 'pdf').length}
+                >
+                  PDF
+                </FilterButton>
+                <FilterButton
+                  active={typeFilter === 'word'}
+                  onClick={() => handleTypeFilter('word')}
+                  count={documents.filter(doc => doc.type === 'word').length}
+                >
+                  Word
+                </FilterButton>
+                <FilterButton
+                  active={typeFilter === 'text'}
+                  onClick={() => handleTypeFilter('text')}
+                  count={documents.filter(doc => doc.type === 'text').length}
+                >
+                  Text
+                </FilterButton>
+              </div>
+            </div>
+
+            {/* Datum Filter */}
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Nach Datum filtern
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                <FilterButton
+                  active={dateFilter === 'today'}
+                  onClick={() => handleDateFilter('today')}
+                >
+                  Heute
+                </FilterButton>
+                <FilterButton
+                  active={dateFilter === 'week'}
+                  onClick={() => handleDateFilter('week')}
+                >
+                  Diese Woche
+                </FilterButton>
+                <FilterButton
+                  active={dateFilter === 'month'}
+                  onClick={() => handleDateFilter('month')}
+                >
+                  Dieser Monat
+                </FilterButton>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Kategorien-Vorschau im App-Design */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {categories.slice(0, 8).map(category => (
-            <div key={category.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:bg-gray-750 transition-colors">
-              <div className="text-center">
-                <div className={`${category.color} font-medium mb-2`}>
-                  {category.name}
+        {/* Ergebnisse */}
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              {coacheeFilter ? `${coacheeName}s Dokumente` : 'Alle Dokumente'}
+            </h2>
+            <p className="text-slate-400 text-sm">
+              {filteredDocuments.length} von {documents.length} Dokumenten
+              {coacheeFilter && ` • Gefiltert nach ${coacheeName}`}
+            </p>
+          </div>
+        </div>
+
+        {/* Dokumente-Liste */}
+        <div className="space-y-3">
+          {filteredDocuments.length > 0 ? (
+            filteredDocuments.map((doc) => {
+              const category = categories.find(cat => cat.id === doc.category);
+              return (
+                <div key={doc.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-lg p-4 hover:bg-slate-700/50 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="text-3xl">{getFileIcon(doc.type)}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-base font-medium text-white">{doc.name}</h3>
+                          {category && (
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${category.color} bg-slate-700/50`}>
+                              {category.name}
+                            </span>
+                          )}
+                          {doc.shared && (
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-green-600/20 text-green-400">
+                              Geteilt
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(doc.date || doc.uploadDate).toLocaleDateString('de-DE')}
+                          </span>
+                          {doc.coacheeName && (
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {doc.coacheeName}
+                            </span>
+                          )}
+                          <span>{doc.size} MB</span>
+                        </div>
+                        
+                        {doc.description && (
+                          <p className="text-slate-300 text-sm">{doc.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-1">
+                      <button className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-slate-700/50 rounded transition-colors" title="Ansehen">
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button className="p-1.5 text-green-400 hover:text-green-300 hover:bg-slate-700/50 rounded transition-colors" title="Download">
+                        <Download className="h-4 w-4" />
+                      </button>
+                      <button className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-slate-700/50 rounded transition-colors" title="Teilen">
+                        <Share2 className="h-4 w-4" />
+                      </button>
+                      <button className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors" title="Bearbeiten">
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors" title="Löschen">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500">0 Dokumente</p>
-              </div>
+              );
+            })
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">
+                Keine Dokumente gefunden
+              </h3>
+              <p className="text-slate-400 mb-4">
+                Für die aktuellen Filter gibt es keine Dokumente.
+              </p>
+              <button
+                onClick={() => {
+                  clearCoacheeFilter();
+                  setCategoryFilter('all');
+                  setTypeFilter('all');
+                  setDateFilter('all');
+                  setSearchTerm('');
+                }}
+                className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
+              >
+                Alle Filter zurücksetzen
+              </button>
             </div>
-          ))}
+          )}
         </div>
-
-        {/* Leerer Zustand */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
-          <FileText className="mx-auto h-12 w-12 text-gray-600 mb-4" />
-          <h3 className="text-lg font-semibold text-white mb-2">Keine Dokumente gefunden</h3>
-          <p className="text-gray-400 mb-6">Laden Sie Ihre ersten Coaching-Materialien hoch, um loszulegen.</p>
-          <Button 
-            onClick={() => setShowUploadDialog(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Erste Dokumente hochladen
-          </Button>
-        </div>
-
-        {/* Toast Container */}
-        <ToastContainer toasts={toasts} removeToast={removeToast} />
 
         {/* Upload Dialog */}
         {showUploadDialog && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto m-4 border border-gray-700">
-              <div className="p-6 border-b border-gray-700">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-white">Dokumente hochladen</h2>
-                  <Button variant="ghost" onClick={() => setShowUploadDialog(false)} className="text-gray-400 hover:text-white">
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
+          <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-white">Dokumente hochladen</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Laden Sie neue Dokumente hoch und ordnen Sie diese zu.
+                </DialogDescription>
+              </DialogHeader>
 
-              <div className="p-6">
+              <div className="space-y-6">
                 {/* Drag & Drop Zone */}
                 <div 
-                  className="border-2 border-dashed border-gray-600 rounded-xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer mb-6 bg-gray-700/30"
+                  className="border-2 border-dashed border-slate-600 rounded-xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer bg-slate-700/30"
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   onClick={() => document.getElementById('fileInput').click()}
                 >
-                  <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
                   <h3 className="text-lg font-semibold text-white mb-2">Dateien hochladen</h3>
-                  <p className="text-gray-400 mb-4">
+                  <p className="text-slate-400 mb-4">
                     Ziehen Sie Dateien hierher oder klicken Sie zum Auswählen
                   </p>
-                  <Button variant="outline" className="border-blue-500 text-blue-400 hover:bg-blue-900/50">
+                  <Button className="bg-blue-600 hover:bg-blue-700">
                     <Upload className="mr-2 h-4 w-4" />
                     Dateien auswählen
                   </Button>
@@ -398,16 +751,16 @@ export default function Documents() {
 
                 {/* Dateiliste */}
                 {uploadFiles.length > 0 && (
-                  <div className="mb-6">
+                  <div>
                     <h4 className="font-semibold text-white mb-3">Ausgewählte Dateien ({uploadFiles.length})</h4>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {uploadFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                        <div key={index} className="flex items-center justify-between p-3 bg-slate-700 rounded-lg">
                           <div className="flex items-center gap-3">
-                            <span className="text-2xl">{getFileIcon(file)}</span>
+                            <span className="text-2xl">{getFileIcon(getFileType(file.name))}</span>
                             <div>
                               <p className="font-medium text-white">{file.name}</p>
-                              <p className="text-sm text-gray-400">{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
+                              <p className="text-sm text-slate-400">{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
                             </div>
                           </div>
                           <Button
@@ -424,177 +777,152 @@ export default function Documents() {
                   </div>
                 )}
 
-                {/* Metadaten-Formular */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Metadaten */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Kategorie*</label>
-                    <select
-                      value={uploadMetadata.category}
-                      onChange={(e) => setUploadMetadata({...uploadMetadata, category: e.target.value})}
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
-                      style={{
-                        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                        backgroundPosition: 'right 0.75rem center',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundSize: '1.5em 1.5em'
-                      }}
-                      required
-                    >
-                      <option value="">Kategorie wählen</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    <Label className="text-slate-300 mb-2 block">Kategorie*</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {categories.map(category => (
+                        <button
+                          key={category.id}
+                          onClick={() => setUploadMetadata(prev => ({ ...prev, category: category.id }))}
+                          className={`
+                            px-3 py-2 rounded-lg text-sm font-medium transition-all
+                            ${uploadMetadata.category === category.id
+                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
+                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                            }
+                          `}
+                        >
+                          {category.name}
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Zuweisen an</label>
-                    <select
-                      value={uploadMetadata.assignedTo}
-                      onChange={(e) => setUploadMetadata({...uploadMetadata, assignedTo: e.target.value})}
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
-                      style={{
-                        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                        backgroundPosition: 'right 0.75rem center',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundSize: '1.5em 1.5em'
-                      }}
-                    >
-                      <option value="">Nicht zugewiesen</option>
-                      {coachees.map(coachee => (
-                        <option key={coachee.id} value={coachee.id}>{coachee.name}</option>
+                    <Label className="text-slate-300 mb-2 block">Zuweisen an</Label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleCoacheeSelection('')}
+                        className={`
+                          px-3 py-2 rounded-lg text-sm font-medium transition-all
+                          ${!uploadMetadata.assignedTo 
+                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
+                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                          }
+                        `}
+                      >
+                        Nicht zugewiesen
+                      </button>
+                      {(coachees || []).map(coachee => (
+                        <button
+                          key={coachee.id}
+                          onClick={() => handleCoacheeSelection(coachee.id.toString())}
+                          className={`
+                            px-3 py-2 rounded-lg text-sm font-medium transition-all
+                            ${uploadMetadata.assignedTo === coachee.id.toString()
+                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
+                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                            }
+                          `}
+                        >
+                          {coachee.firstName} {coachee.lastName}
+                        </button>
                       ))}
-                    </select>
-                  </div>
-
-                  <div className="md:col-span-1">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Beschreibung</label>
-                    <textarea
-                      value={uploadMetadata.description}
-                      onChange={(e) => setUploadMetadata({...uploadMetadata, description: e.target.value})}
-                      placeholder="Optional: Beschreibung des Dokuments..."
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows="3"
-                    />
+                    </div>
                   </div>
                 </div>
 
-                {/* Upload Button */}
-                <div className="flex gap-4 mt-8">
-                  <Button
-                    onClick={handleUpload}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                    disabled={uploadFiles.length === 0}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {uploadFiles.length} Dokument(e) hochladen
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowUploadDialog(false)}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                  >
-                    Abbrechen
-                  </Button>
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Beschreibung</Label>
+                  <textarea
+                    value={uploadMetadata.description}
+                    onChange={(e) => setUploadMetadata(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Optional: Beschreibung des Dokuments..."
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    rows="3"
+                  />
                 </div>
               </div>
-            </div>
-          </div>
+              
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                    Abbrechen
+                  </Button>
+                </DialogClose>
+                <Button 
+                  onClick={handleUpload}
+                  disabled={uploadFiles.length === 0 || !uploadMetadata.category}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {uploadFiles.length} Dokument(e) hochladen
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
 
         {/* Kategorie-Manager Dialog */}
         {showCategoryManager && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto m-4 border border-gray-700">
-              <div className="p-6 border-b border-gray-700">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-white">Kategorien verwalten</h2>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setShowCategoryManager(false);
-                      setEditingCategoryId(null);
-                      setNewCategoryData({ name: '', color: 'text-gray-400' });
-                    }}
-                    className="text-gray-400 hover:text-white"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
+          <Dialog open={showCategoryManager} onOpenChange={setShowCategoryManager}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-white">Kategorien verwalten</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Erstellen und verwalten Sie Kategorien für Ihre Dokumente.
+                </DialogDescription>
+              </DialogHeader>
 
-              <div className="p-6">
-                {/* Neue Kategorie hinzufügen / Bearbeiten */}
-                <div className="mb-8 p-6 bg-gray-700 rounded-xl border-2 border-dashed border-gray-600">
+              <div className="space-y-6">
+                {/* Neue Kategorie hinzufügen */}
+                <div className="p-6 bg-slate-700/50 rounded-xl border border-slate-600/50">
                   <h3 className="text-lg font-semibold mb-4 text-white">
-                    {editingCategoryId ? 'Kategorie bearbeiten' : 'Neue Kategorie hinzufügen'}
+                    Neue Kategorie hinzufügen
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Name Input */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
-                      <input
-                        type="text"
+                      <Label className="text-slate-300 mb-2 block">Name</Label>
+                      <Input
                         value={newCategoryData.name}
-                        onChange={(e) => setNewCategoryData({...newCategoryData, name: e.target.value})}
+                        onChange={(e) => setNewCategoryData(prev => ({ ...prev, name: e.target.value }))}
                         placeholder="z.B. Leadership"
-                        className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="bg-slate-700/50 border-slate-600/50 text-white"
                       />
                     </div>
 
-                    {/* Farbe Auswahl als Dropdown */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Farbe</label>
-                      <select
-                        value={newCategoryData.color}
-                        onChange={(e) => setNewCategoryData({...newCategoryData, color: e.target.value})}
-                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                          backgroundPosition: 'right 0.5rem center',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundSize: '1.5em 1.5em'
-                        }}
-                      >
-                        {availableColors.map(color => (
-                          <option key={color.class} value={color.class}>
+                      <Label className="text-slate-300 mb-2 block">Farbe</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {availableColors.slice(0, 4).map(color => (
+                          <button
+                            key={color.class}
+                            onClick={() => setNewCategoryData(prev => ({ ...prev, color: color.class }))}
+                            className={`
+                              px-3 py-2 rounded-lg text-sm font-medium transition-all
+                              ${newCategoryData.color === color.class
+                                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
+                                : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
+                              }
+                            `}
+                          >
                             {color.name}
-                          </option>
+                          </button>
                         ))}
-                      </select>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Vorschau */}
-                  <div className="mt-6 p-4 bg-gray-800 rounded-lg border border-gray-600">
-                    <p className="text-sm font-medium text-gray-300 mb-3">Vorschau:</p>
-                    <div className={`inline-flex items-center px-4 py-2 rounded-lg border border-gray-600 ${newCategoryData.color}`}>
-                      <span className="font-medium">{newCategoryData.name || 'Kategoriename'}</span>
-                    </div>
-                  </div>
-
-                  {/* Aktions-Buttons */}
-                  <div className="flex gap-3 mt-4">
-                    <Button
-                      onClick={editingCategoryId ? handleUpdateCategory : handleAddCategory}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      {editingCategoryId ? 'Aktualisieren' : 'Hinzufügen'}
-                    </Button>
-                    {editingCategoryId && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setEditingCategoryId(null);
-                          setNewCategoryData({ name: '', color: 'text-gray-400' });
-                        }}
-                        className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                      >
-                        Abbrechen
-                      </Button>
-                    )}
-                  </div>
+                  <Button
+                    onClick={handleAddCategory}
+                    className="mt-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                    disabled={!newCategoryData.name.trim()}
+                  >
+                    Kategorie hinzufügen
+                  </Button>
                 </div>
 
                 {/* Bestehende Kategorien */}
@@ -602,44 +930,41 @@ export default function Documents() {
                   <h3 className="text-lg font-semibold mb-4 text-white">Bestehende Kategorien ({categories.length})</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categories.map(category => (
-                      <div key={category.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4 hover:bg-gray-600 transition-colors">
+                      <div key={category.id} className="bg-slate-700/50 border border-slate-600/50 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
                           <div className={`${category.color} font-medium`}>
                             {category.name}
                           </div>
-                        </div>
-                        
-                        <div className="text-xs text-gray-400 mb-3">
-                          0 Dokument(e)
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditCategory(category)}
-                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <button
                             onClick={() => handleDeleteCategory(category.id)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-900/30"
+                            className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
                           >
                             <Trash2 className="h-4 w-4" />
-                          </Button>
+                          </button>
+                        </div>
+                        
+                        <div className="text-xs text-slate-400">
+                          {documents.filter(doc => doc.category === category.id).length} Dokument(e)
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+              
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+                    Fertig
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
     </div>
   );
-}
+};
+
+export default DocumentsApp;

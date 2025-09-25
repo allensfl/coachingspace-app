@@ -1,10 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Video, Phone, Users, Play, Archive, ArchiveRestore, CalendarPlus, Package, FileText as InvoiceIcon, Calendar, User, Clock, ClipboardList, Zap } from 'lucide-react';
+import { MapPin, Video, Phone, Users, Play, Archive, ArchiveRestore, CalendarPlus, Package, FileText as InvoiceIcon, Calendar, User, Clock, ClipboardList, Zap, Trash2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { SessionMode, SessionStatus } from '@/types';
 
 const getModeIcon = (mode) => {
@@ -40,16 +51,31 @@ const SessionCard = ({
   session, 
   index, 
   onCardClick, 
-  onDirectStart, // NEU: Direktstart-Handler hinzugefügt
+  onDirectStart,
   onToggleArchive, 
+  onDeleteSession,  // ← NEU: Delete-Handler hinzugefügt
   onStatusChange, 
   onCreateInvoice, 
   activePackages, 
   onAddToCalendar 
 }) => {
   const navigate = useNavigate();
+  const [isDeleting, setIsDeleting] = useState(false);
   const ModeIcon = getModeIcon(session.mode);
   const relatedPackage = session.packageId ? (activePackages || []).find(p => p.id === session.packageId) : null;
+
+  const handleDelete = async () => {
+    if (!onDeleteSession) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDeleteSession(session.id);
+    } catch (error) {
+      console.error('Fehler beim Löschen der Session:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <motion.div
@@ -99,10 +125,8 @@ const SessionCard = ({
               </Button>
             )}
             
-            {/* Zwei separate Buttons für geplante Sessions */}
             {session.status === SessionStatus.PLANNED && (
               <>
-                {/* Vorbereitung-Button */}
                 <Button 
                   size="sm" 
                   variant="outline" 
@@ -114,7 +138,6 @@ const SessionCard = ({
                   Vorbereitung
                 </Button>
                 
-                {/* REPARIERT: Direktstart-Button mit session.id statt session.coacheeId */}
                 <Button 
                   size="sm" 
                   className="bg-green-600 hover:bg-green-700" 
@@ -132,9 +155,58 @@ const SessionCard = ({
                 <InvoiceIcon className="h-4 w-4 mr-2" /> Rechnung
               </Button>
             )}
+            
             <Button size="icon" variant="ghost" onClick={() => onToggleArchive(session.id)} title={session.archived ? 'Wiederherstellen' : 'Archivieren'}>
               {session.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
             </Button>
+
+            {/* ← NEU: Delete-Button mit Bestätigungs-Dialog */}
+            {onDeleteSession && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                    title="Session dauerhaft löschen"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-slate-800/95 backdrop-blur-xl border-slate-700/50">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-white flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-400" />
+                      Session löschen?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-slate-400">
+                      Möchtest du die Session <strong className="text-white">"{session.topic}"</strong> mit {session.coacheeName} wirklich dauerhaft löschen?
+                      <br /><br />
+                      <span className="text-red-400">Diese Aktion kann nicht rückgängig gemacht werden.</span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600">
+                      Abbrechen
+                    </AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2" />
+                          Lösche...
+                        </>
+                      ) : (
+                        'Dauerhaft löschen'
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
       </div>

@@ -51,26 +51,19 @@ export default function ProfileCard({
   coachee, 
   isEditing, 
   onChange, 
-  onUpdate, // ← WICHTIG: Für Auto-Save
+  onUpdate,
   onCustomFieldChange,
   customFields = [] 
 }) {
-  // ← NEUER STATE für lokale Änderungen
   const [localCoachee, setLocalCoachee] = useState(coachee);
-  
-  // NEU: Add Field Modal State
   const [showAddFieldModal, setShowAddFieldModal] = useState(false);
   const [newField, setNewField] = useState({ name: '', type: 'text', label: '' });
 
-  // State aktualisieren wenn coachee prop sich ändert
   useEffect(() => {
     setLocalCoachee(coachee);
   }, [coachee]);
 
   const handleFieldChange = (field, value) => {
-    console.log(`ProfileCard - Feld geändert: ${field} = ${value}`);
-    
-    // ← NEUE LOGIK: Lokalen State und Parent gleichzeitig aktualisieren
     const updatedCoachee = {
       ...localCoachee,
       [field]: value
@@ -78,21 +71,16 @@ export default function ProfileCard({
     
     setLocalCoachee(updatedCoachee);
     
-    // Sofortiges Auto-Save wenn onUpdate vorhanden ist
     if (onUpdate) {
       onUpdate(updatedCoachee);
     }
     
-    // Fallback für onChange
     if (onChange) {
       onChange(field, value);
     }
   };
 
   const handleCustomChange = (fieldId, value) => {
-    console.log(`Custom field changed: ${fieldId} = ${value}`);
-    
-    // Für neue Inline-Felder: Direkt in customData speichern
     const updatedCustomData = {
       ...(localCoachee.customData || {}),
       [fieldId]: value
@@ -108,20 +96,17 @@ export default function ProfileCard({
       onUpdate(updatedCoachee);
     }
     
-    // Fallback für bestehende Custom Fields
     if (onCustomFieldChange) {
       onCustomFieldChange(fieldId, value);
     }
   };
 
-  // NEU: Add Field Handler
   const handleAddField = () => {
     if (!newField.name || !newField.label) {
       alert("Bitte Feldname und Bezeichnung eingeben.");
       return;
     }
 
-    // Feld zum Coachee hinzufügen
     const updatedCustomData = {
       ...(localCoachee.customData || {}),
       [newField.name]: ''
@@ -137,27 +122,23 @@ export default function ProfileCard({
       onUpdate(updatedCoachee);
     }
 
-    // Modal schließen und Reset
     setShowAddFieldModal(false);
     setNewField({ name: '', type: 'text', label: '' });
     
     alert(`Feld "${newField.label}" wurde hinzugefügt`);
   };
 
-  // ← PORTAL-FUNKTIONEN HINZUGEFÜGT
   const generatePortalAccess = () => {
-    // Erstelle Portal-Zugang-Struktur wie im CoacheePortal erwartet
     const oneTimeToken = crypto.randomUUID();
     const portalAccess = {
       oneTimeToken: oneTimeToken,
       permanentToken: null,
       passwordHash: null,
-      expirationTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h
+      expirationTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       isUsed: false,
       hasPassword: false
     };
 
-    // Coachee mit Portal-Zugang aktualisieren
     const updatedCoachee = {
       ...localCoachee,
       portalAccess: portalAccess,
@@ -174,12 +155,10 @@ export default function ProfileCard({
 
     setLocalCoachee(updatedCoachee);
 
-    // Auto-Save
     if (onUpdate) {
       onUpdate(updatedCoachee);
     }
 
-    // Portal-Link erstellen und kopieren
     const portalLink = `${window.location.origin}/portal/${oneTimeToken}`;
     navigator.clipboard.writeText(portalLink);
 
@@ -206,7 +185,7 @@ export default function ProfileCard({
     return { status: 'used', text: 'Verwendet', color: 'text-blue-400' };
   };
 
-  const age = calculateAge(localCoachee?.birthDate); // ← localCoachee verwenden
+  const age = calculateAge(localCoachee?.birthDate);
   const portalStatus = getPortalStatus();
 
   return (
@@ -300,7 +279,7 @@ export default function ProfileCard({
               )}
             </div>
 
-            {/* ← REPARIERTES BIRTHDAY FIELD mit Auto-Save */}
+            {/* Birthday Field */}
             <div className="space-y-2">
               <Label htmlFor="birthDate" className="text-slate-300 flex items-center gap-2">
                 <Gift className="w-4 h-4" />
@@ -312,10 +291,7 @@ export default function ProfileCard({
                   id="birthDate"
                   type="date"
                   value={localCoachee?.birthDate || ''}
-                  onChange={(e) => {
-                    console.log('Geburtstag geändert:', e.target.value);
-                    handleFieldChange('birthDate', e.target.value);
-                  }}
+                  onChange={(e) => handleFieldChange('birthDate', e.target.value)}
                   className="bg-slate-900 border-slate-600 text-white"
                 />
               ) : (
@@ -357,20 +333,20 @@ export default function ProfileCard({
               )}
             </div>
 
-            {/* DSGVO Status */}
+            {/* DSGVO Status - REPARIERT: dsgvo → gdpr */}
             <div className="pt-4 border-t border-slate-700">
               <div className="flex items-center justify-between">
                 <span className="text-slate-300">DSGVO-Einwilligung</span>
                 <Badge 
-                  variant={localCoachee?.consents?.dsgvo ? "default" : "secondary"} 
-                  className={localCoachee?.consents?.dsgvo ? "bg-green-600" : "bg-red-600"}
+                  variant={localCoachee?.consents?.gdpr ? "default" : "secondary"} 
+                  className={localCoachee?.consents?.gdpr ? "bg-green-600" : "bg-red-600"}
                 >
-                  {localCoachee?.consents?.dsgvo ? '✓ Erteilt' : '✗ Ausstehend'}
+                  {localCoachee?.consents?.gdpr ? '✓ Erteilt' : '✗ Ausstehend'}
                 </Badge>
               </div>
             </div>
 
-            {/* ← PORTAL-ZUGANG SEKTION HINZUGEFÜGT */}
+            {/* Portal-Zugang Sektion */}
             <div className="pt-4 border-t border-slate-700">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -392,10 +368,6 @@ export default function ProfileCard({
                   onClick={() => {
                     try {
                       const portalLink = generatePortalAccess();
-                      // Toast-ähnliche Benachrichtigung (falls verfügbar)
-                      console.log('Portal-Link generiert und kopiert:', portalLink);
-                      
-                      // Einfache Alert-Nachricht
                       alert(`Portal-Link für ${localCoachee?.firstName} wurde erstellt und kopiert!\n\nLink: ${portalLink}\n\nGültigkeit: 24 Stunden\nNach dem ersten Login wird ein permanenter Zugang eingerichtet.`);
                     } catch (error) {
                       console.error('Fehler beim Portal-Link:', error);
@@ -427,12 +399,11 @@ export default function ProfileCard({
               </div>
             </div>
 
-            {/* Custom Fields aus Einstellungen + Inline hinzugefügte Felder */}
+            {/* Custom Fields */}
             {(customFields.length > 0 || Object.keys(localCoachee?.customData || {}).length > 0) && (
               <div className="pt-4 border-t border-slate-700 space-y-4">
                 <h3 className="text-lg font-semibold text-white">Zusätzliche Informationen</h3>
                 
-                {/* Bestehende Custom Fields aus Einstellungen */}
                 {customFields.map(field => (
                   <div key={field.id} className="space-y-2">
                     <Label htmlFor={field.id} className="text-slate-300">
@@ -447,9 +418,7 @@ export default function ProfileCard({
                   </div>
                 ))}
                 
-                {/* Inline hinzugefügte Custom Fields */}
                 {Object.entries(localCoachee?.customData || {}).map(([fieldName, fieldValue]) => {
-                  // Skip Felder die bereits in customFields definiert sind
                   const isExistingField = customFields.some(field => field.id === fieldName);
                   if (isExistingField) return null;
                   
@@ -475,7 +444,7 @@ export default function ProfileCard({
               </div>
             )}
 
-            {/* NEU: Inline Feld hinzufügen - nur im Edit-Modus */}
+            {/* Inline Feld hinzufügen */}
             {isEditing && (
               <div className="pt-2 border-t border-slate-700">
                 <Button
@@ -492,7 +461,7 @@ export default function ProfileCard({
         </Card>
       </motion.div>
 
-      {/* NEU: Add Field Modal */}
+      {/* Add Field Modal */}
       <Dialog open={showAddFieldModal} onOpenChange={setShowAddFieldModal}>
         <DialogContent className="bg-slate-800 border-slate-700">
           <DialogHeader>
@@ -518,7 +487,6 @@ export default function ProfileCard({
                 placeholder="lieblings_farbe, hobbys, etc."
                 className="bg-slate-900 border-slate-600 text-white"
               />
-              <p className="text-xs text-slate-400">Wird automatisch aus der Bezeichnung generiert</p>
             </div>
 
             <div className="space-y-2">
