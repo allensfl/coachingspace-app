@@ -1,549 +1,664 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from "../supabaseConfig";
-import { Shield, Download, Copy, AlertTriangle, Check, Sparkles, Clock, FileText, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-export default function LandingPage() {
-  const navigate = useNavigate();
+const supabaseUrl = 'https://jlvmkfpjnqvtnqepmpsf.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsdm1rZnBqbnF2dG5xZXBtcHNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5MzE3MjMsImV4cCI6MjA3MzUwNzcyM30.xdltEUoQC5zK6Im6NIJBBmHy2XzR36A9NoarPTwatbQ'; // Dein echter Key
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const BetaLandingPage = () => {
+  const [currentStep, setCurrentStep] = useState('landing'); // landing, success, login, password, app
+  const [availableSpots, setAvailableSpots] = useState(10);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
+  // Form states
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    website: ''
+    company: '',
+    experience: '',
+    coacheeCount: ''
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [showBackupCodes, setShowBackupCodes] = useState(false);
-  const [backupCodes, setBackupCodes] = useState([]);
-  const [password, setPassword] = useState('');
+  
+  // Login states
+  const [loginData, setLoginData] = useState({
+    email: '',
+    password: ''
+  });
+  
+  // Password change states
+  const [passwordData, setPasswordData] = useState({
+    newPassword: '',
+    confirmPassword: ''
+  });
+  
+  // User data from successful signup/login
+  const [userData, setUserData] = useState(null);
 
-  const generateDemoPassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-    let result = '';
-    for (let i = 0; i < 12; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+  // Load available spots
+  const loadAvailableSpots = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('beta_users')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) throw error;
+      setAvailableSpots(Math.max(0, 10 - (count || 0)));
+    } catch (err) {
+      console.error('Error loading spots:', err);
+      setAvailableSpots(8); // Fallback
     }
-    return result;
   };
 
-  const generateBackupCodes = () => {
-    const codes = [];
-    for (let i = 0; i < 5; i++) {
-      const code = 'COACH-' + Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + 
-                   Math.random().toString(36).substr(2, 4).toUpperCase();
-      codes.push(code);
-    }
-    return codes;
-  };
+  useEffect(() => {
+    loadAvailableSpots();
+  }, []);
 
-  const handleSubmit = async (e) => {
+  // Handle beta signup
+  const handleBetaSignup = async (e) => {
     e.preventDefault();
-    
-    // Validierung
-    if (!formData.firstName || !formData.lastName || !formData.email) {
-      alert('Bitte füllen Sie alle Pflichtfelder aus.');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      alert('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
-      return;
-    }
-
-    setIsLoading(true);
+    setLoading(true);
+    setError('');
 
     try {
-      const demoPassword = generateDemoPassword();
-      setPassword(demoPassword);
-      
-      // Backup-Codes generieren
-      const codes = generateBackupCodes();
-      setBackupCodes(codes);
-      
-      // Supabase User erstellen
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: demoPassword,
-        options: {
-          data: {
-            is_demo_user: true,
-            demo_source: 'landing_page',
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            website: formData.website,
-            full_name: `${formData.firstName} ${formData.lastName}`,
-            backup_codes: codes
-          }
-        }
-      });
+      // Check if email already exists
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('beta_users')
+        .select('email')
+        .eq('email', formData.email);
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw new Error(`Demo-Erstellung fehlgeschlagen: ${error.message}`);
+      if (checkError) throw checkError;
+
+      if (existingUsers && existingUsers.length > 0) {
+        setError('Diese E-Mail-Adresse ist bereits registriert.');
+        setLoading(false);
+        return;
       }
 
-      console.log('Demo User erstellt:', data.user?.email);
-      setShowBackupCodes(true);
+      // Get current count for spot number
+      const { count } = await supabase
+        .from('beta_users')
+        .select('*', { count: 'exact', head: true });
 
-    } catch (error) {
-      console.error('Demo signup error:', error);
-      alert('Fehler bei der Demo-Erstellung: ' + error.message);
+      const spotNumber = (count || 0) + 1;
+
+      // Insert new beta user
+      const { data, error: insertError } = await supabase
+        .from('beta_users')
+        .insert([{
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          company: formData.company,
+          experience: formData.experience,
+          coachee_count: formData.coacheeCount,
+          beta_spot_number: spotNumber,
+          temp_password: 'beta2024temp!',
+          password_changed: false,
+          created_at: new Date().toISOString()
+        }])
+        .select();
+
+      if (insertError) throw insertError;
+
+      setUserData(data[0]);
+      setCurrentStep('success');
+      loadAvailableSpots();
+
+    } catch (err) {
+      console.error('Signup error:', err);
+      setError('Anmeldung fehlgeschlagen. Bitte versuche es erneut.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleBackupCodesComplete = () => {
-    setIsSubmitted(true);
-    setTimeout(() => {
-      navigate('/');
-    }, 3000);
+  // Handle login
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      // Check against beta_users table
+      const { data: user, error } = await supabase
+        .from('beta_users')
+        .select('*')
+        .eq('email', loginData.email)
+        .single();
+
+      if (error || !user) {
+        setError('E-Mail nicht gefunden. Hast du dich für die Beta registriert?');
+        setLoading(false);
+        return;
+      }
+
+      // Check password
+      const passwordToCheck = user.password_changed ? user.new_password : user.temp_password;
+      
+      if (loginData.password !== passwordToCheck) {
+        // Update login attempts
+        await supabase
+          .from('beta_users')
+          .update({ login_attempts: (user.login_attempts || 0) + 1 })
+          .eq('email', loginData.email);
+        
+        setError('Falsches Passwort. Verwende das temporäre Passwort aus der E-Mail.');
+        setLoading(false);
+        return;
+      }
+
+      setUserData(user);
+      
+      // If password not changed yet, go to password change
+      if (!user.password_changed) {
+        setCurrentStep('password');
+      } else {
+        setCurrentStep('app');
+      }
+
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Anmeldung fehlgeschlagen. Bitte versuche es erneut.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (showBackupCodes) {
-    return <BackupCodesDisplay codes={backupCodes} password={password} email={formData.email} onComplete={handleBackupCodesComplete} />;
-  }
+  // Handle password change
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-lg max-w-md w-full p-8 text-center">
-          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Demo erfolgreich erstellt!</h2>
-          <p className="text-slate-300 mb-6">
-            Sie werden zur App weitergeleitet...
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError('Passwörter stimmen nicht überein.');
+      setLoading(false);
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setError('Passwort muss mindestens 6 Zeichen haben.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('beta_users')
+        .update({ 
+          new_password: passwordData.newPassword,
+          password_changed: true
+        })
+        .eq('email', userData.email);
+
+      if (error) throw error;
+
+      setSuccess('Passwort erfolgreich geändert!');
+      setTimeout(() => setCurrentStep('app'), 2000);
+
+    } catch (err) {
+      console.error('Password change error:', err);
+      setError('Passwort-Änderung fehlgeschlagen.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Render different steps
+  const renderLandingPage = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-white mb-4">
+            CoachingSpace <span className="text-blue-400">Beta</span>
+          </h1>
+          <p className="text-xl text-slate-300 mb-6">
+            Die All-in-One Plattform für professionelles Coaching
           </p>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* Header */}
-      <header className="border-b border-slate-700">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">CS</span>
-            </div>
-            <span className="font-semibold text-white">Coachingspace</span>
+          <div className="inline-flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-2 rounded-full">
+            <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
+            Noch {availableSpots} Beta-Plätze verfügbar
           </div>
         </div>
-      </header>
 
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto">
-          {/* Hero Section - Core-Version fokussiert */}
-          <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Professionelles Coaching-Management
-            </h1>
-            <p className="text-xl text-slate-300 mb-4 max-w-2xl mx-auto">
-              DSGVO-konforme Desktop-Anwendung für strukturiertes Coaching mit 
-              messbaren Fortschritten und professioneller Dokumentation.
-            </p>
-            <div className="flex items-center justify-center gap-2 text-orange-400 font-medium">
-              <Sparkles className="w-5 h-5" />
-              <span>KI-Module in Entwicklung - Core-Features sofort verfügbar</span>
+        {/* Screenshots Section */}
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-xl p-8 mb-12">
+          <h3 className="text-2xl font-semibold text-white mb-6 text-center">
+            Entdecke die CoachingSpace Platform
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="text-center">
+              <img 
+                src="./screenshots/dashboard.png" 
+                alt="Dashboard Übersicht" 
+                className="w-full h-40 object-contain bg-slate-800 rounded-lg border border-slate-600 mb-3"
+              />
+              <h4 className="text-white font-medium">Dashboard Übersicht</h4>
+              <p className="text-slate-400 text-sm">Coachee-Management & Task-Tracking</p>
+            </div>
+            
+            <div className="text-center">
+              <img 
+                src="./screenshots/coaching-room.png" 
+                alt="Coaching Room" 
+                className="w-full h-40 object-contain bg-slate-800 rounded-lg border border-slate-600 mb-3"
+              />
+              <h4 className="text-white font-medium">🟢 Coaching Room</h4>
+              <p className="text-slate-400 text-sm">Komplettes Remote-Cockpit</p>
+            </div>
+            
+            <div className="text-center">
+              <img 
+                src="./screenshots/session-prep.png" 
+                alt="Session Vorbereitung" 
+                className="w-full h-40 object-contain bg-slate-800 rounded-lg border border-slate-600 mb-3"
+              />
+              <h4 className="text-white font-medium">Session-Planung</h4>
+              <p className="text-slate-400 text-sm">Strukturierte Coaching-Ansätze</p>
             </div>
           </div>
 
-          {/* Features Grid - Core Features prominent */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-            {[
-              {
-                icon: <Users className="w-6 h-6 text-blue-400" />,
-                title: "Coachee-Verwaltung",
-                description: "Strukturierte Klientenakten mit Fortschritts-Tracking",
-                status: "available"
-              },
-              {
-                icon: <Clock className="w-6 h-6 text-green-400" />,
-                title: "Session-Management",
-                description: "Terminplanung und strukturierte Gesprächsführung",
-                status: "available"
-              },
-              {
-                icon: <FileText className="w-6 h-6 text-purple-400" />,
-                title: "Reflexionstagebuch",
-                description: "Digitales Journal mit Kategorien und Auswertungen",
-                status: "available"
-              },
-              {
-                icon: <Sparkles className="w-6 h-6 text-orange-400" />,
-                title: "KI-Coaching-Assistent",
-                description: "Triadisches KI-Coaching und intelligente Analysen",
-                status: "coming"
-              }
-            ].map((feature, index) => (
-              <div key={index} className={`bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-lg p-6 relative ${
-                feature.status === 'coming' ? 'opacity-75' : ''
-              }`}>
-                <div className="flex items-center gap-3 mb-3">
-                  {feature.icon}
-                  <h3 className="font-semibold text-white">{feature.title}</h3>
-                </div>
-                <p className="text-sm text-slate-300 mb-3">{feature.description}</p>
-                {feature.status === 'coming' && (
-                  <div className="absolute top-3 right-3">
-                    <span className="text-xs px-2 py-1 bg-orange-500/30 text-orange-300 rounded font-medium">
-                      In Entwicklung
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Core Features Benefits */}
-          <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-8 mb-16">
-            <h2 className="text-2xl font-bold text-white mb-6 text-center">
-              Sofort verfügbare Core-Features
-            </h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-white mb-2">100% DSGVO-konform</h3>
-                <p className="text-sm text-slate-300">
-                  Lokale Datenhaltung ohne Cloud-Speicherung für maximalen Datenschutz
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-white mb-2">Professionelle Dokumentation</h3>
-                <p className="text-sm text-slate-300">
-                  Strukturierte Session-Protokolle und Fortschritts-Dokumentation
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-white mb-2">Unbegrenzte Coachees</h3>
-                <p className="text-sm text-slate-300">
-                  Verwalten Sie beliebig viele Klienten mit individuellen Coaching-Plänen
-                </p>
-              </div>
+          {/* Key Features */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-lg font-semibold text-white mb-3">🎯 Hauptfeatures</h4>
+              <ul className="text-slate-300 space-y-2">
+                <li>• Coachee-Verwaltung & Profile</li>
+                <li>• Session-Dokumentation & Journal</li>
+                <li>• Task-Management & Deadlines</li>
+                <li>• 🟢 Coaching Room (Remote-Cockpit)</li>
+                <li>• 🟣 Coachee-Portal (separater Zugang)</li>
+                <li>• 🟡 KI-Assistent (geplant)</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="text-lg font-semibold text-white mb-3">💎 Beta-Vorteile</h4>
+              <ul className="text-slate-300 space-y-2">
+                <li>• <strong>Lebenslange Vollversion-Lizenz</strong></li>
+                <li>• Wert: 99€/Monat (regulärer Preis)</li>
+                <li>• Direkter Einfluss auf Entwicklung</li>
+                <li>• Exklusiver Beta-Tester Status</li>
+                <li>• Persönlicher Support</li>
+                <li>• Alle zukünftigen Updates inklusive</li>
+              </ul>
             </div>
           </div>
+        </div>
 
-          {/* KI Add-On Preview */}
-          <div className="bg-gradient-to-r from-orange-900/20 to-yellow-900/20 border border-orange-500/30 rounded-lg p-8 mb-16">
-            <div className="text-center mb-6">
-              <Sparkles className="w-8 h-8 text-orange-400 mx-auto mb-3" />
-              <h2 className="text-2xl font-bold text-white mb-3">
-                Kommende KI-Features
-              </h2>
-              <p className="text-orange-200 mb-4">
-                Erweitern Sie Ihre Coaching-Praxis mit innovativen KI-Modulen (in Entwicklung)
-              </p>
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <h3 className="font-semibold text-orange-300 mb-2">Triadisches KI-Coaching</h3>
-                <p className="text-sm text-slate-300 mb-2">
-                  12-Schritte-Coaching-Prozess mit KI-Unterstützung für tiefere Einsichten
-                </p>
-                <div className="text-xs text-orange-400">
-                  • Avatar-basierte Persönlichkeitsanalyse
-                  • Intelligente Prompt-Bibliothek
-                  • Automatische Session-Auswertung
-                </div>
+        {/* Beta Signup Form */}
+        <div className="max-w-2xl mx-auto bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-xl p-8">
+          <h2 className="text-3xl font-bold text-white text-center mb-8">
+            Jetzt Beta-Tester werden
+          </h2>
+
+          <form onSubmit={handleBetaSignup} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Vorname *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Max"
+                />
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <h3 className="font-semibold text-orange-300 mb-2">KI-Analyse & Insights</h3>
-                <p className="text-sm text-slate-300 mb-2">
-                  Automatische Fortschritts-Analysen und Coaching-Empfehlungen
-                </p>
-                <div className="text-xs text-orange-400">
-                  • Tagebuch-Sentiment-Analyse
-                  • Mustererkennung in Sessions
-                  • Personalisierte Interventionsvorschläge
-                </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Nachname *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Mustermann"
+                />
               </div>
             </div>
-            <div className="text-center mt-6">
-              <p className="text-sm text-orange-300">
-                Starten Sie jetzt mit der Core-Version - KI-Module werden als kostenpflichtiges Add-On verfügbar
-              </p>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                E-Mail-Adresse *
+              </label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="max@beispiel.com"
+              />
             </div>
-          </div>
 
-          {/* Demo Form - Core-Version Messaging */}
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-lg p-8">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-white mb-4">
-                  Core-Version kostenfrei testen
-                </h2>
-                <p className="text-slate-300 mb-2">
-                  Vollständiges Coaching-Management sofort verfügbar
-                </p>
-                <p className="text-sm text-orange-400">
-                  KI-Features werden als Add-On hinzugefügt, wenn verfügbar
-                </p>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Unternehmen
+              </label>
+              <input
+                type="text"
+                value={formData.company}
+                onChange={(e) => setFormData({...formData, company: e.target.value})}
+                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Coaching Praxis GmbH"
+              />
+            </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-200 mb-2">
-                      Vorname *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-600 bg-slate-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-200 mb-2">
-                      Nachname *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-600 bg-slate-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
-                    E-Mail-Adresse *
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-600 bg-slate-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
-                    Website (optional)
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.website}
-                    onChange={(e) => setFormData({...formData, website: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-600 bg-slate-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://ihre-website.de"
-                  />
-                </div>
-
-                {/* Security Info - Core-Version angepasst */}
-                <div className="bg-slate-700/50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                  <p className="text-sm text-slate-300">
-                    <strong>Core-Version beinhaltet:</strong> Vollständige Coachee-Verwaltung, 
-                    Session-Management, Reflexionstagebuch und professionelle Dokumentation. 
-                    KI-Features werden als separates Add-On verfügbar.
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Coaching-Erfahrung
+                </label>
+                <select
+                  value={formData.experience}
+                  onChange={(e) => setFormData({...formData, experience: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
                 >
-                  {isLoading ? 'Demo wird erstellt...' : 'Core-Version kostenfrei testen'}
-                </button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <p className="text-sm text-slate-400">
-                  Vollzugang • Unbegrenzte Coachees • DSGVO-konform
-                </p>
-                <p className="text-xs text-orange-400 mt-2">
-                  KI-Add-On: Verfügbar sobald entwickelt
-                </p>
+                  <option value="" disabled>Erfahrung wählen</option>
+                  <option value="Neueinsteiger">Neueinsteiger</option>
+                  <option value="1-2 Jahre">1-2 Jahre</option>
+                  <option value="3-5 Jahre">3-5 Jahre</option>
+                  <option value="5+ Jahre">5+ Jahre</option>
+                </select>
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Anzahl Coachees (optional)
+                </label>
+                <select
+                  value={formData.coacheeCount}
+                  onChange={(e) => setFormData({...formData, coacheeCount: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                >
+                  <option value="" disabled>Anzahl wählen</option>
+                  <option value="1-5">1-5</option>
+                  <option value="6-15">6-15</option>
+                  <option value="16-30">16-30</option>
+                  <option value="30+">30+</option>
+                </select>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || availableSpots === 0}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200"
+            >
+              {loading ? 'Wird gesendet...' : `Beta-Platz reservieren (${availableSpots}/10)`}
+            </button>
+          </form>
+
+          {/* Beta Bedingungen */}
+          <div className="mt-8 bg-amber-500/10 border border-amber-500/30 rounded-lg p-6">
+            <h4 className="text-amber-400 font-semibold mb-3 flex items-center gap-2">
+              ⚠️ Wichtig: Bedingungen für kostenlose Vollversion
+            </h4>
+            <div className="text-slate-300 space-y-2">
+              <p><strong>1. Intensive Testphase:</strong> Alle 7 Hauptbereiche gründlich testen (mindestens 2 Stunden)</p>
+              <p><strong>2. Detailliertes Feedback:</strong> Strukturiertes Formular per E-Mail ausfüllen</p>
+              <p><strong>3. Spezifische Anforderungen:</strong> Mindestens 3 Probleme + 3 Verbesserungsvorschläge</p>
+            </div>
+            <div className="mt-4 bg-red-500/20 border border-red-500/30 rounded-lg p-3">
+              <p className="text-red-400 text-sm">
+                <strong>Warnung:</strong> Oberflächliches Feedback wie "App ist cool" berechtigt NICHT zur kostenlosen Vollversion.
+              </p>
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-}
 
-const BackupCodesDisplay = ({ codes, password, email, onComplete }) => {
-  const [downloaded, setDownloaded] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [passwordCopied, setPasswordCopied] = useState(false);
-
-  const downloadCodes = () => {
-    const content = `COACHINGSPACE - CORE-VERSION ZUGANG
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-WICHTIGE ANMELDEDATEN - SICHER VERWAHREN!
-
-E-Mail für Anmeldung: ${email}
-Temporäres Passwort: ${password}
-
-BACKUP-CODES für Passwort-Reset:
-${codes.map((code, i) => `${i + 1}. ${code}`).join('\n')}
-
-CORE-VERSION FEATURES:
-✓ Vollständige Coachee-Verwaltung
-✓ Session-Management & Terminplanung
-✓ Reflexionstagebuch mit Kategorien
-✓ Professionelle Dokumentation
-✓ DSGVO-konforme lokale Datenhaltung
-
-KI-FEATURES (in Entwicklung):
-○ Triadisches KI-Coaching
-○ Intelligente Session-Analysen
-○ Automatische Fortschritts-Insights
-
-WICHTIGE HINWEISE:
-• Verwenden Sie die E-Mail-Adresse und das temporäre Passwort für die erste Anmeldung
-• Setzen Sie sofort ein eigenes, sicheres Passwort
-• Bewahren Sie diese 5 Backup-Codes sicher auf (ausdrucken!)
-• Jeder Code funktioniert nur EINMAL bei Passwort-Verlust
-• NICHT digital auf dem Computer speichern
-
-ANLEITUNG:
-1. Zur App gehen und mit E-Mail + Passwort anmelden
-2. Eigenes Passwort setzen (Demo-Passwort wird ungültig)
-3. Diese Backup-Codes ausdrucken und sicher verwahren
-4. Bei Passwort-Vergessen einen Code verwenden
-
-Core-Version verfügbar ab: ${new Date().toLocaleDateString('de-DE')}
-KI-Add-On: Verfügbar sobald entwickelt
-Generiert am: ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocaleTimeString('de-DE')}`;
-
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'coachingspace-core-zugang.txt';
-    a.click();
-    URL.revokeObjectURL(url);
-    setDownloaded(true);
-  };
-
-  const copyToClipboard = async () => {
-    const text = codes.join('\n');
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const copyPassword = async () => {
-    await navigator.clipboard.writeText(password);
-    setPasswordCopied(true);
-    setTimeout(() => setPasswordCopied(false), 2000);
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-lg max-w-2xl w-full p-8">
-        <div className="flex items-center mb-6">
-          <Shield className="w-8 h-8 text-blue-400 mr-3" />
-          <h2 className="text-2xl font-bold text-white">Core-Version Zugang erstellt!</h2>
+  const renderSuccessScreen = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="max-w-lg mx-auto bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-xl p-8 text-center">
+        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
         </div>
         
-        <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-4 mb-6">
-          <div className="flex items-start">
-            <Check className="w-5 h-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+        <h2 className="text-3xl font-bold text-white mb-4">
+          Willkommen, Beta-Tester #{userData?.beta_spot_number}!
+        </h2>
+        
+        <p className="text-slate-300 mb-8">
+          Du hast erfolgreich einen Beta-Platz reserviert. Hier sind deine Login-Daten:
+        </p>
+        
+        <div className="bg-slate-700/50 border border-slate-600/50 rounded-lg p-6 mb-8">
+          <h3 className="text-white font-semibold mb-4">🔑 Deine Zugangsdaten</h3>
+          <div className="space-y-3 text-left">
             <div>
-              <h3 className="font-semibold text-blue-300 mb-2">Core-Version bereit!</h3>
-              <p className="text-sm text-blue-200">
-                Alle Basis-Features sind sofort verfügbar. KI-Funktionen erscheinen als 
-                "In Entwicklung" und werden als Add-On hinzugefügt.
-              </p>
+              <span className="text-slate-400">E-Mail:</span>
+              <div className="bg-slate-800 px-3 py-2 rounded mt-1 text-white font-mono">
+                {userData?.email}
+              </div>
+            </div>
+            <div>
+              <span className="text-slate-400">Temporäres Passwort:</span>
+              <div className="bg-slate-800 px-3 py-2 rounded mt-1 text-white font-mono">
+                beta2024temp!
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Temporäres Passwort */}
-        <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold mb-3 text-white">Temporäres Passwort:</h3>
-          <div className="flex items-center gap-2 bg-slate-700 border border-slate-600 p-3 rounded font-mono text-sm">
-            <code className="flex-1 text-white">{password}</code>
-            <button
-              onClick={copyPassword}
-              className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
-            >
-              {passwordCopied ? 'Kopiert!' : 'Kopieren'}
-            </button>
-          </div>
-          <p className="text-xs text-slate-400 mt-2">
-            Verwenden Sie dieses Passwort für die erste Anmeldung und setzen dann sofort ein eigenes.
+        
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-8">
+          <p className="text-blue-400 text-sm">
+            <strong>Nächster Schritt:</strong> Gehe zur Login-Seite und melde dich mit diesen Daten an. 
+            Du wirst aufgefordert, ein neues Passwort zu setzen.
           </p>
         </div>
-
-        {/* Backup Codes */}
-        <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold mb-3 text-white">Ihre 5 Backup-Codes:</h3>
-          <div className="grid gap-2 mb-4">
-            {codes.map((code, i) => (
-              <div key={i} className="flex items-center justify-between bg-slate-700 border border-slate-600 p-3 rounded">
-                <span className="font-mono text-sm text-white">{i + 1}. {code}</span>
-              </div>
-            ))}
-          </div>
-          
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={copyToClipboard}
-              className="flex-1 px-4 py-2 bg-slate-600 text-white rounded hover:bg-slate-500 transition-colors text-sm"
-            >
-              <Copy className="w-4 h-4 inline mr-2" />
-              {copied ? 'Kopiert!' : 'Codes kopieren'}
-            </button>
-            <button
-              onClick={downloadCodes}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-            >
-              <Download className="w-4 h-4 inline mr-2" />
-              Als Datei speichern
-            </button>
-          </div>
-          
-          <p className="text-xs text-slate-400">
-            Bei Passwort-Verlust können Sie einen dieser Codes verwenden, um ein neues Passwort zu setzen.
-          </p>
-        </div>
-
-        <div className="bg-slate-700/30 border-l-4 border-blue-500 p-4 rounded-r-lg mb-6">
-          <h4 className="font-semibold text-white mb-2">Nächste Schritte:</h4>
-          <ol className="text-sm text-slate-300 space-y-1 list-decimal list-inside">
-            <li>Speichern Sie die Anmeldedaten (Download-Button)</li>
-            <li>Gehen Sie zur App und melden sich mit E-Mail + temporärem Passwort an</li>
-            <li>Setzen Sie sofort ein eigenes, sicheres Passwort</li>
-            <li>Entdecken Sie alle verfügbaren Core-Features</li>
-            <li>KI-Features zeigen "In Entwicklung" - Add-On kommt später</li>
-          </ol>
-        </div>
-
+        
         <button
-          onClick={onComplete}
-          disabled={!downloaded}
-          className={`w-full px-6 py-3 rounded-lg transition-colors ${
-            downloaded
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-slate-600 text-slate-400 cursor-not-allowed'
-          }`}
+          onClick={() => setCurrentStep('login')}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
         >
-          {downloaded ? 'Anmeldedaten gesichert - Zur Core-Version' : 'Bitte zuerst Anmeldedaten speichern'}
+          Zur Login-Seite
         </button>
       </div>
     </div>
   );
+
+  const renderLoginPage = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-xl p-8">
+        <h2 className="text-3xl font-bold text-white text-center mb-8">
+          Beta-Tester Login
+        </h2>
+        
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              E-Mail-Adresse
+            </label>
+            <input
+              type="email"
+              required
+              value={loginData.email}
+              onChange={(e) => setLoginData({...loginData, email: e.target.value})}
+              className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Deine Beta-E-Mail"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Passwort
+            </label>
+            <input
+              type="password"
+              required
+              value={loginData.password}
+              onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+              className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="beta2024temp! oder dein neues Passwort"
+            />
+          </div>
+          
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+          
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+          >
+            {loading ? 'Anmeldung...' : 'Anmelden'}
+          </button>
+        </form>
+        
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => setCurrentStep('landing')}
+            className="text-slate-400 hover:text-white text-sm"
+          >
+            ← Zurück zur Landing Page
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPasswordChangePage = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-xl p-8">
+        <h2 className="text-3xl font-bold text-white text-center mb-4">
+          Neues Passwort setzen
+        </h2>
+        
+        <p className="text-slate-300 text-center mb-8">
+          Hallo {userData?.first_name}! Bitte setze ein neues, sicheres Passwort für dein Beta-Konto.
+        </p>
+        
+        <form onSubmit={handlePasswordChange} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Neues Passwort
+            </label>
+            <input
+              type="password"
+              required
+              value={passwordData.newPassword}
+              onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+              className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Mindestens 6 Zeichen"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Passwort bestätigen
+            </label>
+            <input
+              type="password"
+              required
+              value={passwordData.confirmPassword}
+              onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+              className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Passwort wiederholen"
+            />
+          </div>
+          
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className="bg-green-500/20 border border-green-500/50 text-green-400 px-4 py-3 rounded-lg text-sm">
+              {success}
+            </div>
+          )}
+          
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+          >
+            {loading ? 'Wird gesetzt...' : 'Passwort setzen'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+
+  const renderAppRedirect = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-xl p-8 text-center">
+        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        
+        <h2 className="text-3xl font-bold text-white mb-4">
+          Setup erfolgreich!
+        </h2>
+        
+        <p className="text-slate-300 mb-8">
+          Willkommen in der CoachingSpace Beta! Du wirst nun zur App weitergeleitet.
+        </p>
+        
+        <button
+          onClick={() => {
+            // Hier zur echten App weiterleiten
+            window.location.href = '/app';
+          }}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+        >
+          CoachingSpace Beta starten
+        </button>
+        
+        <div className="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+          <p className="text-blue-400 text-sm">
+            <strong>Deine nächsten Schritte:</strong><br/>
+            1. App erkunden (alle 7 Module)<br/>
+            2. Mindestens 2 Stunden testen<br/>
+            3. Strukturiertes Feedback per E-Mail
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Main render
+  switch (currentStep) {
+    case 'landing':
+      return renderLandingPage();
+    case 'success':
+      return renderSuccessScreen();
+    case 'login':
+      return renderLoginPage();
+    case 'password':
+      return renderPasswordChangePage();
+    case 'app':
+      return renderAppRedirect();
+    default:
+      return renderLandingPage();
+  }
 };
+
+export default BetaLandingPage;

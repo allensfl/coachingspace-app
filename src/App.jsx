@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { AppRoutes } from '@/routes';
 import { GlobalCommand } from '@/components/GlobalCommand';
 import LandingPage from './pages/LandingPage';
+import BetaFeedbackForm from './components/BetaFeedbackForm';
 
 // Deine bestehende App-Logik
 const AppContent = () => {
@@ -18,6 +19,7 @@ const AppContent = () => {
   if (isLoading) {
     const logoUrl = settings?.company?.logoUrl;
     const companyName = settings?.company?.name || 'Coachingspace';
+
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
         {logoUrl ? (
@@ -59,6 +61,9 @@ const AppContent = () => {
         <Routes>
           {/* Landing Page Route */}
           <Route path="/landing" element={<LandingPage />} />
+          
+          {/* Beta Feedback Route */}
+          <Route path="/beta-feedback" element={<BetaFeedbackForm />} />
           
           {/* Alle anderen Routes */}
           <Route path="/*" element={<AppRoutes />} />

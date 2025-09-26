@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Clock, Users, FileText, Calculator, Brain, Settings, CheckCircle, AlertCircle, Play, BookOpen, Target, Zap, Shield, TrendingUp, Calendar, DollarSign, Search, Menu, X, Mail, Sparkles, Lightbulb, BarChart3, Copy, Save, Upload, Folder, Trash2, Edit, Download, Eye } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, Users, FileText, Calculator, Brain, Settings, CheckCircle, AlertCircle, Play, BookOpen, Target, Zap, Shield, TrendingUp, Calendar, DollarSign, Search, Menu, X, Mail, Sparkles, Lightbulb, BarChart3, Copy, Save, Upload, Folder, Trash2, Edit, Download, Eye, MessageSquare } from 'lucide-react';
 
 const DocumentationPage = () => {
   const [activeSection, setActiveSection] = useState('overview');
@@ -28,6 +28,7 @@ const DocumentationPage = () => {
     { id: 'settings', title: 'Einstellungen', icon: Settings },
     { id: 'legal', title: 'Rechtliches & DSGVO', icon: Shield },
     { id: 'business', title: 'Business-Optimierung', icon: TrendingUp },
+    { id: 'betafeedback', title: 'Beta-Feedback geben', icon: MessageSquare }
   ];
 
   // StepGuide Komponente
@@ -130,7 +131,7 @@ const DocumentationPage = () => {
         return (
           <div className="space-y-8">
             <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-white mb-4">Coachingspace - Vollversion</h1>
+              <h1 className="text-4xl font-bold text-white mb-4">CoachingSpace - Vollversion</h1>
               <p className="text-xl text-slate-300 max-w-3xl mx-auto">
                 Professionelles Coaching-Management mit vollständiger Funktionalität - 
                 alle Core-Features sind verfügbar und einsatzbereit
@@ -141,7 +142,7 @@ const DocumentationPage = () => {
               <FeatureCard
                 icon={Users}
                 title="Coachee-Verwaltung"
-                description="Umfassende Verwaltung Ihrer Coaching-Klienten mit Profilen, Kontaktdaten und Historie."
+                description="Umfassende Verwaltung deiner Coaching-Klienten mit Profilen, Kontaktdaten und Historie."
                 highlight={true}
               />
               <FeatureCard
@@ -208,6 +209,7 @@ const DocumentationPage = () => {
                     <li>• Reflexionstagebuch für Coach-Entwicklung</li>
                     <li>• Vereinfachte Settings ohne Branding-Komplexität</li>
                     <li>• DSGVO-konforme Sicherheit</li>
+                    <li>• Beta-Feedback-System für kontinuierliche Verbesserung</li>
                   </ul>
                 </div>
                 <div>
@@ -220,6 +222,107 @@ const DocumentationPage = () => {
                     <li>• Personalisierte KI-Insights</li>
                     <li>• Session-Optimierungsvorschläge</li>
                   </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'betafeedback':
+        return (
+          <div className="space-y-8">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-4">Beta-Feedback geben</h1>
+              <p className="text-xl text-slate-300">Hilf uns dabei, CoachingSpace zu verbessern - dein Feedback ist wertvoll!</p>
+            </div>
+
+            <div className="bg-amber-500/20 border border-amber-500/30 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-amber-300 mb-4">📝 Strukturiertes Feedback-Formular</h3>
+              <p className="text-amber-200 mb-4">
+                Als Beta-Tester hast du Zugang zu unserem detaillierten Feedback-Formular. 
+                Es dauert etwa 15-20 Minuten und hilft uns dabei, die App gezielt zu verbessern.
+              </p>
+              
+              <div className="mb-6">
+                <h4 className="font-semibold text-amber-300 mb-3">Was dich im Formular erwartet:</h4>
+                <ul className="text-amber-200 space-y-2 text-sm">
+                  <li>• <strong>8 strukturierte Bereiche:</strong> Von Onboarding bis Business Value</li>
+                  <li>• <strong>Dein Profil:</strong> Coaching-Erfahrung und aktuelle Tools</li>
+                  <li>• <strong>Feature-Bewertungen:</strong> Detaillierte Bewertung aller Module</li>
+                  <li>• <strong>Technische Aspekte:</strong> Bugs, Performance und Browser-Kompatibilität</li>
+                  <li>• <strong>Business Impact:</strong> Zeitersparnis und Workflow-Verbesserungen</li>
+                  <li>• <strong>Zukunftswünsche:</strong> KI-Features und gewünschte Funktionen</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  onClick={() => window.open('/beta-feedback', '_blank')}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <FileText className="h-5 w-5" />
+                  Beta-Feedback Formular öffnen
+                </button>
+              </div>
+            </div>
+
+            <StepGuide
+              title="So füllst du das Feedback-Formular optimal aus"
+              icon={Target}
+              steps={[
+                {
+                  title: "Vorbereitung (2-3 Minuten)",
+                  description: "Bereite dich kurz vor, um das bestmögliche Feedback zu geben",
+                  details: [
+                    "Überlege dir 2-3 konkrete Probleme, die dir aufgefallen sind",
+                    "Notiere dir 2-3 Verbesserungsvorschläge",
+                    "Denke an besonders positive oder negative Erfahrungen"
+                  ]
+                },
+                {
+                  title: "Formular ausfüllen (15-20 Minuten)",
+                  description: "Gehe strukturiert durch alle 8 Bereiche des Formulars",
+                  details: [
+                    "Sei ehrlich und konkret in deinen Bewertungen",
+                    "Beschreibe Probleme so detailliert wie möglich",
+                    "Nutze die Freitextfelder für zusätzliche Erklärungen"
+                  ]
+                },
+                {
+                  title: "Qualitätskontrolle vor dem Absenden",
+                  description: "Überprüfe dein Feedback auf Vollständigkeit und Qualität",
+                  details: [
+                    "Mindestens 3 konkrete Probleme beschrieben",
+                    "Mindestens 3 Verbesserungsvorschläge gemacht",
+                    "Alle wichtigen Module bewertet"
+                  ]
+                }
+              ]}
+            />
+
+            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-6">
+              <h4 className="font-semibold text-red-400 mb-3">⚠️ Wichtiger Hinweis</h4>
+              <p className="text-red-200">
+                <strong>Oberflächliches Feedback wie "App ist cool" berechtigt NICHT zur kostenlosen Vollversion.</strong> 
+                Wir brauchen detailliertes, konstruktives Feedback mit konkreten Problemen und Verbesserungsvorschlägen, 
+                damit wir CoachingSpace gezielt verbessern können.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-6">
+                <h4 className="font-semibold text-green-400 mb-3">✅ Gutes Feedback-Beispiel</h4>
+                <div className="text-green-200 text-sm">
+                  <p className="mb-2"><strong>Problem:</strong> "Beim Upload von Dokumenten > 5MB bricht der Prozess nach 30 Sekunden ab, ohne Fehlermeldung."</p>
+                  <p><strong>Verbesserung:</strong> "Progress-Bar und bessere Fehlermeldungen beim Upload hinzufügen."</p>
+                </div>
+              </div>
+              <div className="bg-red-900/30 border border-red-500/50 rounded-lg p-6">
+                <h4 className="font-semibold text-red-400 mb-3">❌ Schlechtes Feedback-Beispiel</h4>
+                <div className="text-red-200 text-sm">
+                  <p className="mb-2"><strong>Problem:</strong> "Funktioniert nicht richtig."</p>
+                  <p><strong>Verbesserung:</strong> "App ist cool, so lassen."</p>
+                  <p className="mt-2 text-xs opacity-75">→ Zu unspezifisch, hilft nicht bei der Verbesserung</p>
                 </div>
               </div>
             </div>
@@ -240,7 +343,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Upload-Dialog öffnen",
-                  description: "Starten Sie den Dokumenten-Upload über den 'Hochladen' Button",
+                  description: "Starte den Dokumenten-Upload über den 'Hochladen' Button",
                   details: [
                     "Button 'Hochladen' im Dokumenten-Bereich klicken",
                     "Upload-Dialog mit Drag & Drop Zone öffnet sich",
@@ -249,7 +352,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Dateien auswählen",
-                  description: "Wählen Sie Ihre Dokumente per Drag & Drop oder File-Browser",
+                  description: "Wähle deine Dokumente per Drag & Drop oder File-Browser",
                   details: [
                     "Dateien in die Drag & Drop Zone ziehen",
                     "Oder 'Dateien auswählen' für Browser-Upload",
@@ -258,7 +361,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Kategorisierung und Zuweisung",
-                  description: "Ordnen Sie die Dokumente Kategorien und Coachees zu",
+                  description: "Ordne die Dokumente Kategorien und Coachees zu",
                   details: [
                     "Kategorie auswählen (Pflichtfeld)",
                     "Optional: Coachee-Zuweisung für personalisierte Dokumente",
@@ -267,7 +370,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Upload abschließen",
-                  description: "Finalisieren Sie den Upload-Prozess",
+                  description: "Finalisiere den Upload-Prozess",
                   details: [
                     "'Hochladen' Button klicken",
                     "Erfolgsbestätigung abwarten",
@@ -283,7 +386,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Kategorie-Manager öffnen",
-                  description: "Verwalten Sie Ihre Dokumenten-Kategorien über den Manager",
+                  description: "Verwalte deine Dokumenten-Kategorien über den Manager",
                   details: [
                     "Button 'Kategorien' im Dokumenten-Bereich",
                     "Kategorie-Manager-Dialog öffnet sich",
@@ -292,7 +395,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Neue Kategorie erstellen",
-                  description: "Fügen Sie neue Kategorien für bessere Organisation hinzu",
+                  description: "Füge neue Kategorien für bessere Organisation hinzu",
                   details: [
                     "Kategorie-Namen eingeben (z.B. 'Führungskompetenz')",
                     "Farbe für visuelle Unterscheidung wählen",
@@ -301,7 +404,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Kategorien löschen",
-                  description: "Entfernen Sie nicht mehr benötigte Kategorien",
+                  description: "Entferne nicht mehr benötigte Kategorien",
                   details: [
                     "Trash-Icon neben der Kategorie klicken",
                     "Löschung bestätigen",
@@ -379,12 +482,12 @@ const DocumentationPage = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <TroubleshootingCard
                 issue="Upload schlägt fehl"
-                solution="Prüfen Sie die Dateigröße (max. 10MB) und das Dateiformat. Stellen Sie sicher, dass Sie eine stabile Internetverbindung haben."
+                solution="Prüfe die Dateigröße (max. 10MB) und das Dateiformat. Stelle sicher, dass du eine stabile Internetverbindung hast."
                 type="warning"
               />
               <TroubleshootingCard
                 issue="Kategorie lässt sich nicht löschen"
-                solution="Kategorien mit zugewiesenen Dokumenten können nicht gelöscht werden. Verschieben Sie erst alle Dokumente in andere Kategorien."
+                solution="Kategorien mit zugewiesenen Dokumenten können nicht gelöscht werden. Verschiebe erst alle Dokumente in andere Kategorien."
                 type="info"
               />
             </div>
@@ -405,7 +508,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Honorarsätze definieren",
-                  description: "Legen Sie Ihre verschiedenen Service-Preise fest",
+                  description: "Lege deine verschiedenen Service-Preise fest",
                   details: [
                     "Tab 'Honorarsätze' öffnen",
                     "Neue Honorarsätze mit Namen und Preisen anlegen",
@@ -414,7 +517,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Abonnements einrichten",
-                  description: "Erstellen Sie wiederkehrende Rechnungszyklen für regelmäßige Kunden",
+                  description: "Erstelle wiederkehrende Rechnungszyklen für regelmäßige Kunden",
                   details: [
                     "Tab 'Abonnements' öffnen",
                     "Coachee und Honorarsatz auswählen",
@@ -423,7 +526,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Rechnungen bearbeiten",
-                  description: "Verwalten Sie alle Ihre Rechnungen mit vollständiger Kontrolle",
+                  description: "Verwalte alle deine Rechnungen mit vollständiger Kontrolle",
                   details: [
                     "Tab 'Rechnungen' für Übersicht",
                     "Alle Aktionen verfügbar: Ansehen, Bearbeiten, Download, Löschen",
@@ -531,7 +634,7 @@ const DocumentationPage = () => {
 
             <TroubleshootingCard
               issue="Delete-Button funktioniert nicht"
-              solution="Stellen Sie sicher, dass Sie die Berechtigung haben und das Element nicht in anderen Bereichen verwendet wird. Prüfen Sie die Browser-Konsole für Fehlermeldungen."
+              solution="Stelle sicher, dass du die Berechtigung hast und das Element nicht in anderen Bereichen verwendet wird. Prüfe die Browser-Konsole für Fehlermeldungen."
               type="warning"
             />
           </div>
@@ -551,7 +654,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Persönliche Daten",
-                  description: "Konfigurieren Sie Ihre persönlichen Informationen für korrekte Begrüßung",
+                  description: "Konfiguriere deine persönlichen Informationen für korrekte Begrüßung",
                   details: [
                     "Vorname, Nachname und Titel eingeben",
                     "E-Mail-Adresse für Kontakte",
@@ -560,7 +663,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Firmendaten",
-                  description: "Hinterlegen Sie Ihre Business-Informationen für Rechnungen",
+                  description: "Hinterlege deine Business-Informationen für Rechnungen",
                   details: [
                     "Firmenname und vollständige Adresse",
                     "Telefon, E-Mail und Website",
@@ -633,9 +736,9 @@ const DocumentationPage = () => {
             <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-6">
               <h4 className="font-semibold text-blue-400 mb-3">Warum vereinfacht?</h4>
               <p className="text-blue-200 mb-4">
-                Da Coachingspace als internes lokales Tool verwendet wird, wurde die Komplexität 
-                auf das Wesentliche reduziert. Branding-Features sind nicht nötig, wenn nur Sie 
-                die App verwenden.
+                Da CoachingSpace als internes lokales Tool verwendet wird, wurde die Komplexität 
+                auf das Wesentliche reduziert. Branding-Features sind nicht nötig, wenn nur du 
+                die App verwendest.
               </p>
               <ul className="text-blue-200 space-y-2 text-sm">
                 <li>• <strong>Fokus auf Funktionalität:</strong> Nur Features die wirklich gebraucht werden</li>
@@ -647,7 +750,6 @@ const DocumentationPage = () => {
           </div>
         );
 
-      // Alle anderen cases bleiben gleich...
       case 'quickstart':
         return (
           <div className="space-y-8">
@@ -662,7 +764,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Registration & Login",
-                  description: "Erstellen Sie Ihr Coachingspace-Konto mit sicheren Credentials",
+                  description: "Erstelle dein CoachingSpace-Konto mit sicheren Credentials",
                   details: [
                     "Email und sicheres Passwort wählen",
                     "Email-Bestätigung abschließen",
@@ -671,7 +773,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Einstellungen konfigurieren",
-                  description: "Richten Sie Ihre persönlichen und Business-Daten ein",
+                  description: "Richte deine persönlichen und Business-Daten ein",
                   details: [
                     "Persönliche Daten für korrekte Begrüßung",
                     "Firmendaten für Rechnungen hinterlegen",
@@ -687,7 +789,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Ersten Coachee anlegen",
-                  description: "Erstellen Sie Ihr erstes Coaching-Profil",
+                  description: "Erstelle dein erstes Coaching-Profil",
                   details: [
                     "Navigation: Dashboard → Coachees → Neuer Coachee",
                     "Grunddaten eingeben (Name, Kontakt, Ziele)",
@@ -696,7 +798,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Session planen",
-                  description: "Terminieren Sie Ihre erste Coaching-Session",
+                  description: "Terminiere deine erste Coaching-Session",
                   details: [
                     "Session-Kalender öffnen",
                     "Termin mit Coachee vereinbaren",
@@ -713,7 +815,7 @@ const DocumentationPage = () => {
           <div className="space-y-8">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-white mb-4">Passwort & Sicherheit</h1>
-              <p className="text-xl text-slate-300">Schützen Sie Ihre sensiblen Coaching-Daten optimal</p>
+              <p className="text-xl text-slate-300">Schütze deine sensiblen Coaching-Daten optimal</p>
             </div>
 
             <StepGuide
@@ -722,7 +824,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Passwort-Manager wählen",
-                  description: "Verwenden Sie eine professionelle Lösung für maximale Sicherheit",
+                  description: "Verwende eine professionelle Lösung für maximale Sicherheit",
                   details: [
                     "Empfohlen: 1Password, Bitwarden, Dashlane",
                     "Browser-integrierte Manager vermeiden",
@@ -731,7 +833,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Master-Passwort erstellen",
-                  description: "Ihr wichtigstes Passwort - stark und einprägsam",
+                  description: "Dein wichtigstes Passwort - stark und einprägsam",
                   details: [
                     "Mindestens 16 Zeichen verwenden",
                     "Kombination aus Wörtern + Zahlen + Sonderzeichen",
@@ -757,7 +859,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Grunddaten erfassen",
-                  description: "Erfassen Sie die wichtigsten Informationen zu Ihrem neuen Coachee",
+                  description: "Erfasse die wichtigsten Informationen zu deinem neuen Coachee",
                   details: [
                     "Name, Vorname und bevorzugte Anrede",
                     "Kontaktdaten (Email, Telefon)",
@@ -766,7 +868,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Coaching-Kontext definieren",
-                  description: "Bestimmen Sie den Rahmen für das Coaching-Verhältnis",
+                  description: "Bestimme den Rahmen für das Coaching-Verhältnis",
                   details: [
                     "Coaching-Ziele und gewünschte Outcomes",
                     "Coaching-Art (Business, Life, Executive)",
@@ -780,7 +882,7 @@ const DocumentationPage = () => {
               <FeatureCard
                 icon={Users}
                 title="Coachee-Dashboard"
-                description="Zentrale Übersicht aller Ihrer Coaching-Klienten mit Status und nächsten Terminen."
+                description="Zentrale Übersicht aller deiner Coaching-Klienten mit Status und nächsten Terminen."
               />
               <FeatureCard
                 icon={Calendar}
@@ -801,7 +903,7 @@ const DocumentationPage = () => {
           <div className="space-y-8">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-white mb-4">Session-Management</h1>
-              <p className="text-xl text-slate-300">Strukturierte Planung und Durchführung Ihrer Coaching-Sessions</p>
+              <p className="text-xl text-slate-300">Strukturierte Planung und Durchführung deiner Coaching-Sessions</p>
             </div>
 
             <StepGuide
@@ -810,7 +912,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Termin vereinbaren",
-                  description: "Planen Sie strukturiert Ihre Coaching-Termine",
+                  description: "Plane strukturiert deine Coaching-Termine",
                   details: [
                     "Kalender-Integration für Terminübersicht",
                     "Coachee-spezifische Verfügbarkeiten berücksichtigen",
@@ -819,7 +921,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Session durchführen",
-                  description: "Beginnen Sie strukturiert Ihre Coaching-Session",
+                  description: "Beginne strukturiert deine Coaching-Session",
                   details: [
                     "Session im System als 'aktiv' markieren",
                     "Notizen-Bereich vorbereiten",
@@ -868,7 +970,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Template auswählen",
-                  description: "Nutzen Sie passende Vorlagen für strukturierte Notizen",
+                  description: "Nutze passende Vorlagen für strukturierte Notizen",
                   details: [
                     "Session-Typ entsprechendes Template wählen",
                     "Individuelle Anpassungen vornehmen",
@@ -877,7 +979,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Echtzeitnotizen erfassen",
-                  description: "Dokumentieren Sie wichtige Inhalte direkt während des Gesprächs",
+                  description: "Dokumentiere wichtige Inhalte direkt während des Gesprächs",
                   details: [
                     "Schlüsselmomente und Wendepunkte festhalten",
                     "Wichtige Zitate und Aussagen des Coachee notieren",
@@ -921,7 +1023,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Reflexions-Routine etablieren",
-                  description: "Entwickeln Sie eine regelmäßige Praxis der Selbstreflexion",
+                  description: "Entwickle eine regelmäßige Praxis der Selbstreflexion",
                   details: [
                     "Feste Zeiten für Reflexion einplanen",
                     "Ruhige Umgebung für ungestörte Reflexion schaffen",
@@ -930,7 +1032,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Strukturierte Reflexion",
-                  description: "Nutzen Sie bewährte Reflexions-Frameworks für tiefere Einsichten",
+                  description: "Nutze bewährte Reflexions-Frameworks für tiefere Einsichten",
                   details: [
                     "Was lief heute besonders gut in meinen Sessions?",
                     "Welche Herausforderungen bin ich begegnet?",
@@ -949,17 +1051,17 @@ const DocumentationPage = () => {
               <FeatureCard
                 icon={Calendar}
                 title="Routine-Tracking"
-                description="Verfolgen Sie Ihre Reflexions-Gewohnheiten und Entwicklungsfortschritte."
+                description="Verfolge deine Reflexions-Gewohnheiten und Entwicklungsfortschritte."
               />
               <FeatureCard
                 icon={Search}
                 title="Einsichten-Suche"
-                description="Suchen Sie nach Mustern und Entwicklungen in Ihren Reflexionen."
+                description="Suche nach Mustern und Entwicklungen in deinen Reflexionen."
               />
               <FeatureCard
                 icon={TrendingUp}
                 title="Fortschritts-Analyse"
-                description="Visualisieren Sie Ihre persönliche Entwicklung über Zeit."
+                description="Visualisiere deine persönliche Entwicklung über Zeit."
               />
             </div>
           </div>
@@ -974,7 +1076,7 @@ const DocumentationPage = () => {
                 Premium Add-On in Entwicklung
               </span>
               <p className="text-xl text-slate-300 max-w-3xl mx-auto">
-                Revolutionäre KI-Unterstützung für Ihr Coaching wird als Premium-Add-On verfügbar
+                Revolutionäre KI-Unterstützung für dein Coaching wird als Premium-Add-On verfügbar
               </p>
             </div>
 
@@ -1044,7 +1146,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Spezifisch - Was genau soll erreicht werden?",
-                  description: "Helfen Sie dem Coachee bei der präzisen Definition des Ziels",
+                  description: "Hilf dem Coachee bei der präzisen Definition des Ziels",
                   details: [
                     "Konkrete Beschreibung des gewünschten Ergebnisses",
                     "Vermeidung vager oder allgemeiner Formulierungen",
@@ -1053,7 +1155,7 @@ const DocumentationPage = () => {
                 },
                 {
                   title: "Messbar - Wie kann der Fortschritt gemessen werden?",
-                  description: "Definieren Sie klare Erfolgskriterien und Metriken",
+                  description: "Definiere klare Erfolgskriterien und Metriken",
                   details: [
                     "Quantitative oder qualitative Messgrößen festlegen",
                     "Zwischenziele für Fortschrittsmessung definieren",
@@ -1070,7 +1172,7 @@ const DocumentationPage = () => {
           <div className="space-y-8">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-white mb-4">Rechtliches & DSGVO</h1>
-              <p className="text-xl text-slate-300">Vollständige Compliance für Ihr Coaching-Business</p>
+              <p className="text-xl text-slate-300">Vollständige Compliance für dein Coaching-Business</p>
             </div>
 
             <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-6">
@@ -1079,7 +1181,7 @@ const DocumentationPage = () => {
                 <h3 className="text-xl font-semibold text-white">DSGVO-Konformität gewährleistet</h3>
               </div>
               <p className="text-green-200 mb-4">
-                Coachingspace wurde von Grund auf DSGVO-konform entwickelt und erfüllt alle 
+                CoachingSpace wurde von Grund auf DSGVO-konform entwickelt und erfüllt alle 
                 Anforderungen für den professionellen Umgang mit sensiblen Coaching-Daten.
               </p>
             </div>
@@ -1090,7 +1192,7 @@ const DocumentationPage = () => {
               steps={[
                 {
                   title: "Einverständniserklärungen einholen",
-                  description: "Dokumentieren Sie die Zustimmung Ihrer Coachees zur Datenverarbeitung",
+                  description: "Dokumentiere die Zustimmung deiner Coachees zur Datenverarbeitung",
                   details: [
                     "Explizite Einwilligung zur Datenspeicherung",
                     "Transparente Information über Datenverwendung",
@@ -1114,12 +1216,12 @@ const DocumentationPage = () => {
               <FeatureCard
                 icon={TrendingUp}
                 title="Business-Analytics"
-                description="Detaillierte Analyse Ihrer Coaching-Performance und Umsatzentwicklung."
+                description="Detaillierte Analyse deiner Coaching-Performance und Umsatzentwicklung."
               />
               <FeatureCard
                 icon={DollarSign}
                 title="Preisoptimierung"
-                description="Strategien für optimale Preisgestaltung Ihrer Coaching-Services."
+                description="Strategien für optimale Preisgestaltung deiner Coaching-Services."
               />
               <FeatureCard
                 icon={Users}
@@ -1134,7 +1236,7 @@ const DocumentationPage = () => {
         return (
           <div className="text-center text-white">
             <h2 className="text-2xl font-bold mb-4">Sektion auswählen</h2>
-            <p className="text-slate-300">Wählen Sie eine Sektion aus dem Menü links.</p>
+            <p className="text-slate-300">Wähle eine Sektion aus dem Menü links.</p>
           </div>
         );
     }
@@ -1217,7 +1319,7 @@ const DocumentationPage = () => {
             <button onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5 text-slate-400" />
             </button>
-            <h1 className="text-lg font-semibold text-white">Coachingspace Docs</h1>
+            <h1 className="text-lg font-semibold text-white">CoachingSpace Docs</h1>
           </div>
         </div>
 
