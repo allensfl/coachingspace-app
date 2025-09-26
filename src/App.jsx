@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { AppStateProvider, useAppStateContext } from '@/context/AppStateContext';
 import { ThemeProvider } from '@/hooks/use-theme';
@@ -16,14 +16,13 @@ const AppContent = () => {
   const { isLoading, isCommandOpen, coachees, sessions, invoices, generalDocuments, sessionNotes, recurringInvoices, activePackages, journalEntries, settings } = state;
   const { setCommandOpen, getAllCoacheeDocuments } = actions;
   const location = useLocation();
-
+  
   // Floating Button nur anzeigen wenn nicht auf Landing Page oder Beta-Feedback Seite
-  const showFloatingButton = !location.pathname.includes('/landing') && !location.pathname.includes('/beta-feedback');
+  const showFloatingButton = !location.pathname.includes('/landing') && !location.pathname.includes('/beta-feedback') && location.pathname !== '/';
 
   if (isLoading) {
     const logoUrl = settings?.company?.logoUrl;
     const companyName = settings?.company?.name || 'Coachingspace';
-
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
         {logoUrl ? (
@@ -63,18 +62,21 @@ const AppContent = () => {
       />
       <div className="min-h-screen bg-background">
         <Routes>
+          {/* Root Route zur Landing Page */}
+          <Route path="/" element={<LandingPage />} />
+          
           {/* Landing Page Route */}
           <Route path="/landing" element={<LandingPage />} />
           
           {/* Beta Feedback Route */}
           <Route path="/beta-feedback" element={<BetaFeedbackForm />} />
           
-          {/* Alle anderen Routes */}
-          <Route path="/*" element={<AppRoutes />} />
+          {/* App Routes mit spezifischerem Pfad */}
+          <Route path="/app/*" element={<AppRoutes />} />
         </Routes>
         <Toaster />
       </div>
-
+      
       {/* Beta-Feedback Floating Button */}
       {showFloatingButton && (
         <div className="fixed bottom-6 right-6 z-50">
