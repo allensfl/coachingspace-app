@@ -168,7 +168,7 @@ const Layout = () => {
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
                 <Header setMobileSidebarOpen={setMobileSidebarOpen} />
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-background">
+                <main className="flex-1 overflow-y-auto bg-background">
                     <Suspense fallback={
                         <div className="flex h-full w-full items-center justify-center">
                             <Loader2 className="h-10 w-10 animate-spin" />

@@ -258,7 +258,7 @@ export default function CoacheeDetail() {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      <div className="max-w-7xl mx-auto p-6">
+      <div className=" p-6">
         <div className="mb-6 flex justify-between items-center">
           <Button 
             variant="outline" 

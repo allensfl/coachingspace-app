@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { CoacheeStatus } from '@/types';
 import { useAppStateContext } from '@/context/AppStateContext';
+import { classes } from '../styles/standardClasses';
 
 const CustomFieldInput = ({ field, value, onChange }) => {
   const commonProps = {
@@ -259,13 +260,13 @@ const NewCoacheeDialog = ({ open, onOpenChange, addCoachee, customFields }) => {
           </div>
           <DialogFooter className="gap-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+              <button type="button" className={classes.btnSecondary}>
                 Abbrechen
-              </Button>
+              </button>
             </DialogClose>
-            <Button type="submit" className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
+            <button type="submit" className={classes.btnPrimary}>
               Coachee speichern
-            </Button>
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -343,26 +344,26 @@ export default function Coachees() {
         customFields={settings.coacheeFields}
       />
 
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className=" space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-400 bg-clip-text text-transparent">
+            <h1 className={classes.h1}>
               Coachees
             </h1>
             <p className="text-slate-400 text-lg mt-2">Verwalte deine Coaching-Klienten</p>
           </div>
-          <Button 
+          <button 
             onClick={() => setIsNewCoacheeDialogOpen(true)} 
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 text-lg"
+            className={classes.btnPrimary}
           >
             <Plus className="mr-2 h-5 w-5" />
             Neuer Coachee
-          </Button>
+          </button>
         </div>
 
         {/* Filter und Suche */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 shadow-2xl">
+        <div className={classes.card}>
           <div className="flex flex-col gap-6">
             {/* Suchfeld */}
             <div className="relative">
@@ -371,7 +372,7 @@ export default function Coachees() {
                 placeholder="Coachees durchsuchen..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 h-12 text-lg"
+                className={classes.searchInput + " pl-12 h-12 text-lg"}
               />
             </div>
 
@@ -383,22 +384,20 @@ export default function Coachees() {
               </div>
               <div className="flex gap-2 flex-wrap">
                 {statusFilters.map(filter => (
-                  <Button
+                  <button
                     key={filter.value}
-                    variant={filterStatus === filter.value ? 'default' : 'outline'}
-                    size="sm"
                     onClick={() => setFilterStatus(filter.value)}
-                    className={`${
+                    className={
                       filterStatus === filter.value 
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white' 
-                        : 'border-slate-600 text-slate-300 hover:bg-slate-700'
-                    } px-4 py-2`}
+                        ? classes.btnFilterActive
+                        : classes.btnFilterInactive
+                    }
                   >
                     {filter.label}
                     <Badge variant="secondary" className="ml-2 bg-slate-600/50 text-slate-200">
                       {filter.count}
                     </Badge>
-                  </Button>
+                  </button>
                 ))}
               </div>
             </div>
@@ -415,13 +414,13 @@ export default function Coachees() {
               transition={{ duration: 0.3, delay: index * 0.1 }}
               className="h-full"
             >
-              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl hover:bg-slate-800/70 transition-all duration-300 group h-full flex flex-col overflow-hidden">
+              <div className={`${classes.profileCard} h-full flex flex-col overflow-hidden`}>
                 {/* Header */}
                 <div className="p-6 border-b border-slate-700/50">
                   <Link to={`/coachees/${coachee.id}`} className="block">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-4">
-                        <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <div className={classes.avatarLarge}>
                           <span className="text-white font-bold text-lg">
                             {coachee.firstName[0]}{coachee.lastName[0]}
                           </span>
@@ -492,9 +491,8 @@ export default function Coachees() {
                   {/* Footer */}
                   <div className="p-6 pt-0">
                     {!coachee.consents?.gdpr ? (
-                      <Button 
-                        size="sm" 
-                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                      <button 
+                        className={`w-full ${classes.btnPrimary}`}
                         onClick={(e) => { 
                           e.preventDefault(); 
                           e.stopPropagation(); 
@@ -503,7 +501,7 @@ export default function Coachees() {
                       >
                         <Send className="mr-2 h-4 w-4" />
                         DSGVO-Einladung senden
-                      </Button>
+                      </button>
                     ) : (
                       <div className="flex justify-between text-xs text-slate-500 pt-3 border-t border-slate-700/50">
                         <span>{coachee.sessions?.length || 0} Sessions</span>
@@ -519,26 +517,26 @@ export default function Coachees() {
 
         {/* Empty State */}
         {filteredCoachees.length === 0 && (
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl">
-            <div className="p-12 text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <div className={classes.card}>
+            <div className={classes.emptyState}>
+              <div className={`${classes.emptyStateIcon} bg-gradient-to-r from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center mx-auto mb-6 w-20 h-20`}>
                 <Users className="h-10 w-10 text-white" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">Keine Coachees gefunden</h3>
-              <p className="text-slate-400 mb-6 text-lg">
+              <p className={`${classes.emptyStateText} mb-6 text-lg`}>
                 {searchTerm || filterStatus !== 'all' 
                   ? 'Versuche andere Suchbegriffe oder Filter.'
                   : 'Füge deinen ersten Coachee hinzu, um zu beginnen.'
                 }
               </p>
               {!searchTerm && filterStatus === 'all' && (
-                <Button 
+                <button 
                   onClick={() => setIsNewCoacheeDialogOpen(true)} 
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 text-lg"
+                  className={classes.btnPrimary}
                 >
                   <Plus className="mr-2 h-5 w-5" />
                   Ersten Coachee hinzufügen
-                </Button>
+                </button>
               )}
             </div>
           </div>

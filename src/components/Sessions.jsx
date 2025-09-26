@@ -3,7 +3,6 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { SessionStatus, InvoiceStatus } from '@/types';
 import { useAppStateContext } from '@/context/AppStateContext';
@@ -13,11 +12,12 @@ import { Archive, LayoutList, CalendarDays, X } from 'lucide-react';
 import NewSessionDialog from './sessions/NewSessionDialog';
 import SessionListView from './sessions/SessionListView';
 import SessionCalendarView from './sessions/SessionCalendarView';
+import { classes } from '../styles/standardClasses';
 
 const Sessions = () => {
   const { state, actions } = useAppStateContext();
   const { sessions, coachees, invoices, activePackages, serviceRates, settings } = state;
-  const { setSessions, setInvoices, deductFromPackage, removeSession } = actions; // ← removeSession hinzugefügt
+  const { setSessions, setInvoices, deductFromPackage, removeSession } = actions;
   
   const [isNewSessionDialogOpen, setIsNewSessionDialogOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -150,7 +150,7 @@ const Sessions = () => {
     toast({
       title: "Rechnung erstellt",
       description: `Ein Rechnungsentwurf für die Session wurde erstellt.`,
-      action: <Button onClick={() => navigate(`/invoices/edit/${newInvoice.id}`)}>Bearbeiten</Button>,
+      action: <button onClick={() => navigate(`/invoices/edit/${newInvoice.id}`)} className={classes.btnPrimary}>Bearbeiten</button>,
       className: 'bg-green-600 text-white'
     });
   };
@@ -170,14 +170,12 @@ const Sessions = () => {
     });
   };
 
-  // ← NEUE handleDeleteSession Funktion hinzugefügt
   const handleDeleteSession = async (sessionId) => {
     const sessionToDelete = sessions.find(s => s.id === sessionId);
     if (!sessionToDelete) return;
     
     try {
       await removeSession(sessionId);
-      // removeSession macht bereits die Toast-Benachrichtigung
     } catch (error) {
       console.error('Fehler beim Löschen der Session:', error);
       toast({
@@ -231,118 +229,148 @@ const Sessions = () => {
   ];
 
   return (
-    <>
-      <Helmet>
-        <title>Sessions - Coachingspace</title>
-        <meta name="description" content="Verwalte deine Coaching-Sessions, plane neue Termine und dokumentiere Fortschritte." />
-      </Helmet>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Sessions</h1>
-            <p className="text-slate-400">Verwalte deine Coaching-Sessions</p>
-            <div className="flex gap-2 mt-2">
-              {dateFilter && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm bg-blue-600 text-white px-2 py-1 rounded-md">
-                    Gefiltert nach: {new Date(dateFilter).toLocaleDateString('de-DE')}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearDateFilter}
-                    className="h-6 w-6 p-0 text-slate-400 hover:text-white"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              {(() => {
-                const urlParams = new URLSearchParams(location.search);
-                const coacheeParam = urlParams.get('coachee');
-                const nameParam = urlParams.get('name');
-                return coacheeParam && (
+    <div className={classes.pageContainer}>
+      <div className={classes.contentWrapper}>
+        <Helmet>
+          <title>Sessions - Coachingspace</title>
+          <meta name="description" content="Verwalte deine Coaching-Sessions, plane neue Termine und dokumentiere Fortschritte." />
+        </Helmet>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className={classes.h1}>Sessions</h1>
+              <p className="text-slate-400">Verwalte deine Coaching-Sessions</p>
+              <div className="flex gap-2 mt-2">
+                {dateFilter && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm bg-green-600 text-white px-2 py-1 rounded-md">
-                      Coachee: {nameParam ? nameParam.replace(/\+/g, ' ') : `ID ${coacheeParam}`}
+                    <span className="text-sm bg-blue-600 text-white px-2 py-1 rounded-md">
+                      Gefiltert nach: {new Date(dateFilter).toLocaleDateString('de-DE')}
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearAllFilters}
-                      className="h-6 w-6 p-0 text-slate-400 hover:text-white"
+                    <button
+                      onClick={clearDateFilter}
+                      className={classes.btnIcon + " h-6 w-6 p-0 text-slate-400 hover:text-white"}
                     >
                       <X className="h-4 w-4" />
-                    </Button>
+                    </button>
                   </div>
-                );
-              })()}
+                )}
+                {(() => {
+                  const urlParams = new URLSearchParams(location.search);
+                  const coacheeParam = urlParams.get('coachee');
+                  const nameParam = urlParams.get('name');
+                  return coacheeParam && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm bg-green-600 text-white px-2 py-1 rounded-md">
+                        Coachee: {nameParam ? nameParam.replace(/\+/g, ' ') : `ID ${coacheeParam}`}
+                      </span>
+                      <button
+                        onClick={clearAllFilters}
+                        className={classes.btnIcon + " h-6 w-6 p-0 text-slate-400 hover:text-white"}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
+            <NewSessionDialog 
+              open={isNewSessionDialogOpen} 
+              onOpenChange={setIsNewSessionDialogOpen} 
+              onSubmit={handleNewSessionSubmit}
+              coachees={coachees}
+              activePackages={activePackages}
+            />
           </div>
-          <NewSessionDialog 
-            open={isNewSessionDialogOpen} 
-            onOpenChange={setIsNewSessionDialogOpen} 
-            onSubmit={handleNewSessionSubmit}
-            coachees={coachees}
-            activePackages={activePackages}
-          />
-        </div>
-        
-        <Tabs defaultValue="active" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="active">Aktive Sessions</TabsTrigger>
-              <TabsTrigger value="archive">Archiv</TabsTrigger>
-          </TabsList>
-          <TabsContent value="active" className="mt-6">
-            <Card className="glass-card">
-              <CardContent className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-4">
-                  <p className="text-sm font-medium text-slate-300">Filter:</p>
-                  <div className="flex gap-2 flex-wrap">{statusFilters.map(filter => (<Button key={filter.value} variant={filterStatus === filter.value ? 'default' : 'outline'} size="sm" onClick={() => setFilterStatus(filter.value)}>{filter.label}</Button>))}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant={viewMode === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('list')}><LayoutList className="h-4 w-4 mr-2" />Liste</Button>
-                  <Button variant={viewMode === 'calendar' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('calendar')}><CalendarDays className="h-4 w-4 mr-2" />Kalender</Button>
-                </div>
-              </CardContent>
-            </Card>
+          
+          <Tabs defaultValue="active" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="active">Aktive Sessions</TabsTrigger>
+                <TabsTrigger value="archive">Archiv</TabsTrigger>
+            </TabsList>
+            <TabsContent value="active" className="mt-6">
+              <Card className={classes.card}>
+                <CardContent className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <p className="text-sm font-medium text-slate-300">Filter:</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {statusFilters.map(filter => (
+                        <button 
+                          key={filter.value} 
+                          onClick={() => setFilterStatus(filter.value)}
+                          className={
+                            filterStatus === filter.value 
+                              ? classes.btnFilterActive 
+                              : classes.btnFilterInactive
+                          }
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setViewMode('list')}
+                      className={
+                        viewMode === 'list' 
+                          ? classes.btnFilterActive 
+                          : classes.btnFilterInactive
+                      }
+                    >
+                      <LayoutList className="h-4 w-4 mr-2" />Liste
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('calendar')}
+                      className={
+                        viewMode === 'calendar' 
+                          ? classes.btnFilterActive 
+                          : classes.btnFilterInactive
+                      }
+                    >
+                      <CalendarDays className="h-4 w-4 mr-2" />Kalender
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {viewMode === 'list' && (
-              <SessionListView 
-                sessions={filteredActiveSessions}
-                onCardClick={handleCardClick}
-                onToggleArchive={handleToggleArchive}
-                onDeleteSession={handleDeleteSession} // ← NEU: Delete-Handler übergeben
-                onStatusChange={handleSessionStatusChange}
-                onCreateInvoice={handleCreateInvoiceFromSession}
-                activePackages={activePackages}
-                onAddToCalendar={generateIcsFile}
-              />
-            )}
-            {viewMode === 'calendar' && (
-              <SessionCalendarView 
-                date={date}
-                setDate={setDate}
-                sessions={activeSessions}
-                onDayClick={handleCardClick}
-              />
-            )}
-          </TabsContent>
-          <TabsContent value="archive" className="mt-6">
-             <SessionListView 
-                sessions={archivedSessions}
-                onCardClick={handleCardClick}
-                onToggleArchive={handleToggleArchive}
-                onDeleteSession={handleDeleteSession} // ← NEU: Auch im Archiv
-                onStatusChange={handleSessionStatusChange}
-                onCreateInvoice={handleCreateInvoiceFromSession}
-                activePackages={activePackages}
-                onAddToCalendar={generateIcsFile}
-              />
-          </TabsContent>
-        </Tabs>
+              {viewMode === 'list' && (
+                <SessionListView 
+                  sessions={filteredActiveSessions}
+                  onCardClick={handleCardClick}
+                  onToggleArchive={handleToggleArchive}
+                  onDeleteSession={handleDeleteSession}
+                  onStatusChange={handleSessionStatusChange}
+                  onCreateInvoice={handleCreateInvoiceFromSession}
+                  activePackages={activePackages}
+                  onAddToCalendar={generateIcsFile}
+                />
+              )}
+              {viewMode === 'calendar' && (
+                <SessionCalendarView 
+                  date={date}
+                  setDate={setDate}
+                  sessions={activeSessions}
+                  onDayClick={handleCardClick}
+                />
+              )}
+            </TabsContent>
+            <TabsContent value="archive" className="mt-6">
+               <SessionListView 
+                  sessions={archivedSessions}
+                  onCardClick={handleCardClick}
+                  onToggleArchive={handleToggleArchive}
+                  onDeleteSession={handleDeleteSession}
+                  onStatusChange={handleSessionStatusChange}
+                  onCreateInvoice={handleCreateInvoiceFromSession}
+                  activePackages={activePackages}
+                  onAddToCalendar={generateIcsFile}
+                />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 
