@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Star, Send, User, Clock, Target, Bug, Lightbulb, ThumbsUp, ThumbsDown, MessageSquare, Mail, Phone, Briefcase, CheckCircle, AlertCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://vmkfpnqvnccpmpsf.supabase.co';
-const supabaseAnonKey = 'DEIN_ANON_KEY_HIER'; // Dein echter Key
+const supabaseUrl = 'https://jlvmkfpjnqvtnqepmpsf.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsdm1rZnBqbnF2dG5xZXBtcHNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5MzE3MjMsImV4cCI6MjA3MzUwNzcyM30.xdltEUoQC5zK6Im6NIJBBmHy2XzR36A9NoarPTwatbQ'; // Dein echter Key
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const BetaFeedbackForm = () => {
@@ -43,6 +43,10 @@ const BetaFeedbackForm = () => {
     workflowImprovement: '',
     willingnessToRecommend: 0,
     pricingFeedback: '',
+    priceWillingness: '',
+    paymentPreference: '',
+    currentToolCosts: '',
+    kiAddOnPrice: '',
     
     // Zukünftige Features
     mostWantedFeature: '',
@@ -451,13 +455,67 @@ const BetaFeedbackForm = () => {
               onChange={(willingnessToRecommend) => setFormData({...formData, willingnessToRecommend})}
               label="Wie wahrscheinlich würdest du CoachingSpace weiterempfehlen?"
             />
-            <TextArea
-              value={formData.pricingFeedback}
-              onChange={(pricingFeedback) => setFormData({...formData, pricingFeedback})}
-              label="Preisgestaltung & Wert"
-              placeholder="Was wäre dir diese Lösung wert? Preisvorstellungen für Core & KI-Add-On?"
-              rows={3}
-            />
+            
+            {/* Neue Pricing-Sektion */}
+            <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-6 mt-6">
+              <h4 className="text-xl font-semibold text-blue-300 mb-4">💰 Preisgestaltung & Zahlungsbereitschaft</h4>
+              
+              <Input
+                value={formData.currentToolCosts}
+                onChange={(currentToolCosts) => setFormData({...formData, currentToolCosts})}
+                label="Was gibst du aktuell für Coaching-Tools aus?"
+                placeholder="z.B. 45€/Monat für Calendly + Notion + Excel..."
+              />
+              
+              <Select
+                value={formData.priceWillingness}
+                onChange={(priceWillingness) => setFormData({...formData, priceWillingness})}
+                label="Was wärst du bereit monatlich für CoachingSpace zu zahlen?"
+                options={[
+                  { value: '19-29', label: '19-29€ pro Monat' },
+                  { value: '29-49', label: '29-49€ pro Monat' },
+                  { value: '49-79', label: '49-79€ pro Monat' },
+                  { value: '79-99', label: '79-99€ pro Monat' },
+                  { value: '99-149', label: '99-149€ pro Monat' },
+                  { value: '149+', label: 'Über 149€ pro Monat' },
+                  { value: 'depends', label: 'Hängt von den Features ab' }
+                ]}
+              />
+              
+              <Select
+                value={formData.paymentPreference}
+                onChange={(paymentPreference) => setFormData({...formData, paymentPreference})}
+                label="Welche Zahlungsweise würdest du bevorzugen?"
+                options={[
+                  { value: 'monthly', label: 'Monatlich (flexibler, keine Bindung)' },
+                  { value: 'yearly', label: 'Jährlich (mit Rabatt, z.B. 2 Monate gratis)' },
+                  { value: 'lifetime', label: 'Einmalzahlung (Lifetime-Lizenz)' },
+                  { value: 'freemium', label: 'Freemium-Modell (Basis gratis, Premium kostenpflichtig)' }
+                ]}
+              />
+              
+              <Select
+                value={formData.kiAddOnPrice}
+                onChange={(kiAddOnPrice) => setFormData({...formData, kiAddOnPrice})}
+                label="Was wäre dir das KI-Add-On zusätzlich wert?"
+                options={[
+                  { value: '0-10', label: '0-10€ pro Monat zusätzlich' },
+                  { value: '10-20', label: '10-20€ pro Monat zusätzlich' },
+                  { value: '20-30', label: '20-30€ pro Monat zusätzlich' },
+                  { value: '30+', label: 'Über 30€ pro Monat zusätzlich' },
+                  { value: 'included', label: 'Sollte im Grundpreis enthalten sein' },
+                  { value: 'not-interested', label: 'Bin nicht an KI-Features interessiert' }
+                ]}
+              />
+              
+              <TextArea
+                value={formData.pricingFeedback}
+                onChange={(pricingFeedback) => setFormData({...formData, pricingFeedback})}
+                label="Zusätzliche Gedanken zur Preisgestaltung"
+                placeholder="Was wäre zu teuer? Welche Zahlungsmodelle findest du fair? Vergleich zu anderen Tools..."
+                rows={3}
+              />
+            </div>
           </div>
         );
 

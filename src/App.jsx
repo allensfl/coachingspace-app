@@ -1,10 +1,10 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { AppStateProvider, useAppStateContext } from '@/context/AppStateContext';
 import { ThemeProvider } from '@/hooks/use-theme';
 import { AuthProvider } from './components/auth/AuthProvider';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import { AppRoutes } from '@/routes';
 import { GlobalCommand } from '@/components/GlobalCommand';
 import LandingPage from './pages/LandingPage';
@@ -15,6 +15,10 @@ const AppContent = () => {
   const { state, actions } = useAppStateContext();
   const { isLoading, isCommandOpen, coachees, sessions, invoices, generalDocuments, sessionNotes, recurringInvoices, activePackages, journalEntries, settings } = state;
   const { setCommandOpen, getAllCoacheeDocuments } = actions;
+  const location = useLocation();
+
+  // Floating Button nur anzeigen wenn nicht auf Landing Page oder Beta-Feedback Seite
+  const showFloatingButton = !location.pathname.includes('/landing') && !location.pathname.includes('/beta-feedback');
 
   if (isLoading) {
     const logoUrl = settings?.company?.logoUrl;
@@ -70,6 +74,22 @@ const AppContent = () => {
         </Routes>
         <Toaster />
       </div>
+
+      {/* Beta-Feedback Floating Button */}
+      {showFloatingButton && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <button
+            onClick={() => window.open('/beta-feedback', '_blank')}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+            title="Beta-Feedback geben - Hilf uns dabei, CoachingSpace zu verbessern!"
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span className="text-sm font-medium whitespace-nowrap">
+              Beta-Feedback
+            </span>
+          </button>
+        </div>
+      )}
     </>
   );
 };
