@@ -217,7 +217,7 @@ export default defineConfig(({ mode }) => ({
 		host: "::",
 		port: 8080,
 		cors: true,
-		historyApiFallback: true, // <- DIESE ZEILE HINZUGEFÜGT für Client-Side-Routing
+		historyApiFallback: true,
 		headers: {
 			'Cross-Origin-Embedder-Policy': 'credentialless',
 		},
@@ -230,13 +230,11 @@ export default defineConfig(({ mode }) => ({
 		},
 	},
 	build: {
+		// Entfernt die external Module für Vercel-Kompatibilität
 		rollupOptions: {
-			external: [
-				'@babel/parser',
-				'@babel/traverse',
-				'@babel/generator',
-				'@babel/types'
-			]
+			output: {
+				manualChunks: undefined
+			}
 		}
 	}
 }));
