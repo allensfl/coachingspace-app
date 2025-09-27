@@ -313,7 +313,7 @@ const DocumentationPage = () => {
               <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-6">
                 <h4 className="font-semibold text-green-400 mb-3">✅ Gutes Feedback-Beispiel</h4>
                 <div className="text-green-200 text-sm">
-                  <p className="mb-2"><strong>Problem:</strong> "Beim Upload von Dokumenten > 5MB bricht der Prozess nach 30 Sekunden ab, ohne Fehlermeldung."</p>
+                  <p className="mb-2"><strong>Problem:</strong> "Beim Upload von Dokumenten über 5MB bricht der Prozess nach 30 Sekunden ab, ohne Fehlermeldung."</p>
                   <p><strong>Verbesserung:</strong> "Progress-Bar und bessere Fehlermeldungen beim Upload hinzufügen."</p>
                 </div>
               </div>

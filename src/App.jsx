@@ -5,31 +5,33 @@ import { AppStateProvider } from '@/context/AppStateContext';
 import Layout from '@/components/Layout';
 
 const Dashboard = lazy(() => import('@/components/Dashboard'));
-// const Coachees = lazy(() => import('@/components/Coachees'));
+const Coachees = lazy(() => import('@/components/Coachees'));
+const CoacheeDetail = lazy(() => import('@/components/CoacheeDetail'));
 const Sessions = lazy(() => import('@/components/Sessions'));
+const SessionPreparation = lazy(() => import('@/components/sessions/SessionPreparation'));
+const Invoices = lazy(() => import('@/components/Invoices'));
+const InvoiceCreator = lazy(() => import('@/components/invoice-creator/InvoiceCreator'));
+const Settings = lazy(() => import('@/components/Settings'));
+const Journal = lazy(() => import('@/components/Journal'));
+const SessionNotes = lazy(() => import('@/components/SessionNotes'));
+const SessionNoteEditor = lazy(() => import('@/components/SessionNoteEditor'));
+const Toolbox = lazy(() => import('@/components/Toolbox'));
+const TaskManager = lazy(() => import('@/components/TaskManager'));
+const Documents = lazy(() => import('@/components/Documents'));
+const Profile = lazy(() => import('@/components/Profile'));
 
-// Minimale Coachees-Ersatz
-const MinimalCoachees = () => {
-  return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold text-white">Coachees</h1>
-      <p className="text-slate-400 mt-4">Coachee-Liste wird geladen...</p>
-      <div className="bg-slate-800 p-6 rounded-lg mt-6">
-        <p className="text-white">Die vollständige Coachees-Komponente wird in Kürze verfügbar sein.</p>
-      </div>
+// Intelligenter Fallback für defekte Komponenten
+const ComponentFallback = ({ componentName }) => (
+  <div className="p-8">
+    <h1 className="text-4xl font-bold text-amber-400">⚠️ {componentName} wird geladen...</h1>
+    <p className="text-slate-400 mt-4">
+      Falls diese Meldung länger sichtbar bleibt, gibt es ein Problem mit der {componentName}-Komponente.
+    </p>
+    <div className="bg-slate-800 p-6 rounded-lg mt-6">
+      <p className="text-white">Die Komponente wird schrittweise repariert.</p>
     </div>
-  );
-};
-
-// Schritt 7: Echte Komponenten hinzufügen
-const TestDashboard = () => {
-  return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold text-green-400">✓ Fallback funktioniert!</h1>
-      <p>Diese Seite existiert noch nicht.</p>
-    </div>
-  );
-};
+  </div>
+);
 
 const AppContent = () => {
   return (
@@ -42,9 +44,23 @@ const AppContent = () => {
         } />
         <Route path="" element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path="coachees" element={<MinimalCoachees />} />
+          <Route path="coachees" element={<Coachees />} />
+          <Route path="coachees/:id" element={<CoacheeDetail />} />
           <Route path="sessions" element={<Sessions />} />
-          <Route path="*" element={<TestDashboard />} />
+          <Route path="sessions/:sessionId/prepare" element={<SessionPreparation />} />
+          <Route path="invoices" element={<Invoices />} />
+          <Route path="invoices/new" element={<InvoiceCreator />} />
+          <Route path="invoices/edit/:id" element={<InvoiceCreator />} />
+          <Route path="documents" element={<Documents />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="journal" element={<Journal />} />
+          <Route path="session-notes" element={<SessionNotes />} />
+          <Route path="session-notes/new" element={<SessionNoteEditor isNew />} />
+          <Route path="session-notes/:id" element={<SessionNoteEditor />} />
+          <Route path="toolbox" element={<Toolbox />} />
+          <Route path="tasks" element={<TaskManager />} />
+          <Route path="*" element={<ComponentFallback componentName="Unbekannte Seite" />} />
         </Route>
       </Routes>
     </div>
