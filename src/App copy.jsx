@@ -1,26 +1,23 @@
-// App.jsx - Korrigierte Version
 import React from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { AppStateProvider, useAppStateContext } from '@/context/AppStateContext';
-import { AuthProvider } from '@/components/auth/AuthProvider';
 import { ThemeProvider } from '@/hooks/use-theme';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import { AppRoutes } from '@/routes';
 import { GlobalCommand } from '@/components/GlobalCommand';
+import LandingPage from './pages/LandingPage';
+import BetaFeedbackForm from './components/BetaFeedbackForm';
 
-// NEUE separate AuthenticatedApp Komponente
-const AuthenticatedApp = () => {
-  return (
-    <AppStateProvider>
-      <AppContent />
-    </AppStateProvider>
-  );
-};
-
+// App-Logik ohne AuthProvider
 const AppContent = () => {
   const { state, actions } = useAppStateContext();
   const { isLoading, isCommandOpen, coachees, sessions, invoices, generalDocuments, sessionNotes, recurringInvoices, activePackages, journalEntries, settings } = state;
   const { setCommandOpen, getAllCoacheeDocuments } = actions;
+  const location = useLocation();
+  
+  // Floating Button nur anzeigen wenn nicht auf Landing Page oder Beta-Feedback Seite
+  const showFloatingButton = !location.pathname.includes('/landing') && !location.pathname.includes('/beta-feedback');
 
   if (isLoading) {
     const logoUrl = settings?.company?.logoUrl;
@@ -63,19 +60,44 @@ const AppContent = () => {
         journalEntries={journalEntries || []}
       />
       <div className="min-h-screen bg-background">
-        <AppRoutes />
+        <Routes>
+          {/* Direkt zur App - KEIN AuthProvider mehr */}
+          <Route path="/*" element={<AppRoutes />} />
+          
+          {/* Landing Page über spezielle Route */}
+          <Route path="/landing" element={<LandingPage />} />
+          
+          {/* Beta Feedback Route */}
+          <Route path="/beta-feedback" element={<BetaFeedbackForm />} />
+        </Routes>
         <Toaster />
       </div>
+      
+      {/* Beta-Feedback Button */}
+      {showFloatingButton && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <button
+            onClick={() => window.open('/beta-feedback', '_blank')}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+            title="Beta-Feedback geben"
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span className="text-sm font-medium whitespace-nowrap">
+              Beta-Feedback
+            </span>
+          </button>
+        </div>
+      )}
     </>
   );
 };
 
-// KORRIGIERTE App-Struktur
+// Haupt-App OHNE AuthProvider
 const App = () => (
   <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
-    <AuthProvider>
-      <AuthenticatedApp />
-    </AuthProvider>
+    <AppStateProvider>
+      <AppContent />
+    </AppStateProvider>
   </ThemeProvider>
 );
 
