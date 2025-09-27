@@ -19,19 +19,7 @@ const Toolbox = lazy(() => import('@/components/Toolbox'));
 const TaskManager = lazy(() => import('@/components/TaskManager'));
 const Documents = lazy(() => import('@/components/Documents'));
 const Profile = lazy(() => import('@/components/Profile'));
-
-// Intelligenter Fallback für defekte Komponenten
-const ComponentFallback = ({ componentName }) => (
-  <div className="p-8">
-    <h1 className="text-4xl font-bold text-amber-400">⚠️ {componentName} wird geladen...</h1>
-    <p className="text-slate-400 mt-4">
-      Falls diese Meldung länger sichtbar bleibt, gibt es ein Problem mit der {componentName}-Komponente.
-    </p>
-    <div className="bg-slate-800 p-6 rounded-lg mt-6">
-      <p className="text-white">Die Komponente wird schrittweise repariert.</p>
-    </div>
-  </div>
-);
+const DocumentationPage = lazy(() => import('@/components/DocumentationPage'));
 
 const AppContent = () => {
   return (
@@ -60,21 +48,20 @@ const AppContent = () => {
           <Route path="session-notes/:id" element={<SessionNoteEditor />} />
           <Route path="toolbox" element={<Toolbox />} />
           <Route path="tasks" element={<TaskManager />} />
-          <Route path="*" element={<ComponentFallback componentName="Unbekannte Seite" />} />
+          <Route path="documentation" element={<DocumentationPage />} />
+          <Route path="*" element={<DocumentationPage />} />
         </Route>
       </Routes>
     </div>
   );
 };
 
-const App = () => {
-  return (
-    <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
-      <AppStateProvider>
-        <AppContent />
-      </AppStateProvider>
-    </ThemeProvider>
-  );
-};
+const App = () => (
+  <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
+    <AppStateProvider>
+      <AppContent />
+    </AppStateProvider>
+  </ThemeProvider>
+);
 
 export default App;
