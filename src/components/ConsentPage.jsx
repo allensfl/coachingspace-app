@@ -179,36 +179,45 @@ const ConsentPage = () => {
               <p className="text-slate-400">Für das Coaching mit {coachName}</p>
             </CardHeader>
             <CardContent className="space-y-6 text-slate-300">
-              {hasConsented ? (
-                <div className="text-center py-8">
-                  <CheckCircle className="mx-auto h-16 w-16 text-green-400 mb-4" />
-                  <h3 className="text-xl font-bold text-white mb-2">Vielen Dank!</h3>
-                  <p className="mb-4">Ihre Einwilligung wurde bereits erteilt und ist gespeichert.</p>
-                  <p className="text-slate-400 mb-6">Falls Sie die Datenschutzerklärung nochmals als PDF benötigen:</p>
-                  <Button onClick={handleDownloadPdf} variant="outline" disabled={isProcessing}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Als PDF herunterladen
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <p>Sehr geehrte/r <span className="font-bold text-white">{coacheeName}</span>,</p>
-                  <p>
-                    bitte lesen Sie die nachfolgende Datenschutzerklärung sorgfältig durch und erteilen Sie anschließend Ihre Zustimmung zur Verarbeitung Ihrer Daten.
-                  </p>
-                  
-                  <div className="mt-6 p-6 bg-slate-900/70 rounded-lg max-h-96 overflow-y-auto border border-slate-700">
-                    <div ref={privacyPolicyRef}>
-                      <PrivacyPolicyContent coacheeName={coacheeName} coachName={coachName} />
-                    </div>
-                  </div>
+  {hasConsented ? (
+    <>
+      <div className="text-center py-8">
+        <CheckCircle className="mx-auto h-16 w-16 text-green-400 mb-4" />
+        <h3 className="text-xl font-bold text-white mb-2">Vielen Dank!</h3>
+        <p className="mb-4">Ihre Einwilligung wurde bereits erteilt und ist gespeichert.</p>
+        <p className="text-slate-400 mb-6">Falls Sie die Datenschutzerklärung nochmals als PDF benötigen:</p>
+        <Button onClick={handleDownloadPdf} variant="outline" disabled={isProcessing}>
+          {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+          Als PDF herunterladen
+        </Button>
+      </div>
+      
+      {/* Privacy Policy hidden but in DOM for PDF generation */}
+      <div style={{ position: 'absolute', left: '-9999px', width: '800px' }}>
+        <div ref={privacyPolicyRef}>
+          <PrivacyPolicyContent coacheeName={coacheeName} coachName={coachName} />
+        </div>
+      </div>
+    </>
+  ) : (
+    <>
+      <p>Sehr geehrte/r <span className="font-bold text-white">{coacheeName}</span>,</p>
+      <p>
+        bitte lesen Sie die nachfolgende Datenschutzerklärung sorgfältig durch und erteilen Sie anschließend Ihre Zustimmung zur Verarbeitung Ihrer Daten.
+      </p>
+      
+      <div className="mt-6 p-6 bg-slate-900/70 rounded-lg max-h-96 overflow-y-auto border border-slate-700">
+        <div ref={privacyPolicyRef}>
+          <PrivacyPolicyContent coacheeName={coacheeName} coachName={coachName} />
+        </div>
+      </div>
 
-                  <p className="pt-4">
-                    Sie können diese Einwilligung jederzeit widerrufen.
-                  </p>
-                </>
-              )}
-            </CardContent>
+      <p className="pt-4">
+        Sie können diese Einwilligung jederzeit widerrufen.
+      </p>
+    </>
+  )}
+</CardContent>
             {!hasConsented && (
               <CardFooter className="flex flex-col md:flex-row items-center justify-center gap-4">
                  <Button onClick={handleDownloadPdf} variant="outline" className="w-full md:w-auto" disabled={isProcessing}>
