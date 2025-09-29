@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/supabaseConfig';
 import { useNavigate } from 'react-router-dom';
+import { classes } from '../styles/standardClasses';
 import { useAppStateContext } from '@/context/AppStateContext';
 import {
   Users, Calendar, FileText, PackagePlus, Target, Plus, 
@@ -20,23 +21,6 @@ const toast = {
   success: (message) => alert(`✅ ${message}`),
   error: (message) => alert(`❌ ${message}`)
 };
-
-// Statistik-Card Komponente (DUNKLES DESIGN)
-const StatCard = ({ title, value, icon, colorClass = "text-blue-400" }) => (
-  <Card className="glass-card">
-    <CardContent className="p-6">
-      <div className="flex items-center space-x-4">
-        <div className={`p-3 rounded-lg bg-slate-800/50 ${colorClass}`}>
-          {icon}
-        </div>
-        <div>
-          <p className="text-slate-400 text-sm font-medium">{title}</p>
-          <p className="text-2xl font-bold text-slate-200">{value}</p>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -78,12 +62,6 @@ const Dashboard = () => {
     setTodaySessions(todaysSessionsFiltered);
     
     loadTasksFromSupabase();
-    
-    // Debug: Check all localStorage items for settings
-    console.log('All localStorage keys:', Object.keys(localStorage));
-    console.log('localStorage settings:', localStorage.getItem('settings'));
-    console.log('localStorage appState:', localStorage.getItem('appState'));
-    console.log('localStorage coachingSettings:', localStorage.getItem('coachingSettings'));
   }, []);
 
   useEffect(() => {
@@ -95,11 +73,8 @@ const Dashboard = () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) {
-        console.log('No authenticated user');
         return;
       }
-
-      console.log('Loading tasks for user:', userData.user.id);
 
       const { data: tasks, error } = await supabase
         .from('tasks')
@@ -112,15 +87,12 @@ const Dashboard = () => {
         return;
       }
 
-      console.log('Raw tasks from Supabase:', tasks);
-
       // Separate tasks into personal tasks and coachee deadlines
       const personalTasksList = [];
       const coacheeDeadlinesList = [];
 
       tasks.forEach(task => {
         if (task.coachee_id) {
-          // Task mit coachee_id ist eine Coachee-Deadline
           coacheeDeadlinesList.push({
             id: task.id,
             title: task.title,
@@ -131,7 +103,6 @@ const Dashboard = () => {
             createdAt: task.created_at
           });
         } else {
-          // Task ohne coachee_id ist eine Personal Task
           personalTasksList.push({
             id: task.id,
             title: task.title,
@@ -141,9 +112,6 @@ const Dashboard = () => {
           });
         }
       });
-
-      console.log('Personal Tasks:', personalTasksList.length);
-      console.log('Coachee Deadlines:', coacheeDeadlinesList.length);
 
       setPersonalTasks(personalTasksList);
       setCoacheeDeadlines(coacheeDeadlinesList);
@@ -181,10 +149,6 @@ const Dashboard = () => {
     const personalData = settings.personal || {};
     const firstName = personalData.firstName || personalData.name || 'Coach';
     
-    console.log('AppStateContext settings:', settings);
-    console.log('Personal data:', personalData);
-    console.log('Found firstName from AppState:', firstName);
-    
     let greeting = '';
     if (hour < 12) {
       greeting = 'Guten Morgen';
@@ -214,7 +178,7 @@ const Dashboard = () => {
           user_id: userData.user.id,
           title: newPersonalTask,
           completed: false,
-          coachee_id: null // Personal Task
+          coachee_id: null
         })
         .select()
         .single();
@@ -293,8 +257,6 @@ const Dashboard = () => {
 
   // Coachee Deadline Functions
   const handleDeadlineSave = async () => {
-    console.log('Saving deadline with coacheeId:', deadlineForm.coacheeId, 'type:', typeof deadlineForm.coacheeId);
-    
     if (!deadlineForm.title || !deadlineForm.date || !deadlineForm.coacheeId) {
       toast.error('Bitte füllen Sie alle Pflichtfelder aus');
       return;
@@ -308,7 +270,6 @@ const Dashboard = () => {
       }
 
       if (editingDeadline) {
-        // Edit existing deadline
         const { error } = await supabase
           .from('tasks')
           .update({
@@ -341,9 +302,6 @@ const Dashboard = () => {
 
         toast.success('Deadline aktualisiert');
       } else {
-        // Create new deadline
-        console.log('Inserting task with coachee_id:', deadlineForm.coacheeId);
-        
         const { data, error } = await supabase
           .from('tasks')
           .insert({
@@ -363,8 +321,6 @@ const Dashboard = () => {
           return;
         }
 
-        console.log('Successfully inserted task:', data);
-
         const newDeadline = {
           id: data.id,
           title: data.title,
@@ -379,7 +335,6 @@ const Dashboard = () => {
         toast.success('Die neue Deadline wurde erfolgreich hinzugefügt und gespeichert');
       }
 
-      // Reset form
       setDeadlineForm({ title: '', description: '', date: '', coacheeId: '' });
       setEditingDeadline(null);
       setShowDeadlineDialog(false);
@@ -404,8 +359,6 @@ const Dashboard = () => {
           toast.error('Fehler beim Aktualisieren der Deadline');
           return;
         }
-
-        console.log('Successfully updated task in Supabase');
       }
 
       setCoacheeDeadlines(prev => 
@@ -431,7 +384,6 @@ const Dashboard = () => {
         return;
       }
 
-      // Task an CoacheePortal senden
       const { data, error } = await supabase
         .from('pushed_tasks')
         .insert({
@@ -450,10 +402,7 @@ const Dashboard = () => {
         toast.error('Fehler beim Senden an Portal');
         return;
       }
-
-      console.log('Successfully pushed task to portal:', data);
       
-      // Coachee-Name für Toast-Nachricht finden
       const coachee = coachees.find(c => c.id == deadline.coacheeId);
       const coacheeName = coachee ? `${coachee.firstName} ${coachee.lastName}` : 'Coachee';
       
@@ -479,8 +428,6 @@ const Dashboard = () => {
           toast.error('Fehler beim Löschen der Deadline');
           return;
         }
-
-        console.log('Successfully deleted task from Supabase');
       }
 
       setCoacheeDeadlines(prev => prev.filter(deadline => deadline.id !== deadlineId));
@@ -521,19 +468,19 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-      <div className="space-y-6 p-6">
-        {/* Header - PERSONALISIERTE BEGRÜSSUNG */}
+    <div className={classes.pageContainer}>
+      <div className={classes.contentWrapper}>
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
-            {getGreeting()} 👋
+          <h1 className="text-4xl font-bold text-white mb-2">
+            {getGreeting()}
           </h1>
           <p className="text-slate-400 text-lg">Hier ist deine Übersicht für heute.</p>
         </div>
 
-        {/* Stats Cards - NUR 2 CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="glass-card cursor-pointer hover:bg-slate-700/30 transition-colors" onClick={() => navigate('/coachees')}>
+        {/* Stats Cards - Now 4 separate cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className={classes.card + " cursor-pointer hover:bg-slate-700/30 transition-colors"} onClick={() => navigate('/coachees')}>
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
                 <div className="p-3 rounded-lg bg-slate-800/50 text-blue-400">
@@ -546,7 +493,8 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-          <Card className="glass-card cursor-pointer hover:bg-slate-700/30 transition-colors" onClick={() => navigate('/sessions?filter=today')}>
+          
+          <Card className={classes.card + " cursor-pointer hover:bg-slate-700/30 transition-colors"} onClick={() => navigate('/sessions?filter=today')}>
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
                 <div className="p-3 rounded-lg bg-slate-800/50 text-green-400">
@@ -559,12 +507,40 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card className={classes.card}>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 rounded-lg bg-slate-800/50 text-purple-400">
+                  <CheckCircle className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm font-medium">Erledigte Tasks</p>
+                  <p className="text-2xl font-bold text-slate-200">{stats.completedTasks}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={classes.card}>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 rounded-lg bg-slate-800/50 text-orange-400">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm font-medium">Kommende Deadlines</p>
+                  <p className="text-2xl font-bold text-slate-200">{stats.upcomingDeadlines}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Tasks Section - ZURÜCK ZU ZWEI SPALTEN */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tasks Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Personal Tasks */}
-          <Card className="glass-card">
+          <Card className={classes.card}>
             <CardHeader>
               <CardTitle className="flex items-center text-slate-200">
                 <Target className="h-5 w-5 mr-2 text-blue-400" />
@@ -580,13 +556,13 @@ const Dashboard = () => {
                   onKeyPress={(e) => e.key === 'Enter' && handlePersonalTaskAdd()}
                   className="glass-input"
                 />
-                <Button 
+                <button 
                   onClick={handlePersonalTaskAdd}
                   disabled={!newPersonalTask.trim()}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className={classes.btnPrimary}
                 >
                   <Plus className="h-4 w-4" />
-                </Button>
+                </button>
               </div>
 
               <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -624,7 +600,7 @@ const Dashboard = () => {
           </Card>
 
           {/* Coachee Deadlines */}
-          <Card className="glass-card">
+          <Card className={classes.card}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -647,12 +623,12 @@ const Dashboard = () => {
                 </div>
                 <Dialog open={showDeadlineDialog} onOpenChange={setShowDeadlineDialog}>
                   <DialogTrigger asChild>
-                    <Button className="bg-blue-600 hover:bg-blue-700">
+                    <button className={classes.btnPrimary}>
                       <Plus className="h-4 w-4 mr-2" />
                       Deadline
-                    </Button>
+                    </button>
                   </DialogTrigger>
-                  <DialogContent className="glass-card border-slate-700">
+                  <DialogContent className={classes.card + " border-slate-700"}>
                     <DialogHeader>
                       <DialogTitle className="text-slate-200">
                         {editingDeadline ? 'Deadline bearbeiten' : 'Neue Deadline erstellen'}
@@ -708,13 +684,13 @@ const Dashboard = () => {
                         />
                       </div>
                       <div className="flex space-x-3 pt-4">
-                        <Button
+                        <button
                           onClick={handleDeadlineSave}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          className={`flex-1 ${classes.btnPrimary}`}
                           disabled={!deadlineForm.title || !deadlineForm.date || !deadlineForm.coacheeId}
                         >
                           {editingDeadline ? 'Aktualisieren' : 'Erstellen'}
-                        </Button>
+                        </button>
                         <Button
                           variant="outline"
                           onClick={() => {
@@ -794,7 +770,7 @@ const Dashboard = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handlePushToPortal(deadline)}
-                              className="text-purple-400 border-purple-400 hover:bg-purple-400/10"
+                              className={classes.btnIcon}
                               title="An Coachee-Portal senden"
                             >
                               <Send className="h-4 w-4" />
@@ -803,7 +779,7 @@ const Dashboard = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handleDeadlineComplete(deadline.id)}
-                              className="text-green-400 border-green-400 hover:bg-green-400/10"
+                              className={classes.btnIconGreen}
                               disabled={deadline.completed}
                             >
                               <Check className="h-4 w-4" />
@@ -821,7 +797,7 @@ const Dashboard = () => {
                                 });
                                 setShowDeadlineDialog(true);
                               }}
-                              className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
+                              className={classes.btnIconBlue}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -829,7 +805,7 @@ const Dashboard = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handleDeadlineDelete(deadline.id)}
-                              className="text-red-400 border-red-400 hover:bg-red-400/10"
+                              className={classes.btnIconRed}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -842,13 +818,10 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-
-          {/* Heutige Sessions - ENTFERNT, nur Statistik bleibt */}
-
         </div>
 
-        {/* Quick Actions - 8 BUTTONS IN 2 REIHEN */}
-        <Card className="glass-card">
+        {/* Quick Actions */}
+        <Card className={classes.card}>
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-slate-200 flex items-center">
               <Plus className="h-5 w-5 mr-2 text-blue-400" />
@@ -858,28 +831,24 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Erste Reihe */}
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col space-y-2 glass-input border-slate-600 hover:bg-slate-700/50"
+              <button 
+               className={classes.btnSecondary + " h-20 flex-col space-y-2"}
                 onClick={() => navigate('/sessions')}
               >
                 <Calendar className="h-6 w-6 text-blue-400" />
                 <span className="text-sm text-slate-300">Neue Session</span>
-              </Button>
+              </button>
 
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col space-y-2 glass-input border-slate-600 hover:bg-slate-700/50"
+              <button 
+                className={classes.btnSecondary + " h-20 flex-col space-y-2"}
                 onClick={() => navigate('/coachees')}
               >
                 <Users className="h-6 w-6 text-green-400" />
                 <span className="text-sm text-slate-300">Coachee hinzufügen</span>
-              </Button>
+              </button>
 
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col space-y-2 glass-input border-slate-600 hover:bg-slate-700/50"
+              <button 
+                className={classes.btnSecondary + " h-20 flex-col space-y-2"}
                 onClick={() => {
                   setEditingDeadline(null);
                   setDeadlineForm({ title: '', description: '', date: '', coacheeId: '' });
@@ -888,55 +857,49 @@ const Dashboard = () => {
               >
                 <Plus className="h-6 w-6 text-purple-400" />
                 <span className="text-sm text-slate-300">Task erstellen</span>
-              </Button>
+              </button>
 
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col space-y-2 glass-input border-slate-600 hover:bg-slate-700/50"
+              <button 
+                className={classes.btnSecondary + " h-20 flex-col space-y-2"}
                 onClick={() => navigate('/invoices')}
               >
                 <DollarSign className="h-6 w-6 text-yellow-400" />
                 <span className="text-sm text-slate-300">Rechnung erstellen</span>
-              </Button>
+              </button>
 
-              {/* Zweite Reihe */}
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col space-y-2 glass-input border-slate-600 hover:bg-slate-700/50"
+              <button 
+               className={classes.btnSecondary + " h-20 flex-col space-y-2"}
                 onClick={() => navigate('/journal')}
               >
                 <BookOpen className="h-6 w-6 text-indigo-400" />
                 <span className="text-sm text-slate-300">Journal-Eintrag</span>
-              </Button>
+              </button>
 
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col space-y-2 glass-input border-slate-600 hover:bg-slate-700/50"
+              <button 
+                className={classes.btnSecondary + " h-20 flex-col space-y-2"}
                 onClick={() => {
                   toast.success('Backup wird erstellt...');
                 }}
               >
                 <Download className="h-6 w-6 text-slate-400" />
                 <span className="text-sm text-slate-300">Backup erstellen</span>
-              </Button>
+              </button>
 
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col space-y-2 glass-input border-slate-600 hover:bg-slate-700/50"
+              <button 
+                className={classes.btnSecondary + " h-20 flex-col space-y-2"}
                 onClick={() => navigate('/documents')}
               >
                 <Upload className="h-6 w-6 text-orange-400" />
                 <span className="text-sm text-slate-300">Dokument hochladen</span>
-              </Button>
+              </button>
 
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col space-y-2 glass-input border-slate-600 hover:bg-slate-700/50"
+              <button 
+                className={classes.btnSecondary + " h-20 flex-col space-y-2"}
                 onClick={() => navigate('/settings')}
               >
                 <Settings className="h-6 w-6 text-slate-400" />
                 <span className="text-sm text-slate-300">Einstellungen</span>
-              </Button>
+              </button>
             </div>
           </CardContent>
         </Card>
