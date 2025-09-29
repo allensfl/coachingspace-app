@@ -1,138 +1,703 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import { Search, User, Calendar, Filter, X, Plus, Download, Eye, Edit, Trash2, DollarSign, FileText, Clock, CheckCircle, AlertCircle, Euro, Send, MoreVertical, Repeat, Play, Pause } from 'lucide-react';
+import { Search, User, Calendar, Filter, X, Plus, Upload, Settings, Edit, Trash2, CheckCircle, AlertCircle, FileText, Download, Eye, Share2, FolderOpen, AlertTriangle, Euro, Clock, Send, CreditCard, Repeat, DollarSign } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useAppStateContext } from '@/context/AppStateContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { classes } from '../styles/standardClasses';
+
+// Toast-System
+const ToastContainer = ({ toasts, removeToast }) => (
+  <div className="fixed top-4 right-4 z-50 space-y-2">
+    {toasts.map(toast => (
+      <div
+        key={toast.id}
+        className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border-l-4 bg-gray-800 max-w-sm transform transition-all duration-300 ${
+          toast.type === 'success' 
+            ? 'border-l-green-500' 
+            : 'border-l-red-500'
+        }`}
+      >
+        {toast.type === 'success' ? (
+          <CheckCircle className="h-5 w-5 text-green-400" />
+        ) : (
+          <AlertCircle className="h-5 w-5 text-red-400" />
+        )}
+        <span className="text-sm font-medium text-white">{toast.message}</span>
+        <button
+          onClick={() => removeToast(toast.id)}
+          className={classes.btnIcon + " ml-auto p-1 h-6 w-6"}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    ))}
+  </div>
+);
+
+// Honorarsätze Dialog
+const RateEditorDialog = ({ open, onOpenChange, onSave, rate }) => {
+    const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
+    const [price, setPrice] = useState('');
+    const [currency, setCurrency] = useState('EUR');
+
+    React.useEffect(() => {
+        if (rate) {
+            setName(rate.name || '');
+            setDescription(rate.description || '');
+            setPrice(rate.price?.toString() || '');
+            setCurrency(rate.currency || 'EUR');
+        } else {
+            setName('');
+            setDescription('');
+            setPrice('');
+            setCurrency('EUR');
+        }
+    }, [rate, open]);
+
+    const handleSave = () => {
+        if (!name.trim() || !price) return;
+
+        const data = {
+            id: rate ? rate.id : Date.now(),
+            name: name.trim(),
+            description: description.trim(),
+            price: parseFloat(price) || 0,
+            currency: currency,
+        };
+        onSave(data);
+        onOpenChange(false);
+    };
+    
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white">
+                <DialogHeader>
+                    <DialogTitle className="text-white">
+                        {rate ? 'Honorarsatz bearbeiten' : 'Neuen Honorarsatz erstellen'}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400">
+                        Definiere deine Standard-Dienstleistungen und Preise.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="name" className="text-slate-300">Name</Label>
+                        <Input 
+                            id="name"
+                            placeholder="z.B. Einzelcoaching (60 Min)"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            className={classes.input}
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="description" className="text-slate-300">Beschreibung</Label>
+                        <Input 
+                            id="description"
+                            placeholder="Optionale Beschreibung..."
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            className={classes.input}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="price" className="text-slate-300">Preis</Label>
+                            <Input 
+                                id="price"
+                                type="number"
+                                placeholder="0.00"
+                                step="0.01"
+                                min="0"
+                                value={price}
+                                onChange={e => setPrice(e.target.value)}
+                                className={classes.input}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="currency" className="text-slate-300">Währung</Label>
+                            <select
+                                value={currency}
+                                onChange={(e) => setCurrency(e.target.value)}
+                                className={classes.select}
+                            >
+                                <option value="EUR">€ Euro</option>
+                                <option value="CHF">CHF Franken</option>
+                                <option value="USD">$ Dollar</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <button className={classes.btnSecondary}>
+                            Abbrechen
+                        </button>
+                    </DialogClose>
+                    <button 
+                        onClick={handleSave}
+                        disabled={!name.trim() || !price}
+                        className={classes.btnPrimary}
+                        style={{ opacity: (!name.trim() || !price) ? 0.5 : 1 }}
+                    >
+                        Speichern
+                    </button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+// Abonnement Dialog
+const RecurringInvoiceDialog = ({ open, onOpenChange, onSave, coachees, serviceRates, recurringInvoice }) => {
+    const [coacheeId, setCoacheeId] = useState('');
+    const [rateId, setRateId] = useState('');
+    const [quantity, setQuantity] = useState(1);
+    const [interval, setInterval] = useState('monthly');
+    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [currency, setCurrency] = useState('EUR');
+
+    // Währungs-Formatierung
+    const currencies = {
+        EUR: { symbol: '€', name: 'Euro' },
+        CHF: { symbol: 'CHF', name: 'Schweizer Franken' },
+        USD: { symbol: '$', name: 'US Dollar' }
+    };
+
+    const formatCurrency = (amount, currency) => {
+        const symbol = currencies[currency]?.symbol || currency;
+        if (currency === 'CHF') {
+            return `${symbol}${amount.toFixed(2)}`;
+        }
+        return `${amount.toFixed(2)}${symbol}`;
+    };
+
+    React.useEffect(() => {
+        if (recurringInvoice) {
+            setCoacheeId(recurringInvoice.coacheeId.toString());
+            setRateId(recurringInvoice.rateId.toString());
+            setQuantity(recurringInvoice.quantity);
+            setInterval(recurringInvoice.interval);
+            setStartDate(recurringInvoice.startDate);
+            setCurrency(recurringInvoice.currency || 'EUR');
+        } else {
+            setCoacheeId('');
+            setRateId('');
+            setQuantity(1);
+            setInterval('monthly');
+            setStartDate(new Date().toISOString().split('T')[0]);
+            setCurrency('EUR');
+        }
+    }, [recurringInvoice, open]);
+
+    const handleSave = () => {
+        const coachee = (coachees || []).find(c => c.id === parseInt(coacheeId));
+        const rate = (serviceRates || []).find(r => r.id === parseInt(rateId));
+        if (!coachee || !rate) return;
+
+        const data = {
+            id: recurringInvoice ? recurringInvoice.id : Date.now(),
+            coacheeId: parseInt(coacheeId),
+            coacheeName: `${coachee.firstName} ${coachee.lastName}`,
+            rateId: parseInt(rateId),
+            quantity,
+            interval,
+            startDate,
+            currency: currency,
+            status: recurringInvoice ? recurringInvoice.status : 'active',
+            nextDueDate: startDate,
+        };
+        onSave(data);
+    };
+    
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white">
+                <DialogHeader>
+                    <DialogTitle className="text-white">
+                        {recurringInvoice ? 'Abonnement bearbeiten' : 'Neues Abonnement erstellen'}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400">
+                        Richte wiederkehrende Rechnungen für deine Coachees ein.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="coachee" className="text-slate-300">Coachee</Label>
+                        <select
+                            value={coacheeId}
+                            onChange={(e) => setCoacheeId(e.target.value)}
+                            className={classes.select}
+                        >
+                            <option value="">Coachee auswählen</option>
+                            {(coachees || []).map(c => (
+                                <option key={c.id} value={c.id.toString()}>
+                                    {c.firstName} {c.lastName}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="rate" className="text-slate-300">Honorarsatz</Label>
+                        <select
+                            value={rateId}
+                            onChange={(e) => setRateId(e.target.value)}
+                            className={classes.select}
+                        >
+                            <option value="">Honorarsatz auswählen</option>
+                            {(serviceRates || []).map(r => (
+                                <option key={r.id} value={r.id.toString()}>
+                                    {r.name} ({formatCurrency(r.price || 0, r.currency || 'EUR')})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="quantity" className="text-slate-300">Anzahl</Label>
+                            <Input 
+                                id="quantity" 
+                                type="number" 
+                                value={quantity} 
+                                onChange={e => setQuantity(parseInt(e.target.value) || 1)} 
+                                min="1"
+                                className={classes.input}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="currency" className="text-slate-300">Währung</Label>
+                            <select
+                                value={currency}
+                                onChange={(e) => setCurrency(e.target.value)}
+                                className={classes.select}
+                            >
+                                <option value="EUR">€ Euro</option>
+                                <option value="CHF">CHF Franken</option>
+                                <option value="USD">$ Dollar</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="interval" className="text-slate-300">Intervall</Label>
+                        <select
+                            value={interval}
+                            onChange={(e) => setInterval(e.target.value)}
+                            className={classes.select}
+                        >
+                            <option value="monthly">Monatlich</option>
+                            <option value="quarterly">Quartalsweise</option>
+                            <option value="yearly">Jährlich</option>
+                        </select>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="start-date" className="text-slate-300">Startdatum</Label>
+                        <Input 
+                            id="start-date" 
+                            type="date" 
+                            value={startDate} 
+                            onChange={e => setStartDate(e.target.value)}
+                            className={classes.input}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <button className={classes.btnSecondary}>
+                            Abbrechen
+                        </button>
+                    </DialogClose>
+                    <button onClick={handleSave} className={classes.btnPrimary}>
+                        Speichern
+                    </button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
 
 const InvoicesApp = () => {
-  // Context für echte Daten
+  // Context für echte Daten + Action-Handler
   const { state, actions } = useAppStateContext();
-  const { invoices, serviceRates, recurringInvoices, coachees, settings } = state;
-  const { setInvoices, setServiceRates, setRecurringInvoices } = actions;
+  const { coachees, invoices: contextInvoices, serviceRates: contextServiceRates, recurringInvoices: contextRecurringInvoices } = state;
+  const { addInvoiceToContext, updateInvoiceInContext, removeInvoiceFromContext } = actions;
   
-  // Navigation und Location für URL-Parameter
+  // Navigation und Location
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
+  const { toast: useToastFn } = useToast();
   
-  // Filter States
+  // Tab States
+  const [activeTab, setActiveTab] = useState('rechnungen');
+  
+  // Service Rates States (local für Honorarsätze Tab)
+  const [serviceRates, setServiceRates] = useState([]);
+  const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
+  const [selectedRate, setSelectedRate] = useState(null);
+  
+  // Recurring Invoices States (local für Abos Tab)
+  const [recurringInvoices, setRecurringInvoices] = useState([]);
+  const [isRecurringDialogOpen, setIsRecurringDialogOpen] = useState(false);
+  const [selectedRecurring, setSelectedRecurring] = useState(null);
+  
+  // Toast-System
+  const [toasts, setToasts] = useState([]);
+  
+  const addToast = (message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, 4000);
+  };
+  
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
+
+  const toast = {
+    success: (message) => addToast(message, 'success'),
+    error: (message) => addToast(message, 'error')
+  };
+  
+  // Filter States für Rechnungen
   const [coacheeFilter, setCoacheeFilter] = useState(null);
   const [coacheeName, setCoacheeName] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
-  
-  // Basis States
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Modal States
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [showRecurringModal, setShowRecurringModal] = useState(false);
-  const [showRatesModal, setShowRatesModal] = useState(false);
-  const [selectedRecurring, setSelectedRecurring] = useState(null);
-  const [selectedRate, setSelectedRate] = useState(null);
+  // Modal States für Rechnungen
+  const [showNewInvoiceDialog, setShowNewInvoiceDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   
-  // Neue Rechnung
+  // Neue Rechnung States
   const [newInvoice, setNewInvoice] = useState({
-    coacheeId: null,
-    coacheeName: '',
-    amount: '',
-    description: '',
-    dueDate: '',
-    status: 'draft',
-    currency: 'EUR'
+    coacheeId: '',
+    items: [{ description: '', quantity: 1, price: 0, rateId: '' }],
+    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    notes: ''
   });
 
-  // Neue wiederkehrende Rechnung
-  const [newRecurring, setNewRecurring] = useState({
-    coacheeId: null,
-    coacheeName: '',
-    rateId: null,
-    quantity: 1,
-    interval: 'monthly',
-    startDate: new Date().toISOString().split('T')[0],
-    currency: 'EUR',
-    status: 'active'
-  });
+  // Rechnungen aus Context laden
+  const [invoices, setInvoices] = useState([]);
 
-  // Neuer Honorarsatz
-  const [newRate, setNewRate] = useState({
-    name: '',
-    price: '',
-    currency: 'EUR',
-    description: ''
-  });
-
-  // URL-Parameter-Auswertung für Coachee-Filter
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const coacheeId = urlParams.get('coachee');
-    const name = urlParams.get('name');
-    
-    if (coacheeId && name) {
-      setCoacheeFilter(coacheeId);
-      setCoacheeName(decodeURIComponent(name.replace(/\+/g, ' ')));
-      
-      toast({
-        title: "Filter aktiv",
-        description: `Zeige nur Rechnungen von ${decodeURIComponent(name.replace(/\+/g, ' '))}`,
-        className: "bg-green-600 text-white"
-      });
-    }
-  }, [location.search, toast]);
+    const validInvoices = Array.isArray(contextInvoices) ? contextInvoices : [];
+    setInvoices(validInvoices);
+  }, [contextInvoices]);
 
-  // Coachee-Filter zurücksetzen
-  const clearCoacheeFilter = () => {
-    setCoacheeFilter(null);
-    setCoacheeName('');
-    navigate(location.pathname, { replace: true });
-    
-    toast({
-      title: "Filter entfernt",
-      description: "Zeige alle Rechnungen",
-      className: "bg-blue-600 text-white"
-    });
+  useEffect(() => {
+    const validRates = Array.isArray(contextServiceRates) ? contextServiceRates : [];
+    setServiceRates(validRates);
+  }, [contextServiceRates]);
+
+  useEffect(() => {
+    const validRecurring = Array.isArray(contextRecurringInvoices) ? contextRecurringInvoices : [];
+    setRecurringInvoices(validRecurring);
+  }, [contextRecurringInvoices]);
+
+  // Währungs-Formatierung
+  const currencies = {
+      EUR: { symbol: '€', name: 'Euro' },
+      CHF: { symbol: 'CHF', name: 'Schweizer Franken' },
+      USD: { symbol: '$', name: 'US Dollar' }
   };
 
-  // Filter Funktionen
-  const handleCoacheeFilter = (coacheeId, coacheeName) => {
-    if (coacheeFilter === coacheeId) {
-      clearCoacheeFilter();
+  const formatCurrency = (amount, currency) => {
+      const symbol = currencies[currency]?.symbol || currency;
+      if (currency === 'CHF') {
+          return `${symbol}${amount.toFixed(2)}`;
+      }
+      return `${amount.toFixed(2)}${symbol}`;
+  };
+
+  // Utility functions
+  const calculateTotal = (items, taxRate = 19) => {
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return 0;
+    }
+    
+    try {
+      const subtotal = items.reduce((sum, item) => {
+        const quantity = parseFloat(item?.quantity || 0);
+        const price = parseFloat(item?.price || 0);
+        return sum + (quantity * price);
+      }, 0);
+      const tax = subtotal * (taxRate / 100);
+      return subtotal + tax;
+    } catch (error) {
+      console.warn('Error calculating total:', error);
+      return 0;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'draft': return classes.statusGray;
+      case 'sent': return classes.statusBlue;
+      case 'paid': return classes.statusGreen;
+      case 'overdue': return classes.statusRed;
+      case 'active': return classes.statusGreen;
+      case 'paused': return classes.statusYellow;
+      default: return classes.statusGray;
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch(status) {
+      case 'draft': return 'Entwurf';
+      case 'sent': return 'Versendet';
+      case 'paid': return 'Bezahlt';
+      case 'overdue': return 'Überfällig';
+      case 'active': return 'Aktiv';
+      case 'paused': return 'Pausiert';
+      default: return 'Unbekannt';
+    }
+  };
+
+  // Service Rates Handlers
+  const handleAddRate = () => {
+    setSelectedRate(null);
+    setIsRateDialogOpen(true);
+  };
+
+  const handleEditRate = (rate) => {
+    setSelectedRate(rate);
+    setIsRateDialogOpen(true);
+  };
+
+  const handleDeleteRate = (rateId) => {
+    setServiceRates(prevRates => (prevRates || []).filter(r => r.id !== rateId));
+    toast.success("Honorarsatz gelöscht!");
+  };
+
+  const handleSaveRate = (newRateData) => {
+    const currentRates = serviceRates || [];
+    const existingIndex = currentRates.findIndex(r => r.id === newRateData.id);
+    
+    if (existingIndex > -1) {
+      setServiceRates(prevRates => {
+        const updatedRates = [...(prevRates || [])];
+        updatedRates[existingIndex] = newRateData;
+        return updatedRates;
+      });
+      toast.success("Honorarsatz aktualisiert!");
     } else {
-      setCoacheeFilter(coacheeId);
-      setCoacheeName(coacheeName);
-      
-      toast({
-        title: "Filter gesetzt",
-        description: `Zeige nur Rechnungen von ${coacheeName}`,
-        className: "bg-blue-600 text-white"
-      });
+      setServiceRates(prevRates => [...(prevRates || []), newRateData]);
+      toast.success("Honorarsatz erstellt!");
+    }
+    setIsRateDialogOpen(false);
+  };
+
+  // Recurring Invoice Handlers
+  const handleAddRecurring = () => {
+    setSelectedRecurring(null);
+    setIsRecurringDialogOpen(true);
+  };
+
+  const handleEditRecurring = (recurring) => {
+    setSelectedRecurring(recurring);
+    setIsRecurringDialogOpen(true);
+  };
+
+  const handleDeleteRecurring = (id) => {
+    setRecurringInvoices(prev => (prev || []).filter(item => item.id !== id));
+    toast.success('Abonnement gelöscht!');
+  };
+
+  const handleSaveRecurring = (data) => {
+    const existingIndex = (recurringInvoices || []).findIndex(inv => inv.id === data.id);
+    if(existingIndex > -1) {
+      setRecurringInvoices(prev => prev.map(inv => inv.id === data.id ? data : inv));
+      toast.success('Abonnement aktualisiert!');
+    } else {
+      setRecurringInvoices(prev => [...(prev || []), data]);
+      toast.success('Abonnement erstellt!');
+    }
+    setIsRecurringDialogOpen(false);
+    setSelectedRecurring(null);
+  };
+
+  const handleUpdateRecurring = (item, field, value) => {
+    if (field === 'edit') {
+      setSelectedRecurring(item);
+      setIsRecurringDialogOpen(true);
+    } else {
+      const updatedItem = { ...item, [field]: value };
+      handleSaveRecurring(updatedItem);
+      const statusText = value === 'active' ? 'aktiviert' : 'pausiert';
+      toast.success(`Abonnement ${statusText}!`);
     }
   };
 
-  const handleStatusFilter = (status) => {
-    setStatusFilter(status === statusFilter ? 'all' : status);
+  // Invoice Action Handlers
+  const handleViewInvoice = (invoice) => {
+    toast.success(`Rechnung ${invoice.invoiceNumber} wird angezeigt.`);
   };
 
-  const handleDateFilter = (filter) => {
-    setDateFilter(filter === dateFilter ? 'all' : filter);
+  const handleDownloadInvoice = (invoice) => {
+    toast.success(`Rechnung ${invoice.invoiceNumber} wird als PDF heruntergeladen.`);
   };
 
-  // Gefilterte Rechnungen
-  const filteredInvoices = (invoices || []).filter(invoice => {
+  const handleSendInvoice = (invoice) => {
+    if (invoice.status === 'sent') {
+      toast.error(`Rechnung ${invoice.invoiceNumber} wurde bereits versendet.`);
+      return;
+    }
+
+    const updatedInvoice = { ...invoice, status: 'sent', sentDate: new Date().toISOString().split('T')[0] };
+    
+    if (typeof updateInvoiceInContext === 'function') {
+      updateInvoiceInContext(invoice.id, updatedInvoice);
+    } else {
+      setInvoices(prev => prev.map(inv => inv.id === invoice.id ? updatedInvoice : inv));
+    }
+    
+    toast.success(`Rechnung ${invoice.invoiceNumber} wurde erfolgreich versendet.`);
+  };
+
+  const handleEditInvoice = (invoice) => {
+    setEditingInvoice({...invoice});
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateInvoice = async () => {
+    if (!editingInvoice.items || !editingInvoice.items.length || editingInvoice.items.some(item => !item.description || !item.price)) {
+      toast.error("Alle Rechnungspositionen müssen ausgefüllt sein");
+      return;
+    }
+
+    try {
+      if (typeof updateInvoiceInContext === 'function') {
+        updateInvoiceInContext(editingInvoice.id, editingInvoice);
+      } else {
+        setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? editingInvoice : inv));
+      }
+      
+      setShowEditDialog(false);
+      setEditingInvoice(null);
+      
+      toast.success("Die Änderungen wurden gespeichert.");
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren der Rechnung:', error);
+      toast.error("Die Rechnung konnte nicht gespeichert werden.");
+    }
+  };
+
+  const handleDeleteInvoice = async (invoiceId) => {
+    setDeletingId(invoiceId);
+    
+    try {
+      if (typeof removeInvoiceFromContext === 'function') {
+        removeInvoiceFromContext(invoiceId);
+      } else {
+        setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+      }
+      
+      toast.success("Die Rechnung wurde erfolgreich entfernt.");
+    } catch (error) {
+      console.error('Fehler beim Löschen der Rechnung:', error);
+      toast.error("Die Rechnung konnte nicht gelöscht werden.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+  const handleCreateInvoice = () => {
+    if (!newInvoice.coacheeId || newInvoice.items.some(item => !item.description || !item.price)) {
+      toast.error("Bitte füllen Sie alle Pflichtfelder aus");
+      return;
+    }
+
+    const selectedCoachee = coachees.find(c => c.id.toString() === newInvoice.coacheeId);
+    const invoiceNumber = `CS-${new Date().getFullYear()}-${(invoices.length + 1).toString().padStart(3, '0')}`;
+
+    const invoice = {
+      id: Date.now(),
+      invoiceNumber,
+      coacheeId: parseInt(newInvoice.coacheeId),
+      coacheeName: `${selectedCoachee.firstName} ${selectedCoachee.lastName}`,
+      date: new Date().toISOString().split('T')[0],
+      dueDate: newInvoice.dueDate,
+      status: 'draft',
+      items: newInvoice.items.map(item => ({
+        ...item,
+        id: Date.now() + Math.random()
+      })),
+      taxRate: 19,
+      currency: 'EUR',
+      notes: newInvoice.notes
+    };
+
+    // Fallback falls Context-Funktion nicht existiert
+    if (typeof addInvoiceToContext === 'function') {
+      addInvoiceToContext(invoice);
+    } else {
+      // Direct state update als Fallback
+      setInvoices(prev => [...prev, invoice]);
+    }
+
+    toast.success(`Rechnung ${invoiceNumber} wurde erfolgreich erstellt.`);
+    
+    setNewInvoice({
+      coacheeId: '',
+      items: [{ description: '', quantity: 1, price: 0, rateId: '' }],
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      notes: ''
+    });
+    setShowNewInvoiceDialog(false);
+  };
+
+  // Rechnungsposition-Handler
+  const handleAddItem = () => {
+    setNewInvoice(prev => ({
+      ...prev,
+      items: [...prev.items, { description: '', quantity: 1, price: 0, rateId: '' }]
+    }));
+  };
+
+  const handleRemoveItem = (index) => {
+    setNewInvoice(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleItemChange = (index, field, value) => {
+    setNewInvoice(prev => ({
+      ...prev,
+      items: prev.items.map((item, i) => i === index ? { ...item, [field]: value } : item)
+    }));
+  };
+
+  const handleRateSelection = (index, rateId) => {
+    const selectedRate = serviceRates?.find(r => r.id.toString() === rateId);
+    if (selectedRate) {
+      handleItemChange(index, 'price', selectedRate.price);
+      handleItemChange(index, 'rateId', rateId);
+    }
+  };
+
+  // Statistics für Rechnungen
+  const filteredInvoices = invoices.filter(invoice => {
+    if (!invoice) return false;
+    
     if (coacheeFilter && invoice.coacheeId !== parseInt(coacheeFilter)) {
       return false;
     }
@@ -141,1093 +706,638 @@ const InvoicesApp = () => {
       return false;
     }
     
-    if (dateFilter !== 'all') {
-      const today = new Date();
-      const invoiceDate = new Date(invoice.date);
-      
-      if (dateFilter === 'today') {
-        if (today.toDateString() !== invoiceDate.toDateString()) return false;
-      } else if (dateFilter === 'week') {
-        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        if (invoiceDate < weekAgo) return false;
-      } else if (dateFilter === 'month') {
-        const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-        if (invoiceDate < monthAgo) return false;
-      }
-    }
-    
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       return (
         invoice.invoiceNumber?.toLowerCase().includes(searchLower) ||
-        invoice.description?.toLowerCase().includes(searchLower) ||
-        (invoice.coacheeName && invoice.coacheeName.toLowerCase().includes(searchLower))
+        (invoice.coacheeName && invoice.coacheeName.toLowerCase().includes(searchLower)) ||
+        (invoice.items && Array.isArray(invoice.items) && invoice.items.some(item => item.description?.toLowerCase().includes(searchLower)))
       );
     }
     
     return true;
   });
 
-  // Währungsformatierung
-  const formatCurrency = (amount, currency = 'EUR') => {
-    const currencies = {
-      EUR: { symbol: '€', position: 'after' },
-      USD: { symbol: '$', position: 'before' },
-      CHF: { symbol: 'CHF', position: 'after' }
-    };
-    
-    const config = currencies[currency] || currencies.EUR;
-    const formatted = amount.toFixed(2);
-    
-    return config.position === 'before' 
-      ? `${config.symbol}${formatted}`
-      : `${formatted}${config.symbol}`;
-  };
-
-  // Handler für Coachee-Auswahl
-  const handleCoacheeSelection = (selectedCoacheeId, setState) => {
-    if (selectedCoacheeId === '') {
-      setState(prev => ({ 
-        ...prev, 
-        coacheeId: null,
-        coacheeName: ''
-      }));
-    } else {
-      const selectedCoachee = (coachees || []).find(c => c.id.toString() === selectedCoacheeId);
-      if (selectedCoachee) {
-        setState(prev => ({ 
-          ...prev, 
-          coacheeId: selectedCoacheeId,
-          coacheeName: `${selectedCoachee.firstName} ${selectedCoachee.lastName}`
-        }));
-      }
-    }
-  };
-
-  // Neue Rechnung speichern
-  const saveNewInvoice = () => {
-    if (newInvoice.amount && newInvoice.description && newInvoice.dueDate) {
-      const invoice = {
-        id: Date.now(),
-        invoiceNumber: `RE-2025-${String((invoices?.length || 0) + 1).padStart(3, '0')}`,
-        coacheeId: newInvoice.coacheeId ? parseInt(newInvoice.coacheeId) : null,
-        coacheeName: newInvoice.coacheeName,
-        total: parseFloat(newInvoice.amount),
-        description: newInvoice.description,
-        date: new Date().toISOString().split('T')[0],
-        dueDate: newInvoice.dueDate,
-        status: newInvoice.status,
-        currency: newInvoice.currency,
-        paidDate: null
-      };
-      
-      setInvoices([...(invoices || []), invoice]);
-      setNewInvoice({ coacheeId: null, coacheeName: '', amount: '', description: '', dueDate: '', status: 'draft', currency: 'EUR' });
-      setShowNewModal(false);
-      
-      toast({
-        title: "Rechnung erstellt",
-        description: `${invoice.invoiceNumber} erfolgreich angelegt`,
-        className: "bg-green-600 text-white"
-      });
-    }
-  };
-
-  // Neue wiederkehrende Rechnung speichern
-  const saveNewRecurring = () => {
-    if (newRecurring.coacheeId && newRecurring.rateId) {
-      const rate = (serviceRates || []).find(r => r.id === parseInt(newRecurring.rateId));
-      const recurring = {
-        id: Date.now(),
-        coacheeId: parseInt(newRecurring.coacheeId),
-        coacheeName: newRecurring.coacheeName,
-        rateId: parseInt(newRecurring.rateId),
-        quantity: newRecurring.quantity,
-        interval: newRecurring.interval,
-        startDate: newRecurring.startDate,
-        currency: newRecurring.currency,
-        status: newRecurring.status,
-        nextDueDate: newRecurring.startDate
-      };
-      
-      setRecurringInvoices([...(recurringInvoices || []), recurring]);
-      setNewRecurring({
-        coacheeId: null,
-        coacheeName: '',
-        rateId: null,
-        quantity: 1,
-        interval: 'monthly',
-        startDate: new Date().toISOString().split('T')[0],
-        currency: 'EUR',
-        status: 'active'
-      });
-      setShowRecurringModal(false);
-      
-      toast({
-        title: "Abonnement erstellt",
-        description: "Wiederkehrende Rechnung erfolgreich angelegt",
-        className: "bg-green-600 text-white"
-      });
-    }
-  };
-// DELETE-HANDLER für Abonnements und Honorarsätze
-  const handleDeleteRate = (rateId) => {
-    if (window.confirm('Sind Sie sicher, dass Sie diesen Honorarsatz löschen möchten?')) {
-      setServiceRates((serviceRates || []).filter(rate => rate.id !== rateId));
-      toast({
-        title: "Honorarsatz gelöscht",
-        description: "Der Honorarsatz wurde erfolgreich gelöscht",
-        className: "bg-green-600 text-white"
-      });
-    }
-  };
-
-  const handleDeleteRecurring = (recurringId) => {
-    if (window.confirm('Sind Sie sicher, dass Sie dieses Abonnement löschen möchten?')) {
-      setRecurringInvoices((recurringInvoices || []).filter(recurring => recurring.id !== recurringId));
-      toast({
-        title: "Abonnement gelöscht",
-        description: "Das Abonnement wurde erfolgreich gelöscht",
-        className: "bg-green-600 text-white"
-      });
-    }
-  };
-// RECHNUNGS-ACTION-HANDLER
-const handleEditInvoice = (invoice) => {
-  toast({
-    title: "Bearbeiten",
-    description: `${invoice.invoiceNumber} bearbeiten - Feature kommt bald`,
-    className: "bg-blue-600 text-white"
-  });
-};
-
-const handleDownloadInvoice = (invoice) => {
-  toast({
-    title: "Download gestartet",
-    description: `${invoice.invoiceNumber} wird heruntergeladen`,
-    className: "bg-green-600 text-white"
-  });
-};
-
-const handleDeleteInvoice = (invoice) => {
-  if (window.confirm(`Sind Sie sicher, dass Sie ${invoice.invoiceNumber} löschen möchten?`)) {
-    setInvoices((invoices || []).filter(inv => inv.id !== invoice.id));
-    toast({
-      title: "Rechnung gelöscht",
-      description: `${invoice.invoiceNumber} wurde erfolgreich gelöscht`,
-      className: "bg-green-600 text-white"
-    });
-  }
-};
-
-  // Neuen Honorarsatz speichern
-  const saveNewRate = () => {
-    if (newRate.name && newRate.price) {
-      const rate = {
-        id: Date.now(),
-        name: newRate.name,
-        price: parseFloat(newRate.price),
-        currency: newRate.currency,
-        description: newRate.description
-      };
-      
-      setServiceRates([...(serviceRates || []), rate]);
-      setNewRate({ name: '', price: '', currency: 'EUR', description: '' });
-      setShowRatesModal(false);
-      
-      toast({
-        title: "Honorarsatz erstellt",
-        description: `${rate.name} erfolgreich angelegt`,
-        className: "bg-green-600 text-white"
-      });
-    }
-  };
-
-  // Status-Badge Komponente
-  const StatusBadge = ({ status }) => {
-    const configs = {
-      draft: { color: 'bg-slate-600/20 text-slate-400', icon: FileText, label: 'Entwurf' },
-      sent: { color: 'bg-blue-600/20 text-blue-400', icon: Send, label: 'Versendet' },
-      paid: { color: 'bg-green-600/20 text-green-400', icon: CheckCircle, label: 'Bezahlt' },
-      overdue: { color: 'bg-red-600/20 text-red-400', icon: AlertCircle, label: 'Überfällig' }
-    };
-    
-    const config = configs[status] || configs.draft;
-    const Icon = config.icon;
-    
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${config.color}`}>
-        <Icon className="h-3 w-3" />
-        {config.label}
-      </span>
-    );
-  };
-
-  // Button-Filter Komponente
-  const FilterButton = ({ active, onClick, children, icon: Icon, count }) => (
-    <button
-      onClick={onClick}
-      className={`
-        relative px-4 py-2 rounded-lg text-sm font-medium transition-all
-        flex items-center gap-2
-        ${active 
-          ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' 
-          : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-        }
-      `}
-    >
-      {Icon && <Icon className="h-4 w-4" />}
-      <span>{children}</span>
-      {count !== undefined && (
-        <span className={`
-          px-1.5 py-0.5 rounded text-xs
-          ${active ? 'bg-white/20' : 'bg-slate-600/50'}
-        `}>
-          {count}
-        </span>
-      )}
-      {active && (
-        <X className="h-3 w-3 ml-1 opacity-70 hover:opacity-100" />
-      )}
-    </button>
-  );
-
-  // Statistiken berechnen
   const stats = {
-    total: filteredInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0),
-    paid: filteredInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.total || 0), 0),
-    pending: filteredInvoices.filter(inv => inv.status === 'sent').reduce((sum, inv) => sum + (inv.total || 0), 0),
-    overdue: filteredInvoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + (inv.total || 0), 0)
+    total: filteredInvoices.length,
+    draft: filteredInvoices.filter(inv => inv?.status === 'draft').length,
+    sent: filteredInvoices.filter(inv => inv?.status === 'sent').length,
+    paid: filteredInvoices.filter(inv => inv?.status === 'paid').length,
+    overdue: filteredInvoices.filter(inv => inv?.status === 'overdue').length,
+    totalAmount: filteredInvoices.reduce((sum, inv) => {
+      if (!inv || !inv.items) return sum;
+      return sum + calculateTotal(inv.items, inv.taxRate);
+    }, 0)
   };
 
-  return (
-    <>
-      <Helmet>
-        <title>Rechnungen - Coachingspace</title>
-        <meta name="description" content="Verwalte deine Coaching-Rechnungen, behalte den Überblick über Zahlungen und erstelle neue Abrechnungen." />
-      </Helmet>
-
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-1">
-                Rechnungen
-              </h1>
-              <p className="text-slate-400 text-sm">Rechnungsmanagement für Coaching-Sessions</p>
+  // Tab Content Renderer
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'rechnungen':
+        return (
+          <div className="space-y-6">
+            {/* Quick stats display */}
+            <div className={"flex gap-4 mb-6 " + classes.caption}>
+              <span>{stats.total} Rechnungen</span>
+              <span>{stats.draft} Entwürfe</span>
+              <span>{stats.sent} Versendet</span>
+              <span>{stats.paid} Bezahlt</span>
+              {stats.overdue > 0 && <span>{stats.overdue} Überfällig</span>}
+              <span>{stats.totalAmount.toFixed(2)} €</span>
             </div>
-          </div>
 
-          <Tabs defaultValue="invoices" className="space-y-4">
-            <TabsList className="bg-slate-800/50 border border-slate-700/50">
-              <TabsTrigger value="invoices" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-cyan-600">
-                Rechnungen
-              </TabsTrigger>
-              <TabsTrigger value="recurring" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-cyan-600">
-                Abonnements
-              </TabsTrigger>
-              <TabsTrigger value="rates" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-cyan-600">
-                Honorarsätze
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Rechnungen Tab */}
-            <TabsContent value="invoices" className="space-y-6">
-              {/* Statistiken */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-600/20 rounded-lg">
-                      <Euro className="h-5 w-5 text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-400">Gesamt</p>
-                      <p className="text-xl font-bold text-white">{formatCurrency(stats.total)}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-600/20 rounded-lg">
-                      <CheckCircle className="h-5 w-5 text-green-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-400">Bezahlt</p>
-                      <p className="text-xl font-bold text-white">{formatCurrency(stats.paid)}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-orange-600/20 rounded-lg">
-                      <Clock className="h-5 w-5 text-orange-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-400">Ausstehend</p>
-                      <p className="text-xl font-bold text-white">{formatCurrency(stats.pending)}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-red-600/20 rounded-lg">
-                      <AlertCircle className="h-5 w-5 text-red-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-400">Überfällig</p>
-                      <p className="text-xl font-bold text-white">{formatCurrency(stats.overdue)}</p>
-                    </div>
-                  </div>
-                </div>
+            {/* Search */}
+            <div className={classes.card}>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Rechnungsnummer, Coachee oder Beschreibung durchsuchen..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={classes.searchInput + " pl-10"}
+                />
               </div>
+            </div>
 
-              {/* Search & Neue Rechnung Button */}
-              <div className="flex gap-4">
-                <div className="flex-1 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Rechnungen, Coachees oder Beschreibungen durchsuchen..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-700/40 border border-slate-600/40 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-                    />
-                  </div>
-                </div>
-                
+            {/* Filter */}
+            <div className={classes.card}>
+              <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => setShowNewModal(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all text-sm"
+                  onClick={() => setStatusFilter('all')}
+                  className={statusFilter === 'all' ? classes.btnFilterActive : classes.btnFilterInactive}
                 >
-                  <Plus className="h-4 w-4" />
-                  Neue Rechnung
+                  Alle ({stats.total})
                 </button>
-                
                 <button
-                  onClick={() => navigate('/invoices/new')}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50 rounded-lg transition-all text-sm"
+                  onClick={() => setStatusFilter('draft')}
+                  className={statusFilter === 'draft' ? classes.btnFilterActive : classes.btnFilterInactive}
                 >
-                  <FileText className="h-4 w-4" />
-                  Detailliert erstellen
+                  Entwürfe ({stats.draft})
+                </button>
+                <button
+                  onClick={() => setStatusFilter('sent')}
+                  className={statusFilter === 'sent' ? classes.btnFilterActive : classes.btnFilterInactive}
+                >
+                  Versendet ({stats.sent})
+                </button>
+                <button
+                  onClick={() => setStatusFilter('paid')}
+                  className={statusFilter === 'paid' ? classes.btnFilterActive : classes.btnFilterInactive}
+                >
+                  Bezahlt ({stats.paid})
                 </button>
               </div>
+            </div>
 
-              {/* Button-Filter */}
-              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
-                {/* Coachee Filter */}
-                <div className="mb-4">
-                  <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Nach Coachee filtern
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <FilterButton
-                      active={!coacheeFilter}
-                      onClick={() => clearCoacheeFilter()}
-                      count={invoices?.length || 0}
-                    >
-                      Alle Coachees
-                    </FilterButton>
-                    {(coachees || []).map(coachee => {
-                      const coacheeInvoices = (invoices || []).filter(inv => inv.coacheeId === coachee.id);
-                      const isActive = coacheeFilter === coachee.id.toString();
-                      return (
-                        <FilterButton
-                          key={coachee.id}
-                          active={isActive}
-                          onClick={() => handleCoacheeFilter(coachee.id.toString(), `${coachee.firstName} ${coachee.lastName}`)}
-                          count={coacheeInvoices.length}
-                        >
-                          {coachee.firstName} {coachee.lastName}
-                        </FilterButton>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Status & Datum Filter */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* Status Filter */}
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      Nach Status filtern
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      <FilterButton
-                        active={statusFilter === 'draft'}
-                        onClick={() => handleStatusFilter('draft')}
-                        count={(invoices || []).filter(inv => inv.status === 'draft').length}
-                      >
-                        Entwürfe
-                      </FilterButton>
-                      <FilterButton
-                        active={statusFilter === 'sent'}
-                        onClick={() => handleStatusFilter('sent')}
-                        count={(invoices || []).filter(inv => inv.status === 'sent').length}
-                      >
-                        Versendet
-                      </FilterButton>
-                      <FilterButton
-                        active={statusFilter === 'paid'}
-                        onClick={() => handleStatusFilter('paid')}
-                        count={(invoices || []).filter(inv => inv.status === 'paid').length}
-                      >
-                        Bezahlt
-                      </FilterButton>
-                      <FilterButton
-                        active={statusFilter === 'overdue'}
-                        onClick={() => handleStatusFilter('overdue')}
-                        count={(invoices || []).filter(inv => inv.status === 'overdue').length}
-                      >
-                        Überfällig
-                      </FilterButton>
-                    </div>
-                  </div>
-
-                  {/* Datum Filter */}
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Nach Datum filtern
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      <FilterButton
-                        active={dateFilter === 'today'}
-                        onClick={() => handleDateFilter('today')}
-                      >
-                        Heute
-                      </FilterButton>
-                      <FilterButton
-                        active={dateFilter === 'week'}
-                        onClick={() => handleDateFilter('week')}
-                      >
-                        Diese Woche
-                      </FilterButton>
-                      <FilterButton
-                        active={dateFilter === 'month'}
-                        onClick={() => handleDateFilter('month')}
-                      >
-                        Dieser Monat
-                      </FilterButton>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ergebnisse */}
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">
-                    {coacheeFilter ? `${coacheeName}s Rechnungen` : 'Alle Rechnungen'}
-                  </h2>
-                  <p className="text-slate-400 text-sm">
-                    {filteredInvoices.length} von {invoices?.length || 0} Rechnungen
-                    {coacheeFilter && ` • Gefiltert nach ${coacheeName}`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Rechnungs-Liste */}
-              <div className="space-y-3">
-                {filteredInvoices.length > 0 ? (
-                  filteredInvoices.map((invoice) => (
-                    <div key={invoice.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-lg p-4 hover:bg-slate-700/50 transition-colors">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-base font-medium text-white">{invoice.invoiceNumber}</h3>
-                            <StatusBadge status={invoice.status} />
-                          </div>
-                          
-                          <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(invoice.date).toLocaleDateString('de-DE')}
-                            </span>
-                            {invoice.coacheeName && (
-                              <span className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                {invoice.coacheeName}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <DollarSign className="h-3 w-3" />
-                              {formatCurrency(invoice.total || 0, invoice.currency)}
-                            </span>
-                          </div>
-                          
-                          <p className="text-slate-300 text-sm">{invoice.description}</p>
+            {/* Rechnungen Liste */}
+            <div className="space-y-3">
+              {filteredInvoices.length > 0 ? (
+                filteredInvoices.map((invoice) => (
+                  <div key={invoice.id} className={classes.card + " hover:bg-slate-700/50 transition-colors"}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className={classes.h3 + " text-base"}>{invoice.invoiceNumber}</h3>
+                          <span className={getStatusColor(invoice.status)}>
+                            {getStatusText(invoice.status)}
+                          </span>
                         </div>
                         
-                        <div className="flex gap-1">
-                          <button 
-                            onClick={() => navigate(`/invoices/edit/${invoice.id}`)}
-                            className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-slate-700/50 rounded transition-colors" 
-                            title="Ansehen"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                         <button 
-  onClick={() => handleEditInvoice(invoice)}
-  className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors" 
-  title="Bearbeiten"
->
-  <Edit className="h-4 w-4" />
-</button>
-<button 
-  onClick={() => handleDownloadInvoice(invoice)}
-  className="p-1.5 text-green-400 hover:text-green-300 hover:bg-slate-700/50 rounded transition-colors" 
-  title="Download"
->
-  <Download className="h-4 w-4" />
-</button>
-<button 
-  onClick={() => handleDeleteInvoice(invoice)}
-  className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors" 
-  title="Löschen"
->
-  <Trash2 className="h-4 w-4" />
-</button>
+                        <div className={"flex items-center gap-4 mb-2 " + classes.caption}>
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {invoice.coacheeName}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(invoice.date).toLocaleDateString('de-DE')}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Euro className="h-3 w-3" />
+                            {calculateTotal(invoice.items, invoice.taxRate).toFixed(2)} €
+                          </span>
+                        </div>
+                        
+                        <div className={classes.body + " text-sm"}>
+                          {invoice.items && Array.isArray(invoice.items) ? (
+                            <>
+                              {invoice.items.length} Position(en): {invoice.items.map(item => item?.description || 'Unbekannt').join(', ')}
+                            </>
+                          ) : (
+                            'Keine Positionen'
+                          )}
                         </div>
                       </div>
                       
-                      {invoice.status === 'overdue' && (
-                        <div className="mt-3 p-2 bg-red-600/10 border border-red-600/20 rounded-lg">
-                          <p className="text-red-400 text-xs">
-                            Fällig seit: {new Date(invoice.dueDate).toLocaleDateString('de-DE')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-                    <h3 className="text-lg font-medium text-white mb-2">
-                      Keine Rechnungen gefunden
-                    </h3>
-                    <p className="text-slate-400 mb-4">
-                      Für die aktuellen Filter gibt es keine Rechnungen.
-                    </p>
-                    <button
-                      onClick={() => {
-                        clearCoacheeFilter();
-                        setStatusFilter('all');
-                        setDateFilter('all');
-                        setSearchTerm('');
-                      }}
-                      className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
-                    >
-                      Alle Filter zurücksetzen
-                    </button>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Abonnements Tab */}
-            <TabsContent value="recurring" className="space-y-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">Abonnements & Wiederkehrende Rechnungen</h2>
-                  <p className="text-slate-400 text-sm">Verwalte deine wiederkehrenden Einnahmen und Abo-Modelle</p>
-                </div>
-                
-                <button
-                  onClick={() => setShowRecurringModal(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all"
-                >
-                  <Plus className="h-4 w-4" />
-                  Neues Abo
-                </button>
-              </div>
-
-              {/* Wiederkehrende Rechnungen Liste */}
-              <div className="space-y-3">
-                {(recurringInvoices || []).length > 0 ? (
-                  (recurringInvoices || []).map((recurring) => {
-                    const rate = (serviceRates || []).find(r => r.id === recurring.rateId);
-                    return (
-                      <div key={recurring.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                              <Repeat className="h-6 w-6 text-white" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-semibold text-white">{rate?.name || 'Unbekannter Satz'} ({recurring.quantity}x)</p>
-                              <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
-                                <User className="h-4 w-4" />
-                                {recurring.coacheeName}
-                              </p>
-                              <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
-                                <Calendar className="h-4 w-4" />
-                                Nächste Rechnung am: {new Date(recurring.nextDueDate).toLocaleDateString('de-DE')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Badge className={recurring.status === 'active' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-black'}>
-                              {recurring.status === 'active' ? 'Aktiv' : 'Pausiert'}
-                            </Badge>
-                            <p className="text-lg font-bold text-blue-400">
-                              {formatCurrency((rate?.price || 0) * recurring.quantity, recurring.currency)}
-                            </p>
-                            <button 
-                              onClick={() => handleDeleteRecurring(recurring.id)}
-                              className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors"
-                              title="Löschen"
-                            >
+                      {/* Action-Buttons */}
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => handleViewInvoice(invoice)}
+                          className={classes.btnIconBlue} 
+                          title="Ansehen"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDownloadInvoice(invoice)}
+                          className={classes.btnIconGreen} 
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleSendInvoice(invoice)}
+                          className={classes.btnIcon + " text-purple-400 hover:text-purple-300"} 
+                          title="Versenden"
+                        >
+                          <Send className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleEditInvoice(invoice)}
+                          className={classes.btnIcon} 
+                          title="Bearbeiten"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button className={classes.btnIconRed} title="Löschen">
                               <Trash2 className="h-4 w-4" />
                             </button>
-                          </div>
-                        </div>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="bg-slate-800/95 backdrop-blur-xl border-slate-700/50">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-white flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-red-400" />
+                                Rechnung löschen?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription className="text-slate-400">
+                                Möchten Sie die Rechnung <strong className="text-white">"{invoice.invoiceNumber}"</strong> wirklich dauerhaft löschen?
+                                <br /><br />
+                                <span className="text-red-400">Diese Aktion kann nicht rückgängig gemacht werden.</span>
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className={classes.btnSecondary}>
+                                Abbrechen
+                              </AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteInvoice(invoice.id)}
+                                disabled={deletingId === invoice.id}
+                                className={classes.btnPrimary + " bg-red-600 hover:bg-red-700"}
+                              >
+                                {deletingId === invoice.id ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2" />
+                                    Lösche...
+                                  </>
+                                ) : (
+                                  'Dauerhaft löschen'
+                                )}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-12">
-                    <Repeat className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-                    <h3 className="text-lg font-medium text-white mb-2">Keine Abonnements gefunden</h3>
-                    <p className="text-slate-400 mb-4">Erstelle dein erstes Abonnement, um loszulegen.</p>
-                    <button
-                      onClick={() => setShowRecurringModal(true)}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Erstes Abo erstellen
-                    </button>
+                    </div>
                   </div>
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Honorarsätze Tab */}
-            <TabsContent value="rates" className="space-y-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">Honorarsätze</h2>
-                  <p className="text-slate-400 text-sm">Definiere deine Standard-Preise für verschiedene Services</p>
+                ))
+              ) : (
+                <div className={classes.emptyState}>
+                  <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                  <h3 className={classes.h3 + " mb-2"}>Keine Rechnungen gefunden</h3>
+                  <p className={classes.emptyStateText + " mb-4"}>Für die aktuellen Filter gibt es keine Rechnungen.</p>
+                  <button
+                    onClick={() => setShowNewInvoiceDialog(true)}
+                    className={classes.btnPrimary}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Erste Rechnung erstellen
+                  </button>
                 </div>
-                
-                <button
-                  onClick={() => setShowRatesModal(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all"
-                >
-                  <Plus className="h-4 w-4" />
-                  Neuer Satz
-                </button>
-              </div>
+              )}
+            </div>
+          </div>
+        );
 
-              {/* Honorarsätze Liste */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {(serviceRates || []).length > 0 ? (
-                  (serviceRates || []).map((rate) => (
-                    <div key={rate.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <h3 className="text-base font-medium text-white">{rate.name}</h3>
-                          <p className="text-2xl font-bold text-blue-400 mt-1">
-                            {formatCurrency(rate.price, rate.currency)}
-                          </p>
-                          {rate.description && (
-                            <p className="text-sm text-slate-400 mt-2">{rate.description}</p>
-                          )}
-                        </div>
+      case 'honorarsaetze':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              {(serviceRates || []).map(rate => (
+                <div key={rate.id} className={classes.card + " hover:bg-slate-700/50 transition-colors"}>
+                  <div className="flex justify-between items-center">
+                    <div className="flex-1">
+                      <p className={classes.h3 + " text-lg"}>{rate.name}</p>
+                      {rate.description && (
+                        <p className={classes.caption + " mt-1"}>{rate.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <p className="text-xl font-bold text-blue-400 min-w-[100px] text-right">
+                        {formatCurrency(rate.price || 0, rate.currency || 'EUR')}
+                      </p>
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => handleEditRate(rate)}
+                          className={classes.btnIcon}
+                          title="Bearbeiten"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
                         <button 
                           onClick={() => handleDeleteRate(rate.id)}
-                          className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors"
+                          className={classes.btnIconRed}
                           title="Löschen"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-12">
-                    <DollarSign className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-                    <h3 className="text-lg font-medium text-white mb-2">Keine Honorarsätze gefunden</h3>
-                    <p className="text-slate-400 mb-4">Erstelle deinen ersten Honorarsatz, um loszulegen.</p>
+                  </div>
+                </div>
+              ))}
+              
+              {(serviceRates || []).length === 0 && (
+                <div className={classes.emptyState}>
+                  <DollarSign className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                  <h3 className={classes.h3 + " mb-2"}>Keine Honorarsätze gefunden</h3>
+                  <p className={classes.emptyStateText + " mb-4"}>Erstelle deinen ersten Honorarsatz, um zu beginnen.</p>
+                  <button onClick={handleAddRate} className={classes.btnPrimary}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ersten Honorarsatz erstellen
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'abonnements':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              {(recurringInvoices || []).map(item => (
+                <div key={item.id} className={classes.card + " hover:bg-slate-700/50 transition-colors"}>
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <Repeat className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className={classes.h3 + " text-base"}>
+                        {serviceRates.find(r => r.id === item.rateId)?.name || 'Unbekannter Satz'} ({item.quantity}x)
+                      </p>
+                      <p className={classes.caption + " flex items-center gap-2 mt-1"}>
+                        <User className="h-4 w-4" />
+                        {item.coacheeName}
+                      </p>
+                      <p className={classes.caption + " flex items-center gap-2 mt-1"}>
+                        <Calendar className="h-4 w-4" />
+                        Nächste Rechnung am: {new Date(item.nextDueDate).toLocaleDateString('de-DE')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between sm:justify-end gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className={getStatusColor(item.status)}>
+                        {getStatusText(item.status)}
+                      </span>
+                      <p className="text-lg font-bold text-blue-400 whitespace-nowrap">
+                        {formatCurrency((serviceRates.find(r => r.id === item.rateId)?.price || 0) * item.quantity, item.currency)}
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => handleUpdateRecurring(item, 'status', item.status === 'active' ? 'paused' : 'active')}
+                        className={classes.btnIcon + " text-yellow-400 hover:text-yellow-300"}
+                        title={item.status === 'active' ? 'Pausieren' : 'Aktivieren'}
+                      >
+                        {item.status === 'active' ? <Settings className="h-4 w-4" /> : <Settings className="h-4 w-4" />}
+                      </button>
+                      <button 
+                        onClick={() => handleEditRecurring(item)}
+                        className={classes.btnIcon}
+                        title="Bearbeiten"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteRecurring(item.id)}
+                        className={classes.btnIconRed}
+                        title="Löschen"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {(recurringInvoices || []).length === 0 && (
+                <div className={classes.emptyState}>
+                  <Repeat className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                  <h3 className={classes.h3 + " mb-2"}>Keine Abonnements gefunden</h3>
+                  <p className={classes.emptyStateText + " mb-4"}>Erstelle dein erstes Abonnement, um loszulegen.</p>
+                  <button onClick={handleAddRecurring} className={classes.btnPrimary}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Erstes Abo erstellen
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+        
+        {/* Header */}
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h1 className={classes.h1}>Rechnungswesen</h1>
+            <p className={classes.body}>Verwalte Rechnungen, Honorarsätze und Abonnements zentral</p>
+          </div>
+          
+          <div className="flex gap-2">
+            {activeTab === 'rechnungen' && (
+              <button
+                onClick={() => setShowNewInvoiceDialog(true)}
+                className={classes.btnPrimary}
+              >
+                <Plus className="h-4 w-4" />
+                Neue Rechnung
+              </button>
+            )}
+            {activeTab === 'honorarsaetze' && (
+              <button
+                onClick={handleAddRate}
+                className={classes.btnPrimary}
+              >
+                <Plus className="h-4 w-4" />
+                Neuer Honorarsatz
+              </button>
+            )}
+            {activeTab === 'abonnements' && (
+              <button
+                onClick={handleAddRecurring}
+                className={classes.btnPrimary}
+              >
+                <Plus className="h-4 w-4" />
+                Neues Abo
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className={classes.card + " mb-6"}>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setActiveTab('rechnungen')}
+              className={activeTab === 'rechnungen' ? classes.btnFilterActive : classes.btnFilterInactive}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Rechnungen
+            </button>
+            <button
+              onClick={() => setActiveTab('honorarsaetze')}
+              className={activeTab === 'honorarsaetze' ? classes.btnFilterActive : classes.btnFilterInactive}
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Honorarsätze
+            </button>
+            <button
+              onClick={() => setActiveTab('abonnements')}
+              className={activeTab === 'abonnements' ? classes.btnFilterActive : classes.btnFilterInactive}
+            >
+              <Repeat className="h-4 w-4 mr-2" />
+              Abonnements
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {renderTabContent()}
+
+        {/* Dialogs */}
+        <RateEditorDialog
+          open={isRateDialogOpen}
+          onOpenChange={setIsRateDialogOpen}
+          onSave={handleSaveRate}
+          rate={selectedRate}
+        />
+        
+        <RecurringInvoiceDialog
+          open={isRecurringDialogOpen}
+          onOpenChange={setIsRecurringDialogOpen}
+          onSave={handleSaveRecurring}
+          coachees={coachees}
+          serviceRates={serviceRates}
+          recurringInvoice={selectedRecurring}
+        />
+
+        {/* Edit Invoice Modal */}
+        {showEditDialog && editingInvoice && (
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-white">Rechnung bearbeiten</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Rechnungsnummer</Label>
+                  <Input
+                    value={editingInvoice.invoiceNumber}
+                    onChange={(e) => setEditingInvoice(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                    className={classes.input}
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Status</Label>
+                  <select
+                    value={editingInvoice.status}
+                    onChange={(e) => setEditingInvoice(prev => ({ ...prev, status: e.target.value }))}
+                    className={classes.select}
+                  >
+                    <option value="draft">Entwurf</option>
+                    <option value="sent">Versendet</option>
+                    <option value="paid">Bezahlt</option>
+                    <option value="overdue">Überfällig</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Notizen</Label>
+                  <textarea
+                    value={editingInvoice.notes || ''}
+                    onChange={(e) => setEditingInvoice(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={3}
+                    className={classes.textarea}
+                  />
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <DialogClose asChild>
+                  <button className={classes.btnSecondary}>
+                    Abbrechen
+                  </button>
+                </DialogClose>
+                <button 
+                  onClick={handleUpdateInvoice}
+                  className={classes.btnPrimary}
+                >
+                  Änderungen speichern
+                </button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+        {showNewInvoiceDialog && (
+          <Dialog open={showNewInvoiceDialog} onOpenChange={setShowNewInvoiceDialog}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-4xl">
+              <DialogHeader>
+                <DialogTitle className="text-white">Neue Rechnung erstellen</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Erstellen Sie eine neue Rechnung für einen Coachee.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {/* Coachee Selection */}
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Coachee *</Label>
+                  <select
+                    value={newInvoice.coacheeId}
+                    onChange={(e) => setNewInvoice(prev => ({ ...prev, coacheeId: e.target.value }))}
+                    className={classes.select}
+                  >
+                    <option value="">Coachee auswählen</option>
+                    {(coachees || []).map(coachee => (
+                      <option key={coachee.id} value={coachee.id}>
+                        {coachee.firstName} {coachee.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Items */}
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Rechnungspositionen *</Label>
+                  <div className="space-y-3">
+                    {newInvoice.items.map((item, index) => (
+                      <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-5">
+                          <Label className="text-slate-300 text-xs">Beschreibung</Label>
+                          <Input
+                            value={item.description}
+                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                            placeholder="z.B. Coaching Session"
+                            className={classes.input + " text-sm"}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-slate-300 text-xs">Menge</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                            className={classes.input + " text-sm"}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-slate-300 text-xs">Preis (€)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.price}
+                            onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)}
+                            className={classes.input + " text-sm"}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-slate-300 text-xs">Honorarsatz</Label>
+                          <select
+                            value={item.rateId}
+                            onChange={(e) => handleRateSelection(index, e.target.value)}
+                            className={classes.select + " text-sm"}
+                          >
+                            <option value="">Individuell</option>
+                            {(serviceRates || []).map(rate => (
+                              <option key={rate.id} value={rate.id}>
+                                {rate.name} ({rate.price}€)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-span-1">
+                          {newInvoice.items.length > 1 && (
+                            <button
+                              onClick={() => handleRemoveItem(index)}
+                              className={classes.btnIconRed + " text-xs p-1"}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                     <button
-                      onClick={() => setShowRatesModal(true)}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all"
+                      onClick={handleAddItem}
+                      className={classes.btnSecondary + " text-sm"}
                     >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Ersten Satz erstellen
+                      <Plus className="h-3 w-3 mr-1" />
+                      Position hinzufügen
                     </button>
+                  </div>
+                </div>
+
+                {/* Preview */}
+                {newInvoice.items.length > 0 && newInvoice.items[0].price > 0 && (
+                  <div className="border border-slate-600/50 rounded-lg p-4 bg-slate-700/30">
+                    <h4 className="text-sm font-medium text-slate-300 mb-2">Vorschau</h4>
+                    <div className="space-y-1 text-sm text-slate-400">
+                      <div className="flex justify-between font-medium text-white pt-1 border-t border-slate-600">
+                        <span>Gesamt:</span>
+                        <span>{calculateTotal(newInvoice.items).toFixed(2)} €</span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-            </TabsContent>
-          </Tabs>
-
-          {/* Neue Rechnung Modal */}
-          {showNewModal && (
-            <Dialog open={showNewModal} onOpenChange={setShowNewModal}>
-              <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Neue Rechnung</DialogTitle>
-                  <DialogDescription className="text-slate-400">
-                    Erstelle eine einfache Rechnung für deine Coachees.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-slate-300 mb-2 block">Betrag</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="150.00"
-                        value={newInvoice.amount}
-                        onChange={(e) => setNewInvoice(prev => ({ ...prev, amount: e.target.value }))}
-                        className="bg-slate-700/50 border-slate-600/50 text-white"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label className="text-slate-300 mb-2 block">Währung</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {['EUR', 'USD', 'CHF'].map(currency => (
-                          <button
-                            key={currency}
-                            onClick={() => setNewInvoice(prev => ({ ...prev, currency }))}
-                            className={`
-                              px-3 py-2 rounded-lg text-sm font-medium transition-all
-                              ${newInvoice.currency === currency
-                                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                                : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                              }
-                            `}
-                          >
-                            {currency}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label className="text-slate-300 mb-2 block">Fälligkeitsdatum</Label>
-                    <Input
-                      type="date"
-                      value={newInvoice.dueDate}
-                      onChange={(e) => setNewInvoice(prev => ({ ...prev, dueDate: e.target.value }))}
-                      className="bg-slate-700/50 border-slate-600/50 text-white"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label className="text-slate-300 mb-2 block">Beschreibung</Label>
-                    <textarea
-                      placeholder="z.B. Coaching Session Paket (3 Sessions)..."
-                      value={newInvoice.description}
-                      onChange={(e) => setNewInvoice(prev => ({ ...prev, description: e.target.value }))}
-                      rows={3}
-                      className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label className="text-slate-300 mb-2 block">Coachee zuweisen</Label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => handleCoacheeSelection('', setNewInvoice)}
-                        className={`
-                          px-3 py-2 rounded-lg text-sm font-medium transition-all
-                          ${!newInvoice.coacheeId 
-                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                          }
-                        `}
-                      >
-                        Allgemeine Rechnung
-                      </button>
-                      {(coachees || []).map(coachee => (
-                        <button
-                          key={coachee.id}
-                          onClick={() => handleCoacheeSelection(coachee.id.toString(), setNewInvoice)}
-                          className={`
-                            px-3 py-2 rounded-lg text-sm font-medium transition-all
-                            ${newInvoice.coacheeId === coachee.id.toString()
-                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                            }
-                          `}
-                        >
-                          {coachee.firstName} {coachee.lastName}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label className="text-slate-300 mb-2 block">Status</Label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setNewInvoice(prev => ({ ...prev, status: 'draft' }))}
-                        className={`
-                          px-3 py-2 rounded-lg text-sm font-medium transition-all
-                          ${newInvoice.status === 'draft'
-                            ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white' 
-                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                          }
-                        `}
-                      >
-                        Entwurf
-                      </button>
-                      <button
-                        onClick={() => setNewInvoice(prev => ({ ...prev, status: 'sent' }))}
-                        className={`
-                          px-3 py-2 rounded-lg text-sm font-medium transition-all
-                          ${newInvoice.status === 'sent'
-                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white' 
-                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                          }
-                        `}
-                      >
-                        Direkt versenden
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
-                      Abbrechen
-                    </Button>
-                  </DialogClose>
-                  <Button 
-                    onClick={saveNewInvoice}
-                    disabled={!newInvoice.amount || !newInvoice.description || !newInvoice.dueDate}
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-600"
-                  >
-                    Rechnung erstellen
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-
-          {/* Neue wiederkehrende Rechnung Modal */}
-          {showRecurringModal && (
-            <Dialog open={showRecurringModal} onOpenChange={setShowRecurringModal}>
-              <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Neues Abonnement erstellen</DialogTitle>
-                  <DialogDescription className="text-slate-400">
-                    Richte wiederkehrende Rechnungen für deine Coachees ein.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-slate-300 mb-2 block">Coachee</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {(coachees || []).map(coachee => (
-                        <button
-                          key={coachee.id}
-                          onClick={() => handleCoacheeSelection(coachee.id.toString(), setNewRecurring)}
-                          className={`
-                            px-3 py-2 rounded-lg text-sm font-medium transition-all
-                            ${newRecurring.coacheeId === coachee.id.toString()
-                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                            }
-                          `}
-                        >
-                          {coachee.firstName} {coachee.lastName}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-slate-300 mb-2 block">Honorarsatz</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {(serviceRates || []).map(rate => (
-                        <button
-                          key={rate.id}
-                          onClick={() => setNewRecurring(prev => ({ ...prev, rateId: rate.id }))}
-                          className={`
-                            px-3 py-2 rounded-lg text-sm font-medium transition-all
-                            ${newRecurring.rateId === rate.id
-                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                            }
-                          `}
-                        >
-                          {rate.name} ({formatCurrency(rate.price, rate.currency)})
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-slate-300 mb-2 block">Anzahl</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={newRecurring.quantity}
-                        onChange={(e) => setNewRecurring(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                        className="bg-slate-700/50 border-slate-600/50 text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="text-slate-300 mb-2 block">Intervall</Label>
-                      <div className="flex flex-wrap gap-1">
-                        {[
-                          { value: 'monthly', label: 'Monatlich' },
-                          { value: 'quarterly', label: 'Quartal' },
-                          { value: 'yearly', label: 'Jährlich' }
-                        ].map(interval => (
-                          <button
-                            key={interval.value}
-                            onClick={() => setNewRecurring(prev => ({ ...prev, interval: interval.value }))}
-                            className={`
-                              px-2 py-1 rounded text-xs font-medium transition-all
-                              ${newRecurring.interval === interval.value
-                                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                                : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 border border-slate-600/50'
-                              }
-                            `}
-                          >
-                            {interval.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-slate-300 mb-2 block">Startdatum</Label>
-                      <Input
-                        type="date"
-                        value={newRecurring.startDate}
-                        onChange={(e) => setNewRecurring(prev => ({ ...prev, startDate: e.target.value }))}
-                        className="bg-slate-700/50 border-slate-600/50 text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
-                      Abbrechen
-                    </Button>
-                  </DialogClose>
-                  <Button 
-                    onClick={saveNewRecurring}
-                    disabled={!newRecurring.coacheeId || !newRecurring.rateId}
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                  >
-                    Abonnement erstellen
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-
-          {/* Neuer Honorarsatz Modal */}
-          {showRatesModal && (
-            <Dialog open={showRatesModal} onOpenChange={setShowRatesModal}>
-              <DialogContent className="bg-slate-800 border-slate-700 text-white">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Neuer Honorarsatz</DialogTitle>
-                  <DialogDescription className="text-slate-400">
-                    Definiere einen neuen Standard-Preis für deine Services.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-slate-300 mb-2 block">Name</Label>
-                    <Input
-                      placeholder="z.B. Standard Coaching Session"
-                      value={newRate.name}
-                      onChange={(e) => setNewRate(prev => ({ ...prev, name: e.target.value }))}
-                      className="bg-slate-700/50 border-slate-600/50 text-white"
-                    />
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-slate-300 mb-2 block">Preis</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="150.00"
-                        value={newRate.price}
-                        onChange={(e) => setNewRate(prev => ({ ...prev, price: e.target.value }))}
-                        className="bg-slate-700/50 border-slate-600/50 text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="text-slate-300 mb-2 block">Währung</Label>
-                      <div className="flex gap-2">
-                        {['EUR', 'USD', 'CHF'].map(currency => (
-                          <button
-                            key={currency}
-                            onClick={() => setNewRate(prev => ({ ...prev, currency }))}
-                            className={`
-                              px-3 py-2 rounded-lg text-sm font-medium transition-all
-                              ${newRate.currency === currency
-                                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                                : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                              }
-                            `}
-                          >
-                            {currency}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-slate-300 mb-2 block">Beschreibung (optional)</Label>
-                    <textarea
-                      placeholder="Beschreibung des Services..."
-                      value={newRate.description}
-                      onChange={(e) => setNewRate(prev => ({ ...prev, description: e.target.value }))}
-                      rows={3}
-                      className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    />
-                  </div>
-                </div>
-                
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
-                      Abbrechen
-                    </Button>
-                  </DialogClose>
-                  <Button 
-                    onClick={saveNewRate}
-                    disabled={!newRate.name || !newRate.price}
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                  >
-                    Honorarsatz erstellen
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
+              
+              <DialogFooter>
+                <DialogClose asChild>
+                  <button className={classes.btnSecondary}>
+                    Abbrechen
+                  </button>
+                </DialogClose>
+                <button 
+                  onClick={handleCreateInvoice}
+                  disabled={!newInvoice.coacheeId || newInvoice.items.some(item => !item.description || !item.price)}
+                  className={classes.btnPrimary}
+                  style={{ opacity: (!newInvoice.coacheeId || newInvoice.items.some(item => !item.description || !item.price)) ? 0.5 : 1 }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Rechnung erstellen
+                </button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
-    </>
+    </div>
   );
 };
 

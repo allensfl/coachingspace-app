@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Search, User, Calendar, Filter, X, Plus, Upload, Settings, Edit, Trash2, CheckCircle, AlertCircle, FileText, Download, Eye, Share2, FolderOpen, AlertTriangle } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useAppStateContext } from '@/context/AppStateContext';
-import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -18,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { classes } from '../styles/standardClasses';
 
 const DocumentsApp = () => {
   // Context für echte Daten + Action-Handler
@@ -455,14 +455,11 @@ const DocumentsApp = () => {
   const FilterButton = ({ active, onClick, children, icon: Icon, count }) => (
     <button
       onClick={onClick}
-      className={`
-        relative px-3 py-2 rounded-lg text-sm font-medium transition-all
-        flex items-center gap-2
-        ${active 
-          ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' 
-          : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-        }
-      `}
+      className={
+        active 
+          ? classes.btnFilterActive 
+          : classes.btnFilterInactive
+      }
     >
       {Icon && <Icon className="h-4 w-4" />}
       <span>{children}</span>
@@ -504,20 +501,20 @@ const DocumentsApp = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="">
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-1">
+            <h1 className={classes.h1}>
               Dokumente
             </h1>
-            <p className="text-slate-400 text-sm">Organisieren, teilen und verwalten Sie Ihre Coaching-Materialien</p>
+            <p className={classes.body}>Organisieren, teilen und verwalten Sie Ihre Coaching-Materialien</p>
           </div>
           
           <div className="flex gap-2">
             <button
               onClick={() => setShowUploadDialog(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all text-sm"
+              className={classes.btnPrimary}
             >
               <Upload className="h-4 w-4" />
               Hochladen
@@ -525,7 +522,7 @@ const DocumentsApp = () => {
             
             <button
               onClick={() => setShowCategoryManager(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50 rounded-lg transition-all text-sm"
+              className={classes.btnSecondary}
             >
               <Settings className="h-4 w-4" />
               Kategorien
@@ -534,14 +531,14 @@ const DocumentsApp = () => {
         </div>
 
         {/* Quick stats display */}
-        <div className="flex gap-4 mb-6 text-sm text-slate-400">
+        <div className={"flex gap-4 mb-6 " + classes.caption}>
           <span>📁 {stats.total} Dokumente</span>
           <span>🔗 {stats.shared} geteilt</span>
           <span>🆕 {stats.recent} neu</span>
         </div>
 
         {/* Search */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4 mb-6">
+        <div className={classes.card + " mb-6"}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -549,7 +546,7 @@ const DocumentsApp = () => {
               placeholder="Dokumente, Coachees oder Beschreibungen durchsuchen..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-700/40 border border-slate-600/40 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+              className={classes.searchInput + " pl-10"}
             />
           </div>
         </div>
@@ -557,10 +554,10 @@ const DocumentsApp = () => {
         {/* Results header */}
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className={classes.h2}>
               {coacheeFilter ? `${coacheeName}s Dokumente` : 'Alle Dokumente'}
             </h2>
-            <p className="text-slate-400 text-sm">
+            <p className={classes.body}>
               {filteredDocuments.length} von {documents.length} Dokumenten
             </p>
           </div>
@@ -572,26 +569,26 @@ const DocumentsApp = () => {
             filteredDocuments.map((doc) => {
               const category = categories.find(cat => cat.id === doc.category);
               return (
-                <div key={doc.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-lg p-4 hover:bg-slate-700/50 transition-colors">
+                <div key={doc.id} className={classes.card + " hover:bg-slate-700/50 transition-colors"}>
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-4 flex-1">
                       <div className="text-3xl">{getFileIcon(doc.type)}</div>
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-base font-medium text-white">{doc.name}</h3>
+                          <h3 className={classes.h3 + " text-base"}>{doc.name}</h3>
                           {category && (
                             <span className={`px-2 py-1 rounded text-xs font-medium ${category.color} bg-slate-700/50`}>
                               {category.name}
                             </span>
                           )}
                           {doc.shared && (
-                            <span className="px-2 py-1 rounded text-xs font-medium bg-green-600/20 text-green-400">
+                            <span className={classes.statusGreen + " text-xs"}>
                               Geteilt
                             </span>
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+                        <div className={"flex items-center gap-4 mb-2 " + classes.caption}>
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {new Date(doc.date || doc.uploadDate).toLocaleDateString('de-DE')}
@@ -606,7 +603,7 @@ const DocumentsApp = () => {
                         </div>
                         
                         {doc.description && (
-                          <p className="text-slate-300 text-sm">{doc.description}</p>
+                          <p className={classes.body + " text-sm"}>{doc.description}</p>
                         )}
                       </div>
                     </div>
@@ -615,7 +612,7 @@ const DocumentsApp = () => {
                     <div className="flex gap-1">
                       <button 
                         onClick={() => handleViewDocument(doc)}
-                        className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-slate-700/50 rounded transition-colors" 
+                        className={classes.btnIconBlue}
                         title="Ansehen"
                       >
                         <Eye className="h-4 w-4" />
@@ -623,7 +620,7 @@ const DocumentsApp = () => {
                       
                       <button 
                         onClick={() => handleDownloadDocument(doc)}
-                        className="p-1.5 text-green-400 hover:text-green-300 hover:bg-slate-700/50 rounded transition-colors" 
+                        className={classes.btnIconGreen}
                         title="Download"
                       >
                         <Download className="h-4 w-4" />
@@ -631,7 +628,7 @@ const DocumentsApp = () => {
                       
                       <button 
                         onClick={() => handleShareDocument(doc)}
-                        className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-slate-700/50 rounded transition-colors" 
+                        className={classes.btnIcon + " text-purple-400 hover:text-purple-300"}
                         title="Teilen"
                       >
                         <Share2 className="h-4 w-4" />
@@ -639,7 +636,7 @@ const DocumentsApp = () => {
                       
                       <button 
                         onClick={() => handleEditDocument(doc)}
-                        className="p-1.5 text-slate-400 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors" 
+                        className={classes.btnIcon}
                         title="Bearbeiten"
                       >
                         <Edit className="h-4 w-4" />
@@ -649,7 +646,7 @@ const DocumentsApp = () => {
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <button 
-                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors" 
+                            className={classes.btnIconRed}
                             title="Löschen"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -668,13 +665,13 @@ const DocumentsApp = () => {
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel className="bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600">
+                            <AlertDialogCancel className={classes.btnSecondary}>
                               Abbrechen
                             </AlertDialogCancel>
                             <AlertDialogAction 
                               onClick={() => handleDeleteDocument(doc.id)}
                               disabled={deletingId === doc.id}
-                              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+                              className={classes.btnPrimary + " bg-red-600 hover:bg-red-700"}
                             >
                               {deletingId === doc.id ? (
                                 <>
@@ -694,12 +691,12 @@ const DocumentsApp = () => {
               );
             })
           ) : (
-            <div className="text-center py-12">
+            <div className={classes.emptyState}>
               <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">
+              <h3 className={classes.h3 + " mb-2"}>
                 Keine Dokumente gefunden
               </h3>
-              <p className="text-slate-400 mb-4">
+              <p className={classes.emptyStateText + " mb-4"}>
                 Für die aktuellen Filter gibt es keine Dokumente.
               </p>
             </div>
@@ -730,7 +727,7 @@ const DocumentsApp = () => {
                     value={editingDocument.description || ''}
                     onChange={(e) => setEditingDocument(prev => ({ ...prev, description: e.target.value }))}
                     rows={3}
-                    className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className={classes.textarea}
                   />
                 </div>
                 
@@ -741,13 +738,11 @@ const DocumentsApp = () => {
                       <button
                         key={category.id}
                         onClick={() => setEditingDocument(prev => ({ ...prev, category: category.id }))}
-                        className={`
-                          px-3 py-2 rounded-lg text-sm font-medium transition-all
-                          ${editingDocument.category === category.id
-                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                          }
-                        `}
+                        className={
+                          editingDocument.category === category.id
+                            ? classes.btnFilterActive
+                            : classes.btnFilterInactive
+                        }
                       >
                         {category.name}
                       </button>
@@ -758,16 +753,16 @@ const DocumentsApp = () => {
               
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                  <button className={classes.btnSecondary}>
                     Abbrechen
-                  </Button>
+                  </button>
                 </DialogClose>
-                <Button 
+                <button 
                   onClick={handleUpdateDocument}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                  className={classes.btnPrimary}
                 >
                   Änderungen speichern
-                </Button>
+                </button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -832,13 +827,11 @@ const DocumentsApp = () => {
                         <button
                           key={category.id}
                           onClick={() => setUploadMetadata(prev => ({ ...prev, category: category.id }))}
-                          className={`
-                            px-2 py-1 rounded text-xs font-medium transition-all
-                            ${uploadMetadata.category === category.id
-                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 border border-slate-600/50'
-                            }
-                          `}
+                          className={
+                            uploadMetadata.category === category.id
+                              ? classes.btnFilterActive + " text-xs px-2 py-1"
+                              : classes.btnFilterInactive + " text-xs px-2 py-1"
+                          }
                         >
                           {category.name}
                         </button>
@@ -851,13 +844,11 @@ const DocumentsApp = () => {
                     <div className="flex flex-wrap gap-1">
                       <button
                         onClick={() => handleCoacheeSelection('')}
-                        className={`
-                          px-2 py-1 rounded text-xs font-medium transition-all
-                          ${!uploadMetadata.assignedTo 
-                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 border border-slate-600/50'
-                          }
-                        `}
+                        className={
+                          !uploadMetadata.assignedTo
+                            ? classes.btnFilterActive + " text-xs px-2 py-1"
+                            : classes.btnFilterInactive + " text-xs px-2 py-1"
+                        }
                       >
                         Allgemein
                       </button>
@@ -865,13 +856,11 @@ const DocumentsApp = () => {
                         <button
                           key={coachee.id}
                           onClick={() => handleCoacheeSelection(coachee.id.toString())}
-                          className={`
-                            px-2 py-1 rounded text-xs font-medium transition-all
-                            ${uploadMetadata.assignedTo === coachee.id.toString()
-                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                              : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 border border-slate-600/50'
-                            }
-                          `}
+                          className={
+                            uploadMetadata.assignedTo === coachee.id.toString()
+                              ? classes.btnFilterActive + " text-xs px-2 py-1"
+                              : classes.btnFilterInactive + " text-xs px-2 py-1"
+                          }
                         >
                           {coachee.firstName} {coachee.lastName}
                         </button>
@@ -887,25 +876,26 @@ const DocumentsApp = () => {
                     value={uploadMetadata.description}
                     onChange={(e) => setUploadMetadata(prev => ({ ...prev, description: e.target.value }))}
                     rows={3}
-                    className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className={classes.textarea}
                   />
                 </div>
               </div>
               
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                  <button className={classes.btnSecondary}>
                     Abbrechen
-                  </Button>
+                  </button>
                 </DialogClose>
-                <Button 
+                <button 
                   onClick={handleUpload}
                   disabled={uploadFiles.length === 0 || !uploadMetadata.category}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                  className={classes.btnPrimary}
+                  style={{ opacity: (uploadFiles.length === 0 || !uploadMetadata.category) ? 0.5 : 1 }}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Hochladen
-                </Button>
+                </button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -943,27 +933,26 @@ const DocumentsApp = () => {
                           <button
                             key={color.class}
                             onClick={() => setNewCategoryData(prev => ({ ...prev, color: color.class }))}
-                            className={`
-                              px-3 py-2 rounded-lg text-sm font-medium transition-all
-                              ${newCategoryData.color === color.class
-                                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
-                                : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 border border-slate-600/50'
-                              }
-                            `}
+                            className={
+                              newCategoryData.color === color.class
+                                ? classes.btnFilterActive
+                                : classes.btnFilterInactive
+                            }
                           >
                             <span className={color.class}>●</span> {color.name}
                           </button>
                         ))}
                       </div>
                     </div>
-                    <Button 
+                    <button 
                       onClick={handleAddCategory}
                       disabled={!newCategoryData.name.trim()}
-                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                      className={classes.btnPrimary + " bg-green-600 hover:bg-green-700"}
+                      style={{ opacity: !newCategoryData.name.trim() ? 0.5 : 1 }}
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Kategorie hinzufügen
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
@@ -979,7 +968,7 @@ const DocumentsApp = () => {
                         </div>
                         <button
                           onClick={() => handleDeleteCategory(category.id)}
-                          className="text-red-400 hover:text-red-300 p-1"
+                          className={classes.btnIconRed}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -991,9 +980,9 @@ const DocumentsApp = () => {
               
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                  <button className={classes.btnPrimary}>
                     Schließen
-                  </Button>
+                  </button>
                 </DialogClose>
               </DialogFooter>
             </DialogContent>

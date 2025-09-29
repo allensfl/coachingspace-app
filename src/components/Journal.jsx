@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { classes } from '../styles/standardClasses';
 
 const ReflexionstagebuchApp = () => {
   // Context für echte Coachees + Feature Flags + Action-Handler
@@ -333,14 +334,11 @@ const ReflexionstagebuchApp = () => {
   const FilterButton = ({ active, onClick, children, icon: Icon, count }) => (
     <button
       onClick={onClick}
-      className={`
-        relative px-4 py-2 rounded-lg text-sm font-medium transition-all
-        flex items-center gap-2
-        ${active 
-          ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' 
-          : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-        }
-      `}
+      className={
+        active 
+          ? classes.btnFilterActive 
+          : classes.btnFilterInactive
+      }
     >
       {Icon && <Icon className="h-4 w-4" />}
       <span>{children}</span>
@@ -392,28 +390,27 @@ const ReflexionstagebuchApp = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header (unchanged) */}
+      <div className="">
+        {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-1">
+            <h1 className={classes.h1}>
               Reflexionstagebuch
             </h1>
-            <p className="text-slate-400 text-sm">Professionelle Selbstreflexion für Coaches</p>
+            <p className={classes.body}>Professionelle Selbstreflexion für Coaches</p>
           </div>
           
           <button
             onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all"
+            className={classes.btnPrimary}
           >
             <Plus className="h-4 w-4" />
             Neue Reflexion
           </button>
         </div>
 
-        {/* Search & Filters (unchanged but shortened for space) */}
-        {/* ... alle bestehenden Filter-Komponenten ... */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4 mb-6">
+        {/* Search */}
+        <div className={classes.card + " mb-6"}>
           <div className="relative max-w-xl">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -421,7 +418,7 @@ const ReflexionstagebuchApp = () => {
               placeholder="Reflexionen, Coachees, Notizen oder Tags durchsuchen..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-700/40 border border-slate-600/40 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+              className={classes.searchInput + " pl-10"}
             />
           </div>
         </div>
@@ -429,36 +426,36 @@ const ReflexionstagebuchApp = () => {
         {/* Ergebnisse */}
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className={classes.h2}>
               {coacheeFilter ? `${coacheeName}s Journal-Einträge` : 'Alle Journal-Einträge'}
             </h2>
-            <p className="text-slate-400 text-sm">
+            <p className={classes.body}>
               {filteredReflections.length} von {reflections.length} Einträgen
               {coacheeFilter && ` • Gefiltert nach ${coacheeName}`}
             </p>
           </div>
         </div>
 
-        {/* ← ERWEITERTE Reflexions-Liste mit Edit/Delete-Buttons */}
+        {/* Reflexions-Liste mit Edit/Delete-Buttons */}
         <div className="space-y-3">
           {filteredReflections.length > 0 ? (
             filteredReflections.map((reflection) => (
-              <div key={reflection.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-lg p-4 hover:bg-slate-700/50 transition-colors">
+              <div key={reflection.id} className={classes.card + " hover:bg-slate-700/50 transition-colors"}>
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-base font-medium text-white">{reflection.title}</h3>
+                      <h3 className={classes.h3 + " text-base"}>{reflection.title}</h3>
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        reflection.mood === 'positive' ? 'bg-green-600/20 text-green-400' :
-                        reflection.mood === 'challenging' ? 'bg-red-600/20 text-red-400' :
-                        'bg-slate-600/20 text-slate-400'
+                        reflection.mood === 'positive' ? classes.statusGreen :
+                        reflection.mood === 'challenging' ? classes.statusRed :
+                        classes.statusGray
                       }`}>
                         {reflection.mood === 'positive' ? 'Positiv' : 
                          reflection.mood === 'challenging' ? 'Herausfordernd' : 'Neutral'}
                       </span>
                     </div>
                     
-                    <div className="flex items-center gap-3 text-xs text-slate-400 mb-2">
+                    <div className={"flex items-center gap-3 text-xs " + classes.caption + " mb-2"}>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {new Date(reflection.date).toLocaleDateString('de-DE')}
@@ -472,18 +469,16 @@ const ReflexionstagebuchApp = () => {
                     </div>
                   </div>
                   
-                  {/* ← NEUE Action-Buttons */}
+                  {/* Action-Buttons */}
                   <div className="flex gap-1">
                     <button 
                       onClick={() => startKiAnalysis('patterns')}
                       disabled={!hasFeature('aiModule')}
-                      className={`
-                        p-1.5 rounded transition-colors 
-                        ${hasFeature('aiModule') 
-                          ? 'text-purple-400 hover:text-purple-300 hover:bg-slate-700/50' 
-                          : 'text-slate-500 cursor-not-allowed opacity-50'
-                        }
-                      `}
+                      className={
+                        hasFeature('aiModule') 
+                          ? classes.btnIcon + " text-purple-400 hover:text-purple-300" 
+                          : classes.btnIcon + " opacity-50 cursor-not-allowed"
+                      }
                       title={hasFeature('aiModule') ? 'KI-Analyse' : 'KI-Analyse (In Entwicklung)'}
                     >
                       <Brain className="h-4 w-4" />
@@ -492,7 +487,7 @@ const ReflexionstagebuchApp = () => {
                     {/* Edit-Button */}
                     <button 
                       onClick={() => handleEditReflection(reflection)}
-                      className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-slate-700/50 rounded transition-colors"
+                      className={classes.btnIconBlue}
                       title="Reflexion bearbeiten"
                     >
                       <Edit className="h-4 w-4" />
@@ -502,7 +497,7 @@ const ReflexionstagebuchApp = () => {
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <button 
-                          className="p-1.5 text-red-400 hover:text-red-300 hover:bg-slate-700/50 rounded transition-colors"
+                          className={classes.btnIconRed}
                           title="Reflexion löschen"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -521,13 +516,13 @@ const ReflexionstagebuchApp = () => {
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel className="bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600">
+                          <AlertDialogCancel className={classes.btnSecondary}>
                             Abbrechen
                           </AlertDialogCancel>
                           <AlertDialogAction 
                             onClick={() => handleDeleteReflection(reflection.id)}
                             disabled={deletingId === reflection.id}
-                            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+                            className={classes.btnPrimary + " bg-red-600 hover:bg-red-700"}
                           >
                             {deletingId === reflection.id ? (
                               <>
@@ -544,12 +539,12 @@ const ReflexionstagebuchApp = () => {
                   </div>
                 </div>
                 
-                <p className="text-slate-300 text-sm mb-3">{reflection.content.substring(0, 150)}...</p>
+                <p className={classes.body + " text-sm mb-3"}>{reflection.content.substring(0, 150)}...</p>
                 
                 {reflection.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {reflection.tags.map((tag, index) => (
-                      <span key={index} className="px-2 py-0.5 bg-slate-700/50 text-slate-300 text-xs rounded">
+                      <span key={index} className={classes.badge}>
                         {tag}
                       </span>
                     ))}
@@ -558,12 +553,12 @@ const ReflexionstagebuchApp = () => {
               </div>
             ))
           ) : (
-            <div className="text-center py-12">
+            <div className={classes.emptyState}>
               <Brain className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">
+              <h3 className={classes.h3 + " mb-2"}>
                 Keine Journal-Einträge gefunden
               </h3>
-              <p className="text-slate-400 mb-4">
+              <p className={classes.emptyStateText + " mb-4"}>
                 Für die aktuellen Filter gibt es keine Einträge.
               </p>
               <button
@@ -573,7 +568,7 @@ const ReflexionstagebuchApp = () => {
                   setCategoryFilter('all');
                   setSearchTerm('');
                 }}
-                className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                className={classes.btnSecondary}
               >
                 Alle Filter zurücksetzen
               </button>
@@ -584,51 +579,49 @@ const ReflexionstagebuchApp = () => {
         {/* Edit Modal */}
         {showEditModal && editingReflection && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800 rounded-xl p-6 max-w-2xl w-full border border-slate-700/50">
+            <div className={classes.card + " max-w-2xl w-full"}>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-white">Reflexion bearbeiten</h2>
-                <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-white">
+                <h2 className={classes.h2}>Reflexion bearbeiten</h2>
+                <button onClick={() => setShowEditModal(false)} className={classes.btnIcon}>
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Titel der Reflexion</label>
+                  <label className={classes.body + " block text-sm font-medium mb-2"}>Titel der Reflexion</label>
                   <input
                     type="text"
                     value={editingReflection.title}
                     onChange={(e) => setEditingReflection(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className={classes.input}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Reflexionsinhalt</label>
+                  <label className={classes.body + " block text-sm font-medium mb-2"}>Reflexionsinhalt</label>
                   <textarea
                     value={editingReflection.content}
                     onChange={(e) => setEditingReflection(prev => ({ ...prev, content: e.target.value }))}
                     rows={6}
-                    className="w-full px-3 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className={classes.textarea}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Stimmung/Erfahrung</label>
+                  <label className={classes.body + " block text-sm font-medium mb-2"}>Stimmung/Erfahrung</label>
                   <div className="flex flex-wrap gap-2">
                     {['positive', 'neutral', 'challenging'].map(mood => (
                       <button
                         key={mood}
                         onClick={() => setEditingReflection(prev => ({ ...prev, mood }))}
-                        className={`
-                          px-3 py-2 rounded-lg text-sm font-medium transition-all
-                          ${editingReflection.mood === mood
-                            ? mood === 'positive' ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white' :
-                              mood === 'challenging' ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' :
-                              'bg-gradient-to-r from-slate-600 to-slate-700 text-white'
-                            : 'bg-slate-700/60 hover:bg-slate-600/70 text-slate-300 hover:text-white border border-slate-600/50'
-                          }
-                        `}
+                        className={
+                          editingReflection.mood === mood
+                            ? mood === 'positive' ? classes.btnPrimary + " bg-green-600" :
+                              mood === 'challenging' ? classes.btnPrimary + " bg-red-600" :
+                              classes.btnPrimary
+                            : classes.btnSecondary
+                        }
                       >
                         {mood === 'positive' ? 'Positive Erfahrung' : 
                          mood === 'challenging' ? 'Herausfordernde Erfahrung' : 'Neutrale Erfahrung'}
@@ -642,13 +635,14 @@ const ReflexionstagebuchApp = () => {
                 <button
                   onClick={handleUpdateReflection}
                   disabled={!editingReflection.title || !editingReflection.content}
-                  className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-600 text-white rounded-lg transition-all disabled:cursor-not-allowed"
+                  className={classes.btnPrimary + " flex-1 py-2.5"}
+                  style={{ opacity: (!editingReflection.title || !editingReflection.content) ? 0.5 : 1 }}
                 >
                   Änderungen speichern
                 </button>
                 <button
                   onClick={() => setShowEditModal(false)}
-                  className="px-6 py-2.5 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                  className={classes.btnSecondary + " px-6 py-2.5"}
                 >
                   Abbrechen
                 </button>
@@ -657,7 +651,159 @@ const ReflexionstagebuchApp = () => {
           </div>
         )}
 
-        {/* ... andere Modals (New Modal, KI Modal) - unverändert aber hier weggelassen wegen Platz ... */}
+        {/* New Modal */}
+        {showNewModal && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className={classes.card + " max-w-2xl w-full"}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className={classes.h2}>Neue Reflexion</h2>
+                <button onClick={() => setShowNewModal(false)} className={classes.btnIcon}>
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className={classes.body + " block text-sm font-medium mb-2"}>Titel der Reflexion</label>
+                  <input
+                    type="text"
+                    value={newReflection.title}
+                    onChange={(e) => setNewReflection(prev => ({ ...prev, title: e.target.value }))}
+                    className={classes.input}
+                    placeholder="z.B. Schwierige Session mit Führungskraft"
+                  />
+                </div>
+
+                <div>
+                  <label className={classes.body + " block text-sm font-medium mb-2"}>Coachee (optional)</label>
+                  <select
+                    value={newReflection.coacheeId || ''}
+                    onChange={(e) => handleCoacheeSelection(e.target.value)}
+                    className={classes.select}
+                  >
+                    <option value="">Allgemeine Reflexion</option>
+                    {coachees?.map(coachee => (
+                      <option key={coachee.id} value={coachee.id}>
+                        {coachee.firstName} {coachee.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className={classes.body + " block text-sm font-medium mb-2"}>Reflexionsinhalt</label>
+                  <textarea
+                    value={newReflection.content}
+                    onChange={(e) => setNewReflection(prev => ({ ...prev, content: e.target.value }))}
+                    rows={6}
+                    className={classes.textarea}
+                    placeholder="Was ist passiert? Was habe ich gelernt? Was möchte ich beim nächsten Mal anders machen?"
+                  />
+                </div>
+                
+                <div>
+                  <label className={classes.body + " block text-sm font-medium mb-2"}>Stimmung/Erfahrung</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['positive', 'neutral', 'challenging'].map(mood => (
+                      <button
+                        key={mood}
+                        onClick={() => setNewReflection(prev => ({ ...prev, mood }))}
+                        className={
+                          newReflection.mood === mood
+                            ? mood === 'positive' ? classes.btnPrimary + " bg-green-600" :
+                              mood === 'challenging' ? classes.btnPrimary + " bg-red-600" :
+                              classes.btnPrimary
+                            : classes.btnSecondary
+                        }
+                      >
+                        {mood === 'positive' ? 'Positive Erfahrung' : 
+                         mood === 'challenging' ? 'Herausfordernde Erfahrung' : 'Neutrale Erfahrung'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={saveNewReflection}
+                  disabled={!newReflection.title || !newReflection.content}
+                  className={classes.btnPrimary + " flex-1 py-2.5"}
+                  style={{ opacity: (!newReflection.title || !newReflection.content) ? 0.5 : 1 }}
+                >
+                  Reflexion speichern
+                </button>
+                <button
+                  onClick={() => setShowNewModal(false)}
+                  className={classes.btnSecondary + " px-6 py-2.5"}
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* KI Modal */}
+        {showKiModal && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className={classes.card + " max-w-2xl w-full"}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className={classes.h2 + " flex items-center gap-2"}>
+                  <Brain className="h-5 w-5 text-blue-400" />
+                  KI-Analyse
+                </h2>
+                <button onClick={() => setShowKiModal(false)} className={classes.btnIcon}>
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {kiLoading ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className={classes.body}>KI analysiert deine Reflexionen...</p>
+                </div>
+              ) : kiResult ? (
+                <div className="space-y-4">
+                  <h3 className={classes.h3}>Analyse-Ergebnis</h3>
+                  <div className={classes.cardCompact}>
+                    <h4 className={classes.h4}>Erkannte Muster</h4>
+                    <ul className={classes.body + " space-y-1"}>
+                      {kiResult.blindSpots?.map((spot, index) => (
+                        <li key={index}>• {spot}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className={classes.cardCompact}>
+                    <h4 className={classes.h4}>Stärken</h4>
+                    <ul className={classes.body + " space-y-1"}>
+                      {kiResult.strengths?.map((strength, index) => (
+                        <li key={index}>• {strength}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className={classes.cardCompact}>
+                    <h4 className={classes.h4}>Empfehlungen</h4>
+                    <ul className={classes.body + " space-y-1"}>
+                      {kiResult.recommendations?.map((rec, index) => (
+                        <li key={index}>• {rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : null}
+              
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setShowKiModal(false)}
+                  className={classes.btnPrimary}
+                >
+                  Schließen
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
