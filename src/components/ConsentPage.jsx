@@ -182,9 +182,13 @@ const ConsentPage = () => {
               {hasConsented ? (
                 <div className="text-center py-8">
                   <CheckCircle className="mx-auto h-16 w-16 text-green-400 mb-4" />
-                  <h3 className="text-xl font-bold text-white">Vielen Dank!</h3>
-                  <p>Ihre Einwilligung wurde bereits erteilt und ist gespeichert.</p>
-                  <p>Sie können dieses Fenster nun schließen.</p>
+                  <h3 className="text-xl font-bold text-white mb-2">Vielen Dank!</h3>
+                  <p className="mb-4">Ihre Einwilligung wurde bereits erteilt und ist gespeichert.</p>
+                  <p className="text-slate-400 mb-6">Falls Sie die Datenschutzerklärung nochmals als PDF benötigen:</p>
+                  <Button onClick={handleDownloadPdf} variant="outline" disabled={isProcessing}>
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Als PDF herunterladen
+                  </Button>
                 </div>
               ) : (
                 <>
