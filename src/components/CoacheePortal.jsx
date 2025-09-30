@@ -9,7 +9,7 @@ import {
   Shield, ShieldCheck, Eye, EyeOff, AlertTriangle, 
   MessageCircle, CheckSquare, BookOpen, Upload, 
   TrendingUp, Settings, Plus, Send, Save, 
-  Calendar, Clock, Share2, Lock, X
+  Calendar, Clock, Share2, Lock
 } from 'lucide-react';
 
 // Helper-Funktion für Kalenderwoche
@@ -73,8 +73,6 @@ const CoacheePortal = () => {
   // Zusätzliche State für Progress-Bereich
   const [newGoal, setNewGoal] = useState('');
   const [newReflection, setNewReflection] = useState('');
-  const [selectedTask, setSelectedTask] = useState(null);
-const [showTaskModal, setShowTaskModal] = useState(false);
 
   // Supabase Tasks laden
   const loadSupabaseTasks = async (coacheeId) => {
@@ -109,18 +107,14 @@ const [showTaskModal, setShowTaskModal] = useState(false);
   // Alle Tasks kombiniert abrufen
   const getAllTasks = () => {
     const localTasks = tasks.map(task => ({ ...task, isSupabaseTask: false }));
-  const remoteTasks = supabaseTasks.map(task => ({ 
-  ...task, 
-  isSupabaseTask: true,
-  id: task.id,
-  title: task.title,
-  completed: task.completed || false,
-  createdAt: task.created_at,
-  description: task.description,
-  notes: task.notes,
-  due_date: task.due_date,
-  priority: task.priority
-}));
+    const remoteTasks = supabaseTasks.map(task => ({ 
+      ...task, 
+      isSupabaseTask: true,
+      id: task.id,
+      title: task.title,
+      completed: task.completed || false,
+      createdAt: task.created_at
+    }));
     
     console.log('Local tasks:', localTasks.length);
     console.log('Supabase tasks:', remoteTasks.length);
@@ -290,34 +284,49 @@ const [showTaskModal, setShowTaskModal] = useState(false);
   };
 
   const shareJournalEntry = (entryId) => {
-    const updatedEntries = journalEntries.map(entry => {
-      if (entry.id === entryId) {
-        const sharedEntry = { ...entry, isShared: !entry.isShared };
-        
-        // Zum geteilten Content hinzufügen/entfernen
-        if (sharedEntry.isShared) {
-          const newSharedContent = [...sharedContent, {
-            id: `journal_${entryId}`,
-            type: 'journal',
-            title: entry.title,
-            content: entry.content,
-            sharedAt: new Date().toISOString(),
-            viewedByCoach: false
-          }];
-          setSharedContent(newSharedContent);
-        } else {
-          const filteredShared = sharedContent.filter(item => item.id !== `journal_${entryId}`);
-          setSharedContent(filteredShared);
-        }
-        
-        return sharedEntry;
-      }
-      return entry;
-    });
-    
-    setJournalEntries(updatedEntries);
-    setTimeout(savePortalData, 100);
-  };
+  const entry = journalEntries.find(e => e.id === entryId);
+  if (!entry) return;
+  
+  const updatedEntries = journalEntries.map(e => {
+    if (e.id === entryId) {
+      return { ...e, isShared: !e.isShared };
+    }
+    return e;
+  });
+  
+  let newSharedContent;
+  if (!entry.isShared) {
+    // Entry wird geteilt
+    newSharedContent = [...sharedContent, {
+      id: `journal_${entryId}`,
+      type: 'journal',
+      title: entry.title,
+      content: entry.content,
+      sharedAt: new Date().toISOString(),
+      viewedByCoach: false
+    }];
+  } else {
+    // Entry wird nicht mehr geteilt
+    newSharedContent = sharedContent.filter(item => item.id !== `journal_${entryId}`);
+  }
+  
+  setJournalEntries(updatedEntries);
+  setSharedContent(newSharedContent);
+  
+  // WICHTIG: Direkt mit den neuen Werten speichern
+  const storedCoachees = JSON.parse(localStorage.getItem('coachees') || '[]');
+  const coacheeIndex = storedCoachees.findIndex(c => c.id === coachee.id);
+  
+  if (coacheeIndex !== -1) {
+    storedCoachees[coacheeIndex].portalData = {
+      ...storedCoachees[coacheeIndex].portalData,
+      journalEntries: updatedEntries,
+      sharedContent: newSharedContent,
+      lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem('coachees', JSON.stringify(storedCoachees));
+  }
+};
 
   // Task Funktionen
   const addTask = () => {
@@ -337,42 +346,20 @@ const [showTaskModal, setShowTaskModal] = useState(false);
     setTimeout(savePortalData, 100);
   };
 
-  const toggleTask = async (taskId, isSupabaseTask) => {
-  if (isSupabaseTask) {
-    try {
-      const task = supabaseTasks.find(t => t.id === taskId);
-      const newCompletedState = !task.completed;
-      
-      const { error } = await supabase
-        .from('tasks')
-        .update({ completed: newCompletedState })
-        .eq('id', taskId);
-
-      if (error) {
-        console.error('Error updating Supabase task:', error);
-        alert('Fehler beim Aktualisieren der Aufgabe.');
-        return;
-      }
-
-      const updatedSupabaseTasks = supabaseTasks.map(t =>
-        t.id === taskId ? { ...t, completed: newCompletedState } : t
-      );
-      setSupabaseTasks(updatedSupabaseTasks);
-    } catch (error) {
-      console.error('Failed to update Supabase task:', error);
+  const toggleTask = (taskId, isSupabaseTask) => {
+    if (isSupabaseTask) {
+      // Supabase-Task - nur Warnung anzeigen
+      alert('Dashboard-Tasks können nur im Dashboard bearbeitet werden.');
+      return;
     }
-  } else {
+
     const updatedTasks = tasks.map(task => 
       task.id === taskId ? { ...task, completed: !task.completed } : task
     );
     setTasks(updatedTasks);
     setTimeout(savePortalData, 100);
-  }
-};
-const openTaskDetails = (task) => {
-  setSelectedTask(task);
-  setShowTaskModal(true);
-};
+  };
+
   // Dokument Funktionen
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -405,34 +392,50 @@ const openTaskDetails = (task) => {
     }
   };
 
-  const shareDocument = (docId) => {
-    const updatedDocs = documents.map(doc => {
-      if (doc.id === docId) {
-        const sharedDoc = { ...doc, isShared: !doc.isShared };
-        
-        if (sharedDoc.isShared) {
-          const newSharedContent = [...sharedContent, {
-            id: `doc_${docId}`,
-            type: 'document',
-            title: doc.name,
-            content: `Dokument: ${doc.name}`,
-            sharedAt: new Date().toISOString(),
-            viewedByCoach: false
-          }];
-          setSharedContent(newSharedContent);
-        } else {
-          const filteredShared = sharedContent.filter(item => item.id !== `doc_${docId}`);
-          setSharedContent(filteredShared);
-        }
-        
-        return sharedDoc;
-      }
-      return doc;
-    });
-    
-    setDocuments(updatedDocs);
-    setTimeout(savePortalData, 100);
-  };
+ const shareDocument = (docId) => {
+  const doc = documents.find(d => d.id === docId);
+  if (!doc) return;
+  
+  const updatedDocs = documents.map(d => {
+    if (d.id === docId) {
+      return { ...d, isShared: !d.isShared };
+    }
+    return d;
+  });
+  
+  let newSharedContent;
+  if (!doc.isShared) {
+    // Dokument wird geteilt
+    newSharedContent = [...sharedContent, {
+      id: `doc_${docId}`,
+      type: 'document',
+      title: doc.name,
+      content: `Dokument: ${doc.name}`,
+      sharedAt: new Date().toISOString(),
+      viewedByCoach: false
+    }];
+  } else {
+    // Dokument wird nicht mehr geteilt
+    newSharedContent = sharedContent.filter(item => item.id !== `doc_${docId}`);
+  }
+  
+  setDocuments(updatedDocs);
+  setSharedContent(newSharedContent);
+  
+  // WICHTIG: Direkt mit den neuen Werten speichern
+  const storedCoachees = JSON.parse(localStorage.getItem('coachees') || '[]');
+  const coacheeIndex = storedCoachees.findIndex(c => c.id === coachee.id);
+  
+  if (coacheeIndex !== -1) {
+    storedCoachees[coacheeIndex].portalData = {
+      ...storedCoachees[coacheeIndex].portalData,
+      documents: updatedDocs,
+      sharedContent: newSharedContent,
+      lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem('coachees', JSON.stringify(storedCoachees));
+  }
+};
 
   // Fortschritt Funktionen
   const addGoal = (goalText) => {
@@ -1058,130 +1061,105 @@ const openTaskDetails = (task) => {
         );
 
       case 'tasks':
-  const allTasks = getAllTasks();
-  const openTasks = allTasks.filter(t => !t.completed);
-  const completedTasks = allTasks.filter(t => t.completed);
-  
-  return (
-    <div className="space-y-6">
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="flex items-center text-slate-200">
-            <CheckSquare className="h-5 w-5 mr-2 text-blue-400" />
-            Neue Aufgabe hinzufügen
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex space-x-2">
-            <Input
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              placeholder="Was möchten Sie erreichen?"
-              className="glass-input flex-1"
-              onKeyPress={(e) => e.key === 'Enter' && addTask()}
-            />
-            <Button 
-              onClick={addTask}
-              className="bg-blue-600 hover:bg-blue-700"
-              disabled={!newTask.trim()}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-200">Meine Aufgaben</h3>
-          <div className="flex space-x-2">
-            <Badge variant="outline" className="text-blue-400 border-blue-400">
-              {openTasks.length} offen
-            </Badge>
-            <Badge variant="outline" className="text-green-400 border-green-400">
-              {completedTasks.length} erledigt
-            </Badge>
-          </div>
-        </div>
+        const allTasks = getAllTasks();
+        const openTasks = allTasks.filter(t => !t.completed);
+        const completedTasks = allTasks.filter(t => t.completed);
         
-        {allTasks.length === 0 ? (
-          <Card className="glass-card">
-            <CardContent className="p-8 text-center">
-              <CheckSquare className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-400">Noch keine Aufgaben vorhanden.</p>
-              <p className="text-slate-500 text-sm mt-2">Fügen Sie Ihre erste Aufgabe oben hinzu.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3">
-            {allTasks.map(task => (
-              <Card 
-                key={`${task.isSupabaseTask ? 'supabase' : 'local'}_${task.id}`} 
-                className={`glass-card ${task.isSupabaseTask ? 'ring-1 ring-blue-500/30' : ''}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={() => toggleTask(task.id, task.isSupabaseTask)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <span className={`flex-1 ${task.completed ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
-                      {task.title}
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      {task.isSupabaseTask && (task.description || task.notes || task.due_date || task.priority) && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => openTaskDetails(task)}
-                          className="text-blue-400 hover:text-blue-300"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {task.isSupabaseTask && (
-                        <Badge variant="outline" className="text-blue-400 border-blue-400 text-xs">
-                          Vom Coach
-                        </Badge>
-                      )}
-                      {task.completed && (
-                        <Badge variant="outline" className="text-green-400 border-green-400">
-                          Erledigt
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+        return (
+          <div className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center text-slate-200">
+                  <CheckSquare className="h-5 w-5 mr-2 text-blue-400" />
+                  Neue Aufgabe hinzufügen
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex space-x-2">
+                  <Input
+                    value={newTask}
+                    onChange={(e) => setNewTask(e.target.value)}
+                    placeholder="Was möchten Sie erreichen?"
+                    className="glass-input flex-1"
+                    onKeyPress={(e) => e.key === 'Enter' && addTask()}
+                  />
+                  <Button 
+                    onClick={addTask}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={!newTask.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-      {showTaskModal && selectedTask && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="glass-card max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <CardHeader>
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-slate-200">{selectedTask.title}</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => { setShowTaskModal(false); setSelectedTask(null); }}>
-                  <X className="h-4 w-4" />
-                </Button>
+                <h3 className="text-lg font-semibold text-slate-200">Meine Aufgaben</h3>
+                <div className="flex space-x-2">
+                  <Badge variant="outline" className="text-blue-400 border-blue-400">
+                    {openTasks.length} offen
+                  </Badge>
+                  <Badge variant="outline" className="text-green-400 border-green-400">
+                    {completedTasks.length} erledigt
+                  </Badge>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {selectedTask.description && (<div><h4 className="text-sm font-medium text-slate-300 mb-2">Beschreibung</h4><p className="text-slate-400 whitespace-pre-wrap">{selectedTask.description}</p></div>)}
-              {selectedTask.notes && (<div><h4 className="text-sm font-medium text-slate-300 mb-2">Notizen</h4><p className="text-slate-400 whitespace-pre-wrap">{selectedTask.notes}</p></div>)}
-              {selectedTask.due_date && (<div><h4 className="text-sm font-medium text-slate-300 mb-2">Fälligkeitsdatum</h4><p className="text-slate-400">{new Date(selectedTask.due_date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div>)}
-              {selectedTask.priority && (<div><h4 className="text-sm font-medium text-slate-300 mb-2">Priorität</h4><Badge variant="outline" className={selectedTask.priority === 'Hoch' ? 'text-red-400 border-red-400' : selectedTask.priority === 'Mittel' ? 'text-yellow-400 border-yellow-400' : 'text-blue-400 border-blue-400'}>{selectedTask.priority}</Badge></div>)}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
+              
+              {allTasks.length === 0 ? (
+                <Card className="glass-card">
+                  <CardContent className="p-8 text-center">
+                    <CheckSquare className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                    <p className="text-slate-400">Noch keine Aufgaben vorhanden.</p>
+                    <p className="text-slate-500 text-sm mt-2">Fügen Sie Ihre erste Aufgabe oben hinzu.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-3">
+                  {allTasks.map(task => (
+                    <Card 
+                      key={`${task.isSupabaseTask ? 'supabase' : 'local'}_${task.id}`} 
+                      className={`glass-card ${task.isSupabaseTask ? 'ring-1 ring-blue-500/30' : ''}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={task.completed}
+                            onChange={() => toggleTask(task.id, task.isSupabaseTask)}
+                            disabled={task.isSupabaseTask}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50"
+                          />
+                          <span className={`flex-1 ${task.completed ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
+                            {task.title}
+                          </span>
+                          <div className="flex items-center space-x-2">
+                            {task.isSupabaseTask && (
+                              <Badge variant="outline" className="text-blue-400 border-blue-400 text-xs">
+                                Vom Coach
+                              </Badge>
+                            )}
+                            {task.completed && (
+                              <Badge variant="outline" className="text-green-400 border-green-400">
+                                Erledigt
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {task.isSupabaseTask && (
+                          <p className="text-slate-500 text-xs mt-2">
+                            Diese Aufgabe wurde von Ihrem Coach erstellt und kann nur im Dashboard bearbeitet werden.
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
 
       case 'shared':
         return (

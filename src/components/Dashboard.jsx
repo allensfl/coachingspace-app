@@ -13,7 +13,7 @@ import {
   Users, Calendar, FileText, PackagePlus, Target, Plus, 
   Check, Edit, Trash2, Send, User, AlertTriangle, 
   CheckCircle, Clock, CalendarDays, MessageCircle,
-  Settings, DollarSign, TrendingUp, BookOpen, Download, Upload
+  Settings, DollarSign, TrendingUp, BookOpen, Download, Upload, Share2
 } from 'lucide-react';
 
 // Simple toast replacement
@@ -46,12 +46,16 @@ const Dashboard = () => {
     completedTasks: 0,
     upcomingDeadlines: 0
   });
-
+const [selectedSharedItem, setSelectedSharedItem] = useState(null);
   // Load data on component mount
   useEffect(() => {
     // Load coachees from localStorage
-    const storedCoachees = JSON.parse(localStorage.getItem('coachees') || '[]');
-    setCoachees(storedCoachees);
+    const loadCoachees = () => {
+      const storedCoachees = JSON.parse(localStorage.getItem('coachees') || '[]');
+      setCoachees(storedCoachees);
+    };
+    
+    loadCoachees();
     
     // Load sessions from localStorage and filter today's sessions
     const storedSessions = JSON.parse(localStorage.getItem('sessions') || '[]');
@@ -62,6 +66,11 @@ const Dashboard = () => {
     setTodaySessions(todaysSessionsFiltered);
     
     loadTasksFromSupabase();
+    
+    // Reload coachees every 5 seconds to catch shared content updates
+    const interval = setInterval(loadCoachees, 5000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -478,7 +487,7 @@ const Dashboard = () => {
           <p className="text-slate-400 text-lg">Hier ist deine Übersicht für heute.</p>
         </div>
 
-        {/* Stats Cards - Now 4 separate cards */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className={classes.card + " cursor-pointer hover:bg-slate-700/30 transition-colors"} onClick={() => navigate('/coachees')}>
             <CardContent className="p-6">
@@ -820,6 +829,127 @@ const Dashboard = () => {
           </Card>
         </div>
 
+        {/* Geteilte Dokumente von Coachees - Volle Breite */}
+        <Card className={classes.card + " mb-8"}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center text-slate-200">
+                <Share2 className="h-5 w-5 mr-2 text-green-400" />
+                Geteilte Inhalte von Coachees
+              </CardTitle>
+              <Badge variant="outline" className="text-green-400 border-green-400">
+                {(() => {
+                  const totalShared = coachees.reduce((count, coachee) => {
+                    const portalData = coachee.portalData || {};
+                    const sharedContent = portalData.sharedContent || [];
+                    return count + sharedContent.length;
+                  }, 0);
+                  return `${totalShared} insgesamt`;
+                })()}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {(() => {
+                const allSharedContent = coachees.flatMap(coachee => {
+                  const portalData = coachee.portalData || {};
+                  const sharedContent = portalData.sharedContent || [];
+                  return sharedContent.map(item => ({
+                    ...item,
+                    coacheeId: coachee.id,
+                    coacheeName: `${coachee.firstName} ${coachee.lastName}`
+                  }));
+                });
+
+                const sortedContent = allSharedContent.sort((a, b) => 
+                  new Date(b.sharedAt) - new Date(a.sharedAt)
+                );
+
+                if (sortedContent.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-slate-400">
+                      <Share2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Keine geteilten Inhalte</p>
+                      <p className="text-sm text-slate-500 mt-1">
+                        Coachees können Inhalte über ihr Portal mit Ihnen teilen
+                      </p>
+                    </div>
+                  );
+                }
+
+                return sortedContent.slice(0, 10).map(item => (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedSharedItem(item)}
+                    className="p-4 rounded-lg border border-slate-700/30 bg-slate-800/20 hover:bg-slate-700/30 cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <div className={`p-2 rounded-lg ${
+                          item.type === 'journal' ? 'bg-purple-600/20' : 'bg-blue-600/20'
+                        }`}>
+                          {item.type === 'journal' ? (
+                            <BookOpen className="h-4 w-4 text-purple-400" />
+                          ) : (
+                            <Upload className="h-4 w-4 text-blue-400" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-slate-200 group-hover:text-blue-400 transition-colors">
+                            {item.title}
+                          </h4>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            von {item.coacheeName}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end space-y-1">
+                        <Badge 
+                          variant="outline" 
+                          className={item.type === 'journal' 
+                            ? 'text-purple-400 border-purple-400 text-xs' 
+                            : 'text-blue-400 border-blue-400 text-xs'
+                          }
+                        >
+                          {item.type === 'journal' ? 'Journal' : 'Dokument'}
+                        </Badge>
+                        {!item.viewedByCoach && (
+                          <Badge variant="outline" className="text-orange-400 border-orange-400 text-xs">
+                            Neu
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-slate-400 line-clamp-2 mb-2">
+                      {item.content}
+                    </p>
+                    
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="flex items-center space-x-1">
+                        <Clock className="h-3 w-3" />
+                        <span>
+                          {new Date(item.sharedAt).toLocaleDateString('de-DE', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </span>
+                      <span className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Details ansehen →
+                      </span>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Quick Actions */}
         <Card className={classes.card}>
           <CardHeader>
@@ -903,6 +1033,69 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+        {/* Modal für geteilte Inhalte Details */}
+        {selectedSharedItem && (
+          <Dialog open={!!selectedSharedItem} onOpenChange={() => setSelectedSharedItem(null)}>
+            <DialogContent className={classes.card + " border-slate-700 max-w-2xl"}>
+              <DialogHeader>
+                <DialogTitle className="text-slate-200 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    {selectedSharedItem.type === 'journal' ? (
+                      <BookOpen className="h-5 w-5 text-purple-400" />
+                    ) : (
+                      <Upload className="h-5 w-5 text-blue-400" />
+                    )}
+                    <span>{selectedSharedItem.title}</span>
+                  </div>
+                  <Badge 
+                    variant="outline" 
+                    className={selectedSharedItem.type === 'journal' 
+                      ? 'text-purple-400 border-purple-400' 
+                      : 'text-blue-400 border-blue-400'
+                    }
+                  >
+                    {selectedSharedItem.type === 'journal' ? 'Journal' : 'Dokument'}
+                  </Badge>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="text-sm text-slate-400">
+                  Von {selectedSharedItem.coacheeName} • {new Date(selectedSharedItem.sharedAt).toLocaleDateString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+                
+                <div className="p-4 bg-slate-800/30 rounded-lg max-h-96 overflow-y-auto">
+                  <p className="text-slate-300 whitespace-pre-wrap">{selectedSharedItem.content}</p>
+                </div>
+                
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={() => {
+                      navigate(`/coachees/${selectedSharedItem.coacheeId}`);
+                      setSelectedSharedItem(null);
+                    }}
+                    className={classes.btnPrimary + " flex-1"}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Zum Coachee-Profil
+                  </Button>
+                  <Button
+                    onClick={() => setSelectedSharedItem(null)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Schließen
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );
