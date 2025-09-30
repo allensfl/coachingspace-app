@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Video, Monitor, Settings, Plus, X, Play, Pause, RotateCcw, Eye, Lightbulb, Target, Bot, Wrench } from 'lucide-react';
+import { ArrowLeft, Video, Monitor, Settings, Plus, X, Play, Pause, RotateCcw, Eye, Lightbulb, Target, Bot, Wrench, BookOpen, Clock } from 'lucide-react';
 import { useAppStateContext } from '@/context/AppStateContext';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -32,13 +32,14 @@ const CoachingRoom = () => {
     { id: 4, name: 'Figma', url: 'https://figma.com/', description: 'Design und Prototyping' }
   ]);
   
+  // Session Preparation States
+  const [showPreparation, setShowPreparation] = useState(false);
+  const [preparation, setPreparation] = useState(null);
   
-  // Toolbox States - nicht mehr benötigt
   const [availableTools, setAvailableTools] = useState([]);
 
-  // Custom Tools aus localStorage laden - vereinfacht
+  // Custom Tools aus localStorage laden
   useEffect(() => {
-    // Nur für Debugging - wird nicht mehr für Modal benötigt
     try {
       const storedCustomTools = localStorage.getItem('customTools');
       if (storedCustomTools) {
@@ -48,6 +49,25 @@ const CoachingRoom = () => {
       console.error('Fehler beim Laden der Custom Tools:', error);
     }
   }, []);
+
+  // Session-Vorbereitung laden
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionIdFromUrl = urlParams.get('session_id');
+    const prepSessionId = sessionIdFromUrl || id;
+    
+    const prepKey = `session_prep_${prepSessionId}`;
+    const storedPrep = localStorage.getItem(prepKey);
+    
+    if (storedPrep) {
+      try {
+        const prepData = JSON.parse(storedPrep);
+        setPreparation(prepData);
+      } catch (error) {
+        console.error('Fehler beim Laden der Vorbereitung:', error);
+      }
+    }
+  }, [id]);
 
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -72,8 +92,6 @@ const CoachingRoom = () => {
     const secs = seconds % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  // Tool in eigenem Fenster öffnen - entfernt, da nicht mehr benötigt
 
   const openVideoProvider = (provider) => {
     if (provider.url !== '#') {
@@ -187,6 +205,16 @@ const CoachingRoom = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {/* Vorbereitung Button */}
+{preparation && (
+  <Button
+    onClick={() => setShowPreparation(true)}
+    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+  >
+    <BookOpen className="h-4 w-4" />
+    Vorbereitung anzeigen
+  </Button>
+)}
             <div className="text-right">
               <div className="text-2xl font-mono">{formatTime(timerSeconds)}</div>
               <div className="text-sm text-slate-400">Session-Zeit</div>
@@ -320,6 +348,118 @@ const CoachingRoom = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Session-Vorbereitung Modal */}
+        {showPreparation && preparation && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="h-6 w-6 text-blue-400" />
+                  <h2 className="text-2xl font-bold text-white">Session-Vorbereitung</h2>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPreparation(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Coaching-Ansatz */}
+                {preparation.selectedApproach && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-400" />
+                      Gewählter Coaching-Ansatz
+                    </h3>
+                    <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className={`w-4 h-4 rounded-full ${preparation.selectedApproach.color}`} />
+                        <span className="text-xl font-semibold text-white">
+                          {preparation.selectedApproach.name}
+                        </span>
+                      </div>
+                      <p className="text-slate-300">{preparation.selectedApproach.description}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Session-Agenda */}
+                {preparation.agenda && preparation.agenda.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-green-400" />
+                      Session-Ablauf ({preparation.agenda.reduce((sum, item) => sum + (item.duration || 0), 0)} Min)
+                    </h3>
+                    <div className="space-y-3">
+                      {preparation.agenda.map((item, index) => (
+                        <div key={item.id} className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-white font-medium">{item.title}</h4>
+                                <Badge variant="outline" className="text-green-400 border-green-400">
+                                  {item.duration} Min
+                                </Badge>
+                              </div>
+                              {item.notes && (
+                                <p className="text-slate-400 text-sm mt-2">{item.notes}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Session-Ziele */}
+                {preparation.sessionGoals && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                      <Target className="h-5 w-5 text-purple-400" />
+                      Session-Ziele
+                    </h3>
+                    <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                      <p className="text-slate-300 whitespace-pre-wrap">{preparation.sessionGoals}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Vorbereitungsnotizen */}
+                {preparation.preparationNotes && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                      <Lightbulb className="h-5 w-5 text-yellow-400" />
+                      Vorbereitungsnotizen
+                    </h3>
+                    <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                      <p className="text-slate-300 whitespace-pre-wrap">{preparation.preparationNotes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="sticky bottom-0 bg-slate-800 border-t border-slate-700 p-4">
+                <Button
+                  onClick={() => setShowPreparation(false)}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  Schließen
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
