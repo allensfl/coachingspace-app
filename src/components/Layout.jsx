@@ -1,7 +1,7 @@
 import React, { useState, Suspense } from 'react';
 import { NavLink, Link, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, Store, Menu, X, Command, Loader2, LifeBuoy, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, Store, Menu, X, Command, Loader2, LifeBuoy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStateContext } from '@/context/AppStateContext';
 import Footer from './Footer';
@@ -29,7 +29,6 @@ const NavItem = ({ item, collapsed, onClick }) => {
     const { hasFeature, showPremiumFeature } = useAppStateContext();
     const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '/');
     
-    // Wenn ein Feature erforderlich ist, aber nicht verfügbar
     if (item.requiresFeature && !hasFeature(item.requiresFeature)) {
         return (
             <button
@@ -134,21 +133,6 @@ const Header = ({ setMobileSidebarOpen }) => {
     );
 };
 
-const FloatingFeedbackButton = () => {
-    return (
-        <Link 
-            to="/app/beta-feedback"   // <-- War vorher nur "/beta-feedback"
-            className="fixed right-6 bottom-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 group" 
-            title="Feedback geben"
-        >
-            <MessageSquare className="w-6 h-6" />
-            <span className="absolute right-full mr-3 bg-slate-800/90 backdrop-blur-xl border border-slate-700/50 text-slate-100 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                Feedback geben
-            </span>
-        </Link>
-    );
-};
-
 const Layout = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -204,9 +188,6 @@ const Layout = () => {
                 </main>
                 <Footer />
             </div>
-            
-            {/* Floating Feedback Button */}
-            <FloatingFeedbackButton />
         </div>
     );
 };

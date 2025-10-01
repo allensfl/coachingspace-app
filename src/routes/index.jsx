@@ -28,7 +28,6 @@ const StorePage = lazy(() => import('@/components/StorePage'));
 const PrivacyPolicyPage = lazy(() => import('@/components/PrivacyPolicyPage'));
 const DocumentationPage = lazy(() => import('@/components/DocumentationPage'));
 const Profile = lazy(() => import('@/components/Profile'));
-const FeedbackTest = lazy(() => import('@/components/FeedbackTest'));
 
 export const AppRoutes = () => (
   <Routes>
@@ -64,7 +63,6 @@ export const AppRoutes = () => (
       <Route path="coachee-portal" element={<CoacheePortalLinks />} />
       <Route path="store" element={<StorePage />} />
       <Route path="documentation" element={<DocumentationPage />} />
-      <Route path="beta-feedback" element={<FeedbackTest />} />
       <Route path="*" element={<Dashboard />} />
     </Route>
   </Routes>
