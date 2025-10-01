@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import InvalidLinkPage from '@/components/InvalidLinkPage';
 import CoachingRoom from '@/components/CoachingRoom';
 import ToolPresenter from '@/components/ToolPresenter';
-import Documents from '@/components/Documents'; // Direkter Import statt lazy
+import Documents from '@/components/Documents';
 
 const Dashboard = lazy(() => import('@/components/Dashboard'));
 const Coachees = lazy(() => import('@/components/Coachees'));
