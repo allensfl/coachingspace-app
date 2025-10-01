@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, Store, Menu, X, Command, Loader2, LifeBuoy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStateContext } from '@/context/AppStateContext';
+import Footer from './Footer';
 
 // Akzentfarbe je Navitem (bei Aktivität)
 const navItems = [
@@ -187,6 +188,7 @@ const Layout = () => {
                         </AnimatePresence>
                     </Suspense>
                 </main>
+                <Footer />
             </div>
         </div>
     );

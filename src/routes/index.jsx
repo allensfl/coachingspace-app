@@ -28,6 +28,7 @@ const StorePage = lazy(() => import('@/components/StorePage'));
 const PrivacyPolicyPage = lazy(() => import('@/components/PrivacyPolicyPage'));
 const DocumentationPage = lazy(() => import('@/components/DocumentationPage'));
 const Profile = lazy(() => import('@/components/Profile'));
+const BetaFeedbackForm = lazy(() => import('@/components/feedback/BetaFeedbackForm'));
 
 export const AppRoutes = () => (
   <Routes>
@@ -38,6 +39,7 @@ export const AppRoutes = () => (
     <Route path="/invalid-link" element={<InvalidLinkPage />} />
     <Route path="/ai-coaching/shared" element={<AiCoachingShared />} />
     <Route path="/tool-presenter/:toolId" element={<ToolPresenter />} />
+    <Route path="/beta-feedback" element={<BetaFeedbackForm />} />
     
     {/* App-Routes unter /app/* MIT Layout */}
     <Route path="/app" element={<Layout />}>

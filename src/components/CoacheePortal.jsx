@@ -284,34 +284,49 @@ const CoacheePortal = () => {
   };
 
   const shareJournalEntry = (entryId) => {
-    const updatedEntries = journalEntries.map(entry => {
-      if (entry.id === entryId) {
-        const sharedEntry = { ...entry, isShared: !entry.isShared };
-        
-        // Zum geteilten Content hinzufügen/entfernen
-        if (sharedEntry.isShared) {
-          const newSharedContent = [...sharedContent, {
-            id: `journal_${entryId}`,
-            type: 'journal',
-            title: entry.title,
-            content: entry.content,
-            sharedAt: new Date().toISOString(),
-            viewedByCoach: false
-          }];
-          setSharedContent(newSharedContent);
-        } else {
-          const filteredShared = sharedContent.filter(item => item.id !== `journal_${entryId}`);
-          setSharedContent(filteredShared);
-        }
-        
-        return sharedEntry;
-      }
-      return entry;
-    });
-    
-    setJournalEntries(updatedEntries);
-    setTimeout(savePortalData, 100);
-  };
+  const entry = journalEntries.find(e => e.id === entryId);
+  if (!entry) return;
+  
+  const updatedEntries = journalEntries.map(e => {
+    if (e.id === entryId) {
+      return { ...e, isShared: !e.isShared };
+    }
+    return e;
+  });
+  
+  let newSharedContent;
+  if (!entry.isShared) {
+    // Entry wird geteilt
+    newSharedContent = [...sharedContent, {
+      id: `journal_${entryId}`,
+      type: 'journal',
+      title: entry.title,
+      content: entry.content,
+      sharedAt: new Date().toISOString(),
+      viewedByCoach: false
+    }];
+  } else {
+    // Entry wird nicht mehr geteilt
+    newSharedContent = sharedContent.filter(item => item.id !== `journal_${entryId}`);
+  }
+  
+  setJournalEntries(updatedEntries);
+  setSharedContent(newSharedContent);
+  
+  // WICHTIG: Direkt mit den neuen Werten speichern
+  const storedCoachees = JSON.parse(localStorage.getItem('coachees') || '[]');
+  const coacheeIndex = storedCoachees.findIndex(c => c.id === coachee.id);
+  
+  if (coacheeIndex !== -1) {
+    storedCoachees[coacheeIndex].portalData = {
+      ...storedCoachees[coacheeIndex].portalData,
+      journalEntries: updatedEntries,
+      sharedContent: newSharedContent,
+      lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem('coachees', JSON.stringify(storedCoachees));
+  }
+};
 
   // Task Funktionen
   const addTask = () => {
@@ -377,34 +392,50 @@ const CoacheePortal = () => {
     }
   };
 
-  const shareDocument = (docId) => {
-    const updatedDocs = documents.map(doc => {
-      if (doc.id === docId) {
-        const sharedDoc = { ...doc, isShared: !doc.isShared };
-        
-        if (sharedDoc.isShared) {
-          const newSharedContent = [...sharedContent, {
-            id: `doc_${docId}`,
-            type: 'document',
-            title: doc.name,
-            content: `Dokument: ${doc.name}`,
-            sharedAt: new Date().toISOString(),
-            viewedByCoach: false
-          }];
-          setSharedContent(newSharedContent);
-        } else {
-          const filteredShared = sharedContent.filter(item => item.id !== `doc_${docId}`);
-          setSharedContent(filteredShared);
-        }
-        
-        return sharedDoc;
-      }
-      return doc;
-    });
-    
-    setDocuments(updatedDocs);
-    setTimeout(savePortalData, 100);
-  };
+ const shareDocument = (docId) => {
+  const doc = documents.find(d => d.id === docId);
+  if (!doc) return;
+  
+  const updatedDocs = documents.map(d => {
+    if (d.id === docId) {
+      return { ...d, isShared: !d.isShared };
+    }
+    return d;
+  });
+  
+  let newSharedContent;
+  if (!doc.isShared) {
+    // Dokument wird geteilt
+    newSharedContent = [...sharedContent, {
+      id: `doc_${docId}`,
+      type: 'document',
+      title: doc.name,
+      content: `Dokument: ${doc.name}`,
+      sharedAt: new Date().toISOString(),
+      viewedByCoach: false
+    }];
+  } else {
+    // Dokument wird nicht mehr geteilt
+    newSharedContent = sharedContent.filter(item => item.id !== `doc_${docId}`);
+  }
+  
+  setDocuments(updatedDocs);
+  setSharedContent(newSharedContent);
+  
+  // WICHTIG: Direkt mit den neuen Werten speichern
+  const storedCoachees = JSON.parse(localStorage.getItem('coachees') || '[]');
+  const coacheeIndex = storedCoachees.findIndex(c => c.id === coachee.id);
+  
+  if (coacheeIndex !== -1) {
+    storedCoachees[coacheeIndex].portalData = {
+      ...storedCoachees[coacheeIndex].portalData,
+      documents: updatedDocs,
+      sharedContent: newSharedContent,
+      lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem('coachees', JSON.stringify(storedCoachees));
+  }
+};
 
   // Fortschritt Funktionen
   const addGoal = (goalText) => {
