@@ -2,7 +2,6 @@ import React, { lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/hooks/use-theme';
 import { AppStateProvider } from '@/context/AppStateContext';
-import BetaAuthGuard from '@/components/BetaAuthGuard';
 import Layout from '@/components/Layout';
 
 const Dashboard = lazy(() => import('@/components/Dashboard'));
@@ -58,13 +57,11 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <BetaAuthGuard>
-    <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
-      <AppStateProvider>
-        <AppContent />
-      </AppStateProvider>
-    </ThemeProvider>
-  </BetaAuthGuard>
+  <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
+    <AppStateProvider>
+      <AppContent />
+    </AppStateProvider>
+  </ThemeProvider>
 );
 
 export default App;
