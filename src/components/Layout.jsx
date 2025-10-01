@@ -138,9 +138,7 @@ const Header = ({ setMobileSidebarOpen }) => {
 const FloatingFeedbackButton = () => {
     return (
         <a 
-            href="https://app-coachingspace.netlify.app/beta-feedback" 
-            target="_blank" 
-            rel="noopener noreferrer" 
+            href="/beta-feedback" 
             className="fixed right-6 bottom-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 group" 
             title="Feedback geben"
         >
