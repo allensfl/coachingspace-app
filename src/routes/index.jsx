@@ -39,7 +39,6 @@ export const AppRoutes = () => (
     <Route path="/invalid-link" element={<InvalidLinkPage />} />
     <Route path="/ai-coaching/shared" element={<AiCoachingShared />} />
     <Route path="/tool-presenter/:toolId" element={<ToolPresenter />} />
-    <Route path="/beta-feedback" element={<BetaFeedbackForm />} />
     
     {/* App-Routes unter /app/* MIT Layout */}
     <Route path="/app" element={<Layout />}>
@@ -65,6 +64,7 @@ export const AppRoutes = () => (
       <Route path="coachee-portal" element={<CoacheePortalLinks />} />
       <Route path="store" element={<StorePage />} />
       <Route path="documentation" element={<DocumentationPage />} />
+      <Route path="beta-feedback" element={<BetaFeedbackForm />} />
       <Route path="*" element={<Dashboard />} />
     </Route>
   </Routes>

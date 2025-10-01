@@ -8,27 +8,26 @@ import Footer from './Footer';
 
 // Akzentfarbe je Navitem (bei Aktivität)
 const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/', color: 'text-sky-500' },
-    { icon: Users, label: 'Coachees', path: '/coachees', color: 'text-emerald-500' },
-    { icon: Calendar, label: 'Sessions', path: '/sessions', color: 'text-violet-500' },
-    { icon: PenSquare, label: 'Sitzungsnotizen', path: '/session-notes', color: 'text-orange-500' },
-    { icon: BookOpen, label: 'Reflexionstagebuch', path: '/journal', color: 'text-indigo-500' },
-    { icon: Folder, label: 'Dokumente', path: '/documents', color: 'text-blue-500' },
-    { icon: FileText, label: 'Rechnungen', path: '/invoices', color: 'text-rose-500' },
-    { icon: Bot, label: 'KI-Assistent', path: '/ai-coaching', color: 'text-fuchsia-500', requiresFeature: 'aiModule' },
-    { icon: Wrench, label: 'Toolbox', path: '/toolbox', color: 'text-pink-500' },
-    //{ icon: Store, label: 'Store', path: '/store', color: 'text-yellow-500' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/app', color: 'text-sky-500' },
+    { icon: Users, label: 'Coachees', path: '/app/coachees', color: 'text-emerald-500' },
+    { icon: Calendar, label: 'Sessions', path: '/app/sessions', color: 'text-violet-500' },
+    { icon: PenSquare, label: 'Sitzungsnotizen', path: '/app/session-notes', color: 'text-orange-500' },
+    { icon: BookOpen, label: 'Reflexionstagebuch', path: '/app/journal', color: 'text-indigo-500' },
+    { icon: Folder, label: 'Dokumente', path: '/app/documents', color: 'text-blue-500' },
+    { icon: FileText, label: 'Rechnungen', path: '/app/invoices', color: 'text-rose-500' },
+    { icon: Bot, label: 'KI-Assistent', path: '/app/ai-coaching', color: 'text-fuchsia-500', requiresFeature: 'aiModule' },
+    { icon: Wrench, label: 'Toolbox', path: '/app/toolbox', color: 'text-pink-500' },
 ];
 
 const bottomNavItems = [
-    { icon: Settings, label: 'Einstellungen', path: '/settings', color: 'text-gray-500' },
-    { icon: LifeBuoy, label: 'Hilfe & Doku', path: '/documentation', color: 'text-lime-500' },
+    { icon: Settings, label: 'Einstellungen', path: '/app/settings', color: 'text-gray-500' },
+    { icon: LifeBuoy, label: 'Hilfe & Doku', path: '/app/documentation', color: 'text-lime-500' },
 ];
 
 const NavItem = ({ item, collapsed, onClick }) => {
     const location = useLocation();
     const { hasFeature, showPremiumFeature } = useAppStateContext();
-    const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '/');
+    const isActive = location.pathname === item.path || (item.path === '/app' && location.pathname === '/app');
     
     // Wenn ein Feature erforderlich ist, aber nicht verfügbar
     if (item.requiresFeature && !hasFeature(item.requiresFeature)) {
@@ -59,7 +58,7 @@ const NavItem = ({ item, collapsed, onClick }) => {
     return (
         <NavLink
             to={item.path}
-            end={item.path === '/'}
+            end={item.path === '/app'}
             onClick={onClick}
             className={({ isActive }) => 
                 `flex items-center p-3 rounded-xl transition-all duration-300 glass-nav-item ${
@@ -83,7 +82,7 @@ const Sidebar = ({ collapsed, setCollapsed, isMobile, setMobileSidebarOpen }) =>
         <aside className={`glass-sidebar flex flex-col transition-all duration-500 ${collapsed ? 'w-20' : 'w-64'}`}>
             <div className={`flex items-center p-4 h-16 border-b border-border ${collapsed ? 'justify-center' : 'justify-between'}`}>
                 {!collapsed && (
-                    <Link to="/" className="flex items-center gap-2">
+                    <Link to="/app" className="flex items-center gap-2">
                          {logoUrl ? (
                             <img src={logoUrl} alt={`${companyName} Logo`} className="h-8 w-auto" />
                         ) : (
@@ -138,7 +137,7 @@ const Header = ({ setMobileSidebarOpen }) => {
 const FloatingFeedbackButton = () => {
     return (
         <a 
-            href="/beta-feedback" 
+            href="/app/beta-feedback" 
             className="fixed right-6 bottom-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 group" 
             title="Feedback geben"
         >
