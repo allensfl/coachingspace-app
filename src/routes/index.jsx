@@ -28,7 +28,7 @@ const StorePage = lazy(() => import('@/components/StorePage'));
 const PrivacyPolicyPage = lazy(() => import('@/components/PrivacyPolicyPage'));
 const DocumentationPage = lazy(() => import('@/components/DocumentationPage'));
 const Profile = lazy(() => import('@/components/Profile'));
-const BetaFeedbackForm = lazy(() => import('@/components/BetaFeedbackForm'));
+import BetaFeedbackForm from '@/components/BetaFeedbackForm';
 
 export const AppRoutes = () => (
   <Routes>
