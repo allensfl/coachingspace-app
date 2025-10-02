@@ -139,34 +139,34 @@ const BetaFeedbackForm = () => {
     </div>
   );
 
- const TextArea = ({ value, onChange, label, placeholder, rows = 3 }) => (
-  <div className="mb-4">
-    <label className="block text-white text-sm font-medium mb-2">{label}</label>
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={rows}
-      className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-500 transition-colors resize-none"
-    />
-  </div>
-);
+  const TextArea = ({ value, onChange, label, placeholder, rows = 3 }) => (
+    <div className="mb-4">
+      <label className="block text-white text-sm font-medium mb-2">{label}</label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-500 transition-colors resize-none"
+      />
+    </div>
+  );
 
   const Input = ({ value, onChange, label, placeholder, type = "text", required = false }) => (
-  <div className="mb-4">
-    <label className="block text-white text-sm font-medium mb-2">
-      {label} {required && <span className="text-red-400">*</span>}
-    </label>
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      required={required}
-      className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-500 transition-colors"
-    />
-  </div>
-);
+    <div className="mb-4">
+      <label className="block text-white text-sm font-medium mb-2">
+        {label} {required && <span className="text-red-400">*</span>}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-500 transition-colors"
+      />
+    </div>
+  );
 
   const Select = ({ value, onChange, label, options }) => (
     <div className="mb-4">
