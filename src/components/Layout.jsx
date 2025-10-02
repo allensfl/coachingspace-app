@@ -5,6 +5,7 @@ import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, Book
 import { Button } from '@/components/ui/button';
 import { useAppStateContext } from '@/context/AppStateContext';
 import Footer from './Footer';
+import FloatingFeedbackButton from './FloatingFeedbackButton';
 
 // Akzentfarbe je Navitem (bei Aktivität)
 const navItems = [
@@ -189,6 +190,7 @@ const Layout = () => {
                     </Suspense>
                 </main>
                 <Footer />
+                <FloatingFeedbackButton />
             </div>
         </div>
     );
