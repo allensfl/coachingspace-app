@@ -175,16 +175,10 @@ const [selectedSharedItem, setSelectedSharedItem] = useState(null);
     if (!newPersonalTask.trim()) return;
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) {
-        toast.error('Nicht authentifiziert');
-        return;
-      }
-
+      
       const { data, error } = await supabase
         .from('tasks')
         .insert({
-          user_id: userData.user.id,
           title: newPersonalTask,
           completed: false,
           coachee_id: null
@@ -272,11 +266,6 @@ const [selectedSharedItem, setSelectedSharedItem] = useState(null);
     }
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) {
-        toast.error('Nicht authentifiziert');
-        return;
-      }
 
       if (editingDeadline) {
         const { error } = await supabase
@@ -314,7 +303,6 @@ const [selectedSharedItem, setSelectedSharedItem] = useState(null);
         const { data, error } = await supabase
           .from('tasks')
           .insert({
-            user_id: userData.user.id,
             title: deadlineForm.title,
             description: deadlineForm.description,
             due_date: deadlineForm.date,
@@ -387,16 +375,10 @@ const [selectedSharedItem, setSelectedSharedItem] = useState(null);
 
   const handlePushToPortal = async (deadline) => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) {
-        toast.error('Nicht authentifiziert');
-        return;
-      }
 
       const { data, error } = await supabase
         .from('pushed_tasks')
         .insert({
-          coach_id: userData.user.id,
           coachee_id: deadline.coacheeId,
           original_task_id: deadline.id,
           title: deadline.title,
