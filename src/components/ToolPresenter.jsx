@@ -3,81 +3,37 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStateContext } from '@/context/AppStateContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ArrowLeft, ExternalLink, AlertTriangle, Circle, Target, List, TreePine, Compass } from 'lucide-react';
+import { ArrowLeft, ExternalLink, AlertTriangle } from 'lucide-react';
 
-// Temporäre Tool-Komponenten (bis echte Dateien erstellt werden)
-const Lebensrad = () => (
-  <div className="text-center p-8">
-    <Circle className="w-16 h-16 mx-auto mb-4 text-blue-400" />
-    <h2 className="text-2xl font-bold mb-4">Lebensrad</h2>
-    <p className="text-slate-300 mb-6">Bewerte verschiedene Lebensbereiche auf einer Skala von 1-10.</p>
-    <div className="bg-slate-800 p-6 rounded-lg">
-      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
-      <p className="text-sm text-slate-400 mt-2">Die interaktive Lebensrad-Komponente wird hier angezeigt.</p>
-    </div>
-  </div>
-);
-
-const Skalenfrage = () => (
-  <div className="text-center p-8">
-    <Target className="w-16 h-16 mx-auto mb-4 text-green-400" />
-    <h2 className="text-2xl font-bold mb-4">Skalenfrage</h2>
-    <p className="text-slate-300 mb-6">Bewerte deine aktuelle Situation auf einer Skala.</p>
-    <div className="bg-slate-800 p-6 rounded-lg">
-      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
-      <p className="text-sm text-slate-400 mt-2">Die interaktive Skalenfrage-Komponente wird hier angezeigt.</p>
-    </div>
-  </div>
-);
-
-const RessourcenListe = () => (
-  <div className="text-center p-8">
-    <List className="w-16 h-16 mx-auto mb-4 text-purple-400" />
-    <h2 className="text-2xl font-bold mb-4">Ressourcen-Liste</h2>
-    <p className="text-slate-300 mb-6">Sammle deine verfügbaren Ressourcen und Stärken.</p>
-    <div className="bg-slate-800 p-6 rounded-lg">
-      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
-      <p className="text-sm text-slate-400 mt-2">Die interaktive Ressourcen-Listen-Komponente wird hier angezeigt.</p>
-    </div>
-  </div>
-);
-
-const Zielbaum = () => (
-  <div className="text-center p-8">
-    <TreePine className="w-16 h-16 mx-auto mb-4 text-emerald-400" />
-    <h2 className="text-2xl font-bold mb-4">Zielbaum</h2>
-    <p className="text-slate-300 mb-6">Visualisiere deine Ziele in einer Baumstruktur.</p>
-    <div className="bg-slate-800 p-6 rounded-lg">
-      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
-      <p className="text-sm text-slate-400 mt-2">Die interaktive Zielbaum-Komponente wird hier angezeigt.</p>
-    </div>
-  </div>
-);
-
-const WerteKompass = () => (
-  <div className="text-center p-8">
-    <Compass className="w-16 h-16 mx-auto mb-4 text-orange-400" />
-    <h2 className="text-2xl font-bold mb-4">Werte-Kompass</h2>
-    <p className="text-slate-300 mb-6">Erkunde und definiere deine wichtigsten Werte.</p>
-    <div className="bg-slate-800 p-6 rounded-lg">
-      <p className="text-yellow-400">Tool-Komponente wird geladen...</p>
-      <p className="text-sm text-slate-400 mt-2">Die interaktive Werte-Kompass-Komponente wird hier angezeigt.</p>
-    </div>
-  </div>
-);
+// Import der 5 vollständigen Coaching-Tools
+import SkalenarbeitTool from '@/components/tools/SkalenarbeitTool';
+import LebensradTool from '@/components/tools/LebensradTool';
+import GrowModellTool from '@/components/tools/GrowModellTool';
+import WertequadratTool from '@/components/tools/WertequadratTool';
+import InneresTeamTool from '@/components/tools/InneresTeamTool';
 
 // Tool-Komponenten-Map für dynamisches Rendern
 const TOOL_COMPONENTS = {
-  1: Lebensrad,
-  2: Skalenfrage, 
-  3: RessourcenListe,
-  4: Zielbaum,
-  5: WerteKompass,
-  'lebensrad': Lebensrad,
-  'skalenfrage': Skalenfrage,
-  'ressourcen-liste': RessourcenListe,
-  'zielbaum': Zielbaum,
-  'werte-kompass': WerteKompass,
+  // Numerische IDs
+  1: LebensradTool,
+  2: SkalenarbeitTool,
+  3: WertequadratTool,
+  4: InneresTeamTool,
+  5: GrowModellTool,
+  
+  // String-basierte IDs aus Toolbox.jsx
+  'scaling-builtin': SkalenarbeitTool,
+  'lifewheel-builtin': LebensradTool,
+  'grow-builtin': GrowModellTool,
+  'team-builtin': InneresTeamTool,
+  'values-builtin': WertequadratTool,
+  
+  // URL-freundliche Namen
+  'skalenarbeit': SkalenarbeitTool,
+  'lebensrad': LebensradTool,
+  'grow-modell': GrowModellTool,
+  'inneres-team': InneresTeamTool,
+  'wertequadrat': WertequadratTool,
 };
 
 export default function ToolPresenter() {
@@ -109,12 +65,11 @@ export default function ToolPresenter() {
   const findTool = () => {
     if (!tools || tools.length === 0) return null;
     
-    // Verschiedene ID-Matching-Strategien
     return tools.find(t => 
-      String(t.id) === String(toolId) ||     // String-Vergleich
-      t.id === parseInt(toolId) ||           // Number-Vergleich  
-      t.id === toolId ||                     // Direkte Übereinstimmung
-      t.name?.toLowerCase().replace(/[^a-z0-9]/g, '-') === toolId  // Name-basierte Suche
+      String(t.id) === String(toolId) ||
+      t.id === parseInt(toolId) ||
+      t.id === toolId ||
+      t.name?.toLowerCase().replace(/[^a-z0-9]/g, '-') === toolId
     ) || null;
   };
 
@@ -167,28 +122,22 @@ export default function ToolPresenter() {
               <p className="text-slate-300 mb-4">
                 Der AppStateContext ist nicht verfügbar. ToolPresenter kann nicht auf die Toolbox zugreifen.
               </p>
-              <div className="bg-slate-800 p-4 rounded-lg">
-                <pre className="text-sm text-green-400">
-{`Lösung:
-1. Stelle sicher, dass ToolPresenter innerhalb des AppStateProvider läuft
-2. Prüfe ob die Route korrekt konfiguriert ist
-3. Context muss auf derselben Ebene wie CoachingRoom verfügbar sein`}
-                </pre>
-              </div>
               
               {/* Notfall-Tool-Auswahl */}
               <div className="mt-6">
                 <h3 className="text-lg font-semibold mb-3">Direkte Tool-Auswahl:</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {Object.entries(TOOL_COMPONENTS).filter(([key]) => !isNaN(key)).map(([id, Component]) => (
-                    <Button
-                      key={id}
-                      onClick={() => navigate(`/tool-presenter/${id}`)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      Tool {id}
-                    </Button>
-                  ))}
+                  {Object.entries(TOOL_COMPONENTS)
+                    .filter(([key]) => !isNaN(key))
+                    .map(([id, Component]) => (
+                      <Button
+                        key={id}
+                        onClick={() => navigate(`/tool-presenter/${id}`)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Tool {id}
+                      </Button>
+                    ))}
                 </div>
               </div>
             </CardContent>
@@ -233,7 +182,7 @@ Tool-IDs aus Context:
 ${debugInfo.toolIds.map(t => `* ID: ${t.id} (${t.type}) - ${t.name}`).join('\n')}
 
 Verfügbare Tool-Komponenten:
-${Object.keys(TOOL_COMPONENTS).map(id => `* ${id}`).join(', ')}`}
+${Object.keys(TOOL_COMPONENTS).filter(k => !isNaN(k)).map(id => `* ${id}`).join(', ')}`}
                   </pre>
                 </div>
               )}
@@ -274,7 +223,7 @@ ${Object.keys(TOOL_COMPONENTS).map(id => `* ${id}`).join(', ')}`}
               <ArrowLeft className="w-4 h-4 mr-2" />
               Zurück zum CoachingRoom
             </Button>
-            <h1 className="text-xl font-bold">{tool?.name || `Tool ${toolId}`}</h1>
+            <h1 className="text-xl font-bold">{tool?.name || 'Coaching Tool'}</h1>
           </div>
           
           <Button 
@@ -292,9 +241,7 @@ ${Object.keys(TOOL_COMPONENTS).map(id => `* ${id}`).join(', ')}`}
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
           {ToolComponent ? (
-            <div className="bg-slate-900 rounded-lg border border-slate-700 p-6">
-              <ToolComponent />
-            </div>
+            <ToolComponent />
           ) : (
             <Card className="bg-slate-900 border-slate-700">
               <CardHeader>
