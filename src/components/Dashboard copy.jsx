@@ -819,7 +819,7 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      <div className="container mx-auto p-6 space-y-6">
+      <div className=" p-6 space-y-6">
         {/* Personalisierter Header */}
         <div className="mb-6">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent mb-2">

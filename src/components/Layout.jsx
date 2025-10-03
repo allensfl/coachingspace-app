@@ -1,7 +1,7 @@
 import React, { useState, Suspense } from 'react';
 import { NavLink, Link, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, Store, Menu, X, Command, Loader2, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, Store, Menu, X, Command, Loader2, LifeBuoy, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStateContext } from '@/context/AppStateContext';
 import Footer from './Footer';
@@ -18,7 +18,6 @@ const navItems = [
     { icon: FileText, label: 'Rechnungen', path: '/invoices', color: 'text-rose-500' },
     { icon: Bot, label: 'KI-Assistent', path: '/ai-coaching', color: 'text-fuchsia-500', requiresFeature: 'aiModule' },
     { icon: Wrench, label: 'Toolbox', path: '/toolbox', color: 'text-pink-500' },
-    //{ icon: Store, label: 'Store', path: '/store', color: 'text-yellow-500' },
 ];
 
 const bottomNavItems = [
@@ -26,12 +25,28 @@ const bottomNavItems = [
     { icon: LifeBuoy, label: 'Hilfe & Doku', path: '/documentation', color: 'text-lime-500' },
 ];
 
+const FloatingFeedbackButton = () => {
+    return (
+        <a 
+            href="https://feedback-beta-coachingspace.netlify.app" 
+            target="_blank"
+            rel="noopener noreferrer"
+            className="fixed right-6 bottom-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 group" 
+            title="Feedback geben"
+        >
+            <MessageSquare className="w-6 h-6" />
+            <span className="absolute right-full mr-3 bg-slate-800/90 backdrop-blur-xl border border-slate-700/50 text-slate-100 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                Feedback geben
+            </span>
+        </a>
+    );
+};
+
 const NavItem = ({ item, collapsed, onClick }) => {
     const location = useLocation();
     const { hasFeature, showPremiumFeature } = useAppStateContext();
     const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '/');
     
-    // Wenn ein Feature erforderlich ist, aber nicht verfügbar
     if (item.requiresFeature && !hasFeature(item.requiresFeature)) {
         return (
             <button
@@ -170,7 +185,7 @@ const Layout = () => {
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
                 <Header setMobileSidebarOpen={setMobileSidebarOpen} />
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-background">
+                <main className="flex-1 overflow-y-auto bg-background">
                     <Suspense fallback={
                         <div className="flex h-full w-full items-center justify-center">
                             <Loader2 className="h-10 w-10 animate-spin" />
@@ -192,6 +207,7 @@ const Layout = () => {
                 <Footer />
                 <FloatingFeedbackButton />
             </div>
+            <FloatingFeedbackButton />
         </div>
     );
 };

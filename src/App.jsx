@@ -1,82 +1,67 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { Toaster } from '@/components/ui/toaster';
-import { AppStateProvider, useAppStateContext } from '@/context/AppStateContext';
 import { ThemeProvider } from '@/hooks/use-theme';
-import { AuthProvider } from './components/auth/AuthProvider';
-import { Loader2 } from 'lucide-react';
-import { AppRoutes } from '@/routes';
-import { GlobalCommand } from '@/components/GlobalCommand';
-import LandingPage from './pages/LandingPage';
+import { AppStateProvider } from '@/context/AppStateContext';
+import Layout from '@/components/Layout';
 
-// Deine bestehende App-Logik
+const Dashboard = lazy(() => import('@/components/Dashboard'));
+const Coachees = lazy(() => import('@/components/Coachees'));
+const CoacheeDetail = lazy(() => import('@/components/CoacheeDetail'));
+const Sessions = lazy(() => import('@/components/Sessions'));
+const SessionPreparation = lazy(() => import('@/components/sessions/SessionPreparation'));
+const Invoices = lazy(() => import('@/components/Invoices'));
+const InvoiceCreator = lazy(() => import('@/components/invoice-creator/InvoiceCreator'));
+const Settings = lazy(() => import('@/components/Settings'));
+const Journal = lazy(() => import('@/components/Journal'));
+const SessionNotes = lazy(() => import('@/components/SessionNotes'));
+const SessionNoteEditor = lazy(() => import('@/components/SessionNoteEditor'));
+const Toolbox = lazy(() => import('@/components/Toolbox'));
+const TaskManager = lazy(() => import('@/components/TaskManager'));
+const Documents = lazy(() => import('@/components/Documents'));
+const Profile = lazy(() => import('@/components/Profile'));
+const DocumentationPage = lazy(() => import('@/components/DocumentationPage'));
+
 const AppContent = () => {
-  const { state, actions } = useAppStateContext();
-  const { isLoading, isCommandOpen, coachees, sessions, invoices, generalDocuments, sessionNotes, recurringInvoices, activePackages, journalEntries, settings } = state;
-  const { setCommandOpen, getAllCoacheeDocuments } = actions;
-
-  if (isLoading) {
-    const logoUrl = settings?.company?.logoUrl;
-    const companyName = settings?.company?.name || 'Coachingspace';
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
-        {logoUrl ? (
-          <img src={logoUrl} alt={`${companyName} Logo`} className="h-16 w-auto mb-4" />
-        ) : (
-          <div className="h-16 w-16 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-3xl mb-4">C</div>
-        )}
-        <Loader2 className="h-10 w-10 animate-spin mb-4" />
-        <p className="text-lg text-gray-300">Coachingspace wird geladen...</p>
-        <p className="text-sm text-gray-400 mt-2">Bitte warte kurz, während deine Daten bereitgestellt werden.</p>
-      </div>
-    );
-  }
-
-  const allDocs = [
-    ...(getAllCoacheeDocuments() || []),
-    ...(generalDocuments || []),
-    ...(sessionNotes || [])
-  ];
-
-  const allInvoices = [
-    ...(invoices || []),
-    ...(recurringInvoices || []),
-    ...(activePackages || [])
-  ];
-
   return (
-    <>
-      <GlobalCommand
-        open={isCommandOpen}
-        setOpen={setCommandOpen}
-        coachees={coachees || []}
-        sessions={sessions || []}
-        invoices={allInvoices}
-        documents={allDocs}
-        journalEntries={journalEntries || []}
-      />
-      <div className="min-h-screen bg-background">
-        <Routes>
-          {/* Landing Page Route */}
-          <Route path="/landing" element={<LandingPage />} />
-          
-          {/* Alle anderen Routes */}
-          <Route path="/*" element={<AppRoutes />} />
-        </Routes>
-        <Toaster />
-      </div>
-    </>
+    <div className="min-h-screen bg-background">
+      <Routes>
+        <Route path="/test" element={
+          <div className="min-h-screen bg-slate-900 text-white p-8">
+            <h2 className="text-2xl text-green-400">✓ Debug-Route funktioniert!</h2>
+          </div>
+        } />
+        <Route path="" element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="coachees" element={<Coachees />} />
+          <Route path="coachees/:id" element={<CoacheeDetail />} />
+          <Route path="sessions" element={<Sessions />} />
+          <Route path="sessions/:sessionId/prepare" element={<SessionPreparation />} />
+          <Route path="invoices" element={<Invoices />} />
+          <Route path="invoices/new" element={<InvoiceCreator />} />
+          <Route path="invoices/edit/:id" element={<InvoiceCreator />} />
+          <Route path="documents" element={<Documents />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="journal" element={<Journal />} />
+          <Route path="session-notes" element={<SessionNotes />} />
+          <Route path="session-notes/new" element={<SessionNoteEditor isNew />} />
+          <Route path="session-notes/:id" element={<SessionNoteEditor />} />
+          <Route path="toolbox" element={<Toolbox />} />
+          <Route path="tasks" element={<TaskManager />} />
+          <Route path="documentation" element={<DocumentationPage />} />
+          <Route path="*" element={<DocumentationPage />} />
+        </Route>
+      </Routes>
+    </div>
   );
 };
 
 const App = () => (
-  <AuthProvider>
-    <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
-      <AppStateProvider>
-        <AppContent />
-      </AppStateProvider>
-    </ThemeProvider>
-  </AuthProvider>
+  <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
+    <AppStateProvider>
+      <AppContent />
+    </AppStateProvider>
+  </ThemeProvider>
 );
 
 export default App;

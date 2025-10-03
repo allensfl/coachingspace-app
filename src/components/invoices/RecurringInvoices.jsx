@@ -1,17 +1,9 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, Play, Pause, MoreVertical, Calendar, Repeat, User, X, CheckCircle, AlertCircle } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { classes } from '../styles/standardClasses';
 
 // Toast-System
 const ToastContainer = ({ toasts, removeToast }) => (
@@ -31,14 +23,12 @@ const ToastContainer = ({ toasts, removeToast }) => (
           <AlertCircle className="h-5 w-5 text-red-400" />
         )}
         <span className="text-sm font-medium text-white">{toast.message}</span>
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={() => removeToast(toast.id)}
-          className="ml-auto p-1 h-6 w-6 text-gray-400 hover:text-white"
+          className={classes.btnIcon + " ml-auto p-1 h-6 w-6"}
         >
           <X className="h-4 w-4" />
-        </Button>
+        </button>
       </div>
     ))}
   </div>
@@ -107,27 +97,22 @@ const RecurringInvoiceDialog = ({ open, onOpenChange, onSave, coachees, serviceR
     
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-gray-800 border-gray-700 text-white">
+            <DialogContent className="bg-slate-800 border-slate-700 text-white">
                 <DialogHeader>
                     <DialogTitle className="text-white">
                         {recurringInvoice ? 'Abonnement bearbeiten' : 'Neues Abonnement erstellen'}
                     </DialogTitle>
-                    <DialogDescription className="text-gray-400">
+                    <DialogDescription className="text-slate-400">
                         Richte wiederkehrende Rechnungen für deine Coachees ein.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="coachee" className="text-white">Coachee</Label>
+                        <Label htmlFor="coachee" className="text-slate-300">Coachee</Label>
                         <select
                             value={coacheeId}
                             onChange={(e) => setCoacheeId(e.target.value)}
-                            className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-no-repeat bg-right pr-10"
-                            style={{
-                              backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                              backgroundPosition: 'right 0.5rem center',
-                              backgroundSize: '1.5em 1.5em'
-                            }}
+                            className={classes.select}
                         >
                             <option value="placeholder" disabled>Bitte wählen...</option>
                             {(coachees || []).map(c => (
@@ -138,16 +123,11 @@ const RecurringInvoiceDialog = ({ open, onOpenChange, onSave, coachees, serviceR
                         </select>
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="rate" className="text-white">Honorarsatz</Label>
+                        <Label htmlFor="rate" className="text-slate-300">Honorarsatz</Label>
                         <select
                             value={rateId}
                             onChange={(e) => setRateId(e.target.value)}
-                            className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-no-repeat bg-right pr-10"
-                            style={{
-                              backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                              backgroundPosition: 'right 0.5rem center',
-                              backgroundSize: '1.5em 1.5em'
-                            }}
+                            className={classes.select}
                         >
                             <option value="placeholder" disabled>Bitte wählen...</option>
                             {(serviceRates || []).map(r => (
@@ -159,27 +139,22 @@ const RecurringInvoiceDialog = ({ open, onOpenChange, onSave, coachees, serviceR
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="quantity" className="text-white">Anzahl</Label>
+                            <Label htmlFor="quantity" className="text-slate-300">Anzahl</Label>
                             <Input 
                                 id="quantity" 
                                 type="number" 
                                 value={quantity} 
                                 onChange={e => setQuantity(parseInt(e.target.value) || 1)} 
                                 min="1"
-                                className="bg-gray-700 border-gray-600 text-white focus:ring-2 focus:ring-blue-500"
+                                className={classes.input}
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="currency" className="text-white">Währung</Label>
+                            <Label htmlFor="currency" className="text-slate-300">Währung</Label>
                             <select
                                 value={currency}
                                 onChange={(e) => setCurrency(e.target.value)}
-                                className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-no-repeat bg-right pr-10"
-                                style={{
-                                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                                  backgroundPosition: 'right 0.5rem center',
-                                  backgroundSize: '1.5em 1.5em'
-                                }}
+                                className={classes.select}
                             >
                                 <option value="EUR">€ Euro</option>
                                 <option value="CHF">CHF Franken</option>
@@ -188,16 +163,11 @@ const RecurringInvoiceDialog = ({ open, onOpenChange, onSave, coachees, serviceR
                         </div>
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="interval" className="text-white">Intervall</Label>
+                        <Label htmlFor="interval" className="text-slate-300">Intervall</Label>
                         <select
                             value={interval}
                             onChange={(e) => setInterval(e.target.value)}
-                            className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-no-repeat bg-right pr-10"
-                            style={{
-                              backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%216b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                              backgroundPosition: 'right 0.5rem center',
-                              backgroundSize: '1.5em 1.5em'
-                            }}
+                            className={classes.select}
                         >
                             <option value="monthly">Monatlich</option>
                             <option value="quarterly">Quartalsweise</option>
@@ -205,25 +175,25 @@ const RecurringInvoiceDialog = ({ open, onOpenChange, onSave, coachees, serviceR
                         </select>
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="start-date" className="text-white">Startdatum</Label>
+                        <Label htmlFor="start-date" className="text-slate-300">Startdatum</Label>
                         <Input 
                             id="start-date" 
                             type="date" 
                             value={startDate} 
                             onChange={e => setStartDate(e.target.value)}
-                            className="bg-gray-700 border-gray-600 text-white focus:ring-2 focus:ring-blue-500"
+                            className={classes.input}
                         />
                     </div>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
+                        <button className={classes.btnSecondary}>
                             Abbrechen
-                        </Button>
+                        </button>
                     </DialogClose>
-                    <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+                    <button onClick={handleSave} className={classes.btnPrimary}>
                         Speichern
-                    </Button>
+                    </button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -248,27 +218,27 @@ const RecurringInvoiceCard = ({ item, serviceRates, onUpdate, onDelete, defaultC
         return `${amount.toFixed(2)}${symbol}`;
     };
     
-    const getStatusVariant = (status) => {
+    const getStatusColor = (status) => {
         switch(status) {
-            case 'active': return 'bg-green-500 text-white';
-            case 'paused': return 'bg-yellow-500 text-black';
-            default: return 'bg-gray-500 text-white';
+            case 'active': return classes.statusGreen;
+            case 'paused': return classes.statusYellow;
+            default: return classes.statusGray;
         }
     };
 
     return (
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 bg-gray-700 rounded-lg hover:bg-gray-650 transition-colors gap-4">
+        <div className={classes.card + " hover:bg-slate-700/50 transition-colors"}>
             <div className="flex items-center gap-4 flex-1">
                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <Repeat className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1">
-                    <p className="font-semibold text-white">{rate?.name || 'Unbekannter Satz'} ({item.quantity}x)</p>
-                    <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
+                    <p className={classes.h3 + " text-base"}>{rate?.name || 'Unbekannter Satz'} ({item.quantity}x)</p>
+                    <p className={classes.caption + " flex items-center gap-2 mt-1"}>
                         <User className="h-4 w-4" />
                         {item.coacheeName}
                     </p>
-                    <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
+                    <p className={classes.caption + " flex items-center gap-2 mt-1"}>
                         <Calendar className="h-4 w-4" />
                         Nächste Rechnung am: {new Date(item.nextDueDate).toLocaleDateString('de-DE')}
                     </p>
@@ -276,43 +246,36 @@ const RecurringInvoiceCard = ({ item, serviceRates, onUpdate, onDelete, defaultC
             </div>
             <div className="flex items-center justify-between sm:justify-end gap-4">
                 <div className="flex items-center gap-3">
-                    <Badge className={getStatusVariant(item.status)}>
+                    <span className={getStatusColor(item.status)}>
                         {item.status === 'active' ? 'Aktiv' : 'Pausiert'}
-                    </Badge>
+                    </span>
                     <p className="text-lg font-bold text-blue-400 whitespace-nowrap">
                         {formatCurrency((rate?.price || 0) * item.quantity, item.currency || rate?.currency || defaultCurrency)}
                     </p>
                 </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white hover:bg-gray-600">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-gray-800 border-gray-700">
-                        <DropdownMenuItem 
-                            onSelect={() => onUpdate(item, 'status', item.status === 'active' ? 'paused' : 'active')}
-                            className="text-white hover:bg-gray-700"
-                        >
-                            {item.status === 'active' ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-                            <span>{item.status === 'active' ? 'Pausieren' : 'Aktivieren'}</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                            onSelect={() => onUpdate(item, 'edit')}
-                            className="text-white hover:bg-gray-700"
-                        >
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Bearbeiten</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                            onSelect={() => onDelete(item.id)} 
-                            className="text-red-400 hover:bg-gray-700"
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Löschen</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex gap-1">
+                    <button 
+                        onClick={() => onUpdate(item, 'status', item.status === 'active' ? 'paused' : 'active')}
+                        className={classes.btnIcon + " text-yellow-400 hover:text-yellow-300"}
+                        title={item.status === 'active' ? 'Pausieren' : 'Aktivieren'}
+                    >
+                        {item.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    </button>
+                    <button 
+                        onClick={() => onUpdate(item, 'edit')}
+                        className={classes.btnIcon}
+                        title="Bearbeiten"
+                    >
+                        <Edit className="h-4 w-4" />
+                    </button>
+                    <button 
+                        onClick={() => onDelete(item.id)}
+                        className={classes.btnIconRed}
+                        title="Löschen"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -379,74 +342,71 @@ export function RecurringInvoices({ recurringInvoices, setRecurringInvoices, coa
   };
 
   return (
-      <>
-        <ToastContainer toasts={toasts} removeToast={removeToast} />
-        
-        <RecurringInvoiceDialog 
-          open={isDialogOpen} 
-          onOpenChange={setIsDialogOpen} 
-          onSave={handleSave} 
-          coachees={coachees} 
-          serviceRates={serviceRates} 
-          recurringInvoice={selectedInvoice} 
-        />
-        <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div>
-                        <CardTitle className="text-white">Abonnements & Wiederkehrende Rechnungen</CardTitle>
-                        <CardDescription className="text-gray-400">
-                            Verwalte deine wiederkehrenden Einnahmen und Abo-Modelle.
-                        </CardDescription>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <select
-                            value={defaultCurrency}
-                            onChange={(e) => setDefaultCurrency(e.target.value)}
-                            className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-no-repeat bg-right pr-10 min-w-[120px]"
-                            style={{
-                                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                                backgroundPosition: 'right 0.5rem center',
-                                backgroundSize: '1.5em 1.5em'
-                            }}
-                        >
-                            <option value="EUR">€ Euro</option>
-                            <option value="CHF">CHF Franken</option>
-                            <option value="USD">$ Dollar</option>
-                        </select>
-                        <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap">
-                            <Plus className="mr-2 h-4 w-4" /> 
-                            Neues Abo
-                        </Button>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    {(recurringInvoices || []).map(item => (
-                        <RecurringInvoiceCard 
-                            key={item.id} 
-                            item={item} 
-                            serviceRates={serviceRates} 
-                            onUpdate={handleUpdate} 
-                            onDelete={handleDelete} 
-                            defaultCurrency={defaultCurrency}
-                        />
-                    ))}
-                    {(recurringInvoices || []).length === 0 && (
-                        <div className="text-center py-12">
-                            <Repeat className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                            <h3 className="text-lg font-medium text-white mb-2">Keine Abonnements gefunden</h3>
-                            <p className="text-gray-400 mb-4">Erstelle dein erstes Abonnement, um loszulegen.</p>
-                            <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700">
-                                <Plus className="mr-2 h-4 w-4" /> 
-                                Erstes Abo erstellen
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
-      </>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        <div className="">
+          <ToastContainer toasts={toasts} removeToast={removeToast} />
+          
+          <RecurringInvoiceDialog 
+            open={isDialogOpen} 
+            onOpenChange={setIsDialogOpen} 
+            onSave={handleSave} 
+            coachees={coachees} 
+            serviceRates={serviceRates} 
+            recurringInvoice={selectedInvoice} 
+          />
+          
+          <div className={classes.card}>
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                  <div>
+                      <h1 className={classes.h1}>Abonnements & Wiederkehrende Rechnungen</h1>
+                      <p className={classes.body}>
+                          Verwalte deine wiederkehrenden Einnahmen und Abo-Modelle.
+                      </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                      <select
+                          value={defaultCurrency}
+                          onChange={(e) => setDefaultCurrency(e.target.value)}
+                          className={classes.select + " min-w-[120px]"}
+                      >
+                          <option value="EUR">€ Euro</option>
+                          <option value="CHF">CHF Franken</option>
+                          <option value="USD">$ Dollar</option>
+                      </select>
+                      <button onClick={handleAddNew} className={classes.btnPrimary + " whitespace-nowrap"}>
+                          <Plus className="mr-2 h-4 w-4" /> 
+                          Neues Abo
+                      </button>
+                  </div>
+              </div>
+
+              {/* Content */}
+              <div className="space-y-4">
+                  {(recurringInvoices || []).map(item => (
+                      <RecurringInvoiceCard 
+                          key={item.id} 
+                          item={item} 
+                          serviceRates={serviceRates} 
+                          onUpdate={handleUpdate} 
+                          onDelete={handleDelete} 
+                          defaultCurrency={defaultCurrency}
+                      />
+                  ))}
+                  {(recurringInvoices || []).length === 0 && (
+                      <div className={classes.emptyState}>
+                          <Repeat className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                          <h3 className={classes.h3 + " mb-2"}>Keine Abonnements gefunden</h3>
+                          <p className={classes.emptyStateText + " mb-4"}>Erstelle dein erstes Abonnement, um loszulegen.</p>
+                          <button onClick={handleAddNew} className={classes.btnPrimary}>
+                              <Plus className="mr-2 h-4 w-4" /> 
+                              Erstes Abo erstellen
+                          </button>
+                      </div>
+                  )}
+              </div>
+          </div>
+        </div>
+      </div>
   );
 }
