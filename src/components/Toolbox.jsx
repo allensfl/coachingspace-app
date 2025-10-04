@@ -5,6 +5,7 @@ import { classes } from '../styles/standardClasses';
 import Skalenarbeit from './toolbox/tools/Skalenarbeit';
 import Lebensrad from './toolbox/tools/Lebensrad';
 import GrowModell from './toolbox/tools/GrowModell';
+import Wertequadrat from './toolbox/tools/Wertequadrat';
 
 export default function Toolbox() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -78,7 +79,8 @@ export default function Toolbox() {
       icon: Scale,
       status: 'active',
       duration: '25-45 Min',
-      difficulty: 'Fortgeschritten'
+      difficulty: 'Fortgeschritten',
+      component: Wertequadrat
     },
     {
       id: 'team-builtin',
