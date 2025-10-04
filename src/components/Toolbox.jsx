@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Search, Plus, Star, Upload, BarChart3, Users, Scale, Compass, Settings, Trash2, Eye, Edit, Share, Download, ChevronRight, ChevronLeft, RotateCcw } from 'lucide-react';
+import { Activity, Target, Search, Plus, Star, Upload, BarChart3, Users, Scale, Compass, Settings, Trash2, Eye, Edit, Share, Download, ChevronRight, ChevronLeft, RotateCcw } from 'lucide-react';
 import { classes } from '../styles/standardClasses';
+import Skalenarbeit from './toolbox/tools/Skalenarbeit';
 
 export default function Toolbox() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,15 +32,16 @@ export default function Toolbox() {
   // Built-in Coaching Tools
   const builtInTools = [
     {
-      id: 'scaling-builtin',
+      id: 'skalenarbeit',
       name: 'Skalenarbeit',
-      description: 'Interaktive Skalenarbeit mit Split-Interface für Coach und Coachee. Strukturierter 7-Schritt-Prozess.',
+      description: '7-Schritt-Prozess zur Standortbestimmung und Zielsetzung mit interaktiven Slidern',
       category: 'Zielklärung',
       type: 'interactive',
-      icon: BarChart3,
+      icon: Activity,
       status: 'active',
       duration: '15-30 Min',
-      difficulty: 'Einfach'
+      difficulty: 'Einfach',
+      component: Skalenarbeit
     },
     {
       id: 'lifewheel-builtin',
@@ -62,6 +64,17 @@ export default function Toolbox() {
       status: 'active',
       duration: '30-60 Min',
       difficulty: 'Mittel'
+    },
+    {
+      id: 'wertequadrat',
+      name: 'Wertequadrat',
+      description: '5-Schritt-Prozess nach Paul Helwig zur Werte-Identifikation und Spannungsfeld-Analyse',
+      category: 'Reflexion',
+      type: 'interactive',
+      icon: Scale,
+      status: 'active',
+      duration: '25-45 Min',
+      difficulty: 'Fortgeschritten'
     },
     {
       id: 'team-builtin',
@@ -374,6 +387,12 @@ export default function Toolbox() {
       return <FileViewer tool={selectedTool} />;
     }
     if (selectedTool.type === 'interactive') {
+      // Wenn eine echte Component vorhanden ist, diese rendern
+      if (selectedTool.component) {
+        const ToolComponent = selectedTool.component;
+        return <ToolComponent onClose={() => setSelectedTool(null)} />;
+      }
+      // Sonst Platzhalter anzeigen
       return renderInteractiveTool(selectedTool);
     }
     
