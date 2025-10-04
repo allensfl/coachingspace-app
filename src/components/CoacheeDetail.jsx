@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import ProfileCard from "./coachee-detail/ProfileCard";
+import WeeklyImpulsesCard from "./coachee-detail/WeeklyImpulsesCard";
 import { useAppStateContext } from '@/context/AppStateContext';
 
 // Lazy import für TasksTab
@@ -444,14 +445,15 @@ export default function CoacheeDetail() {
 
             {/* Tab Content */}
             <TabsContent value="profil" className="p-8 mt-0">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <div className="lg:col-span-3">
-                  <ProfileCard 
-                    coachee={coachee}
-                    onUpdate={handleProfileUpdate}
-                    isEditing={isEditing} 
-                  />
-                </div>
+  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+    <div className="lg:col-span-3 space-y-8">
+      <ProfileCard 
+        coachee={coachee}
+        onUpdate={handleProfileUpdate}
+        isEditing={isEditing} 
+      />
+      <WeeklyImpulsesCard coachee={coachee} />
+    </div>
 
                 {/* Quick Navigation Sidebar */}
                 <div className="lg:col-span-1">

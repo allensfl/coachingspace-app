@@ -141,64 +141,69 @@ export default function ProfileCard({
         hasPassword: false
       };
 
-      // WICHTIG: Mapping für Portal erstellen
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData?.user) {
-        // Legacy ID aus custom_data holen oder generieren
-        const customData = localCoachee.custom_data || {};
-        const legacyId = customData.legacy_id || Date.now();
-        
-        // Portal Mapping erstellen
-        const { error: mappingError } = await supabase
-          .from('portal_coachee_mapping')
-          .upsert({
-            portal_token: oneTimeToken,
-            coachee_uuid: localCoachee.id,
-            coachee_legacy_id: legacyId
-          });
+      const customData = localCoachee.custom_data || {};
+      const legacyId = customData.legacy_id || Date.now();
 
-        if (mappingError) {
-          console.error('Mapping error:', mappingError);
-          throw mappingError;
+      // Mapping für Portal erstellen (nur wenn eingeloggt)
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          await supabase
+            .from('portal_coachee_mapping')
+            .upsert({
+              portal_token: oneTimeToken,
+              coachee_uuid: localCoachee.id,
+              coachee_legacy_id: legacyId
+            });
         }
-
-        // Legacy ID im Coachee speichern falls noch nicht vorhanden
-        if (!customData.legacy_id) {
-          customData.legacy_id = legacyId;
-        }
-
-        const updatedCoachee = {
-          ...localCoachee,
-          portal_access: portalAccess,
-          custom_data: customData,
-          portalData: {
-            journalEntries: [],
-            tasks: [],
-            documents: [],
-            weeklyImpulses: [],
-            progressData: { goals: [], achievements: [], reflections: [] },
-            sharedContent: [],
-            lastUpdated: new Date().toISOString()
-          }
-        };
-
-        setLocalCoachee(updatedCoachee);
-
-        if (onUpdate) {
-          await onUpdate(updatedCoachee);
-        }
-
-        const portalLink = `${window.location.origin}/portal/${oneTimeToken}`;
-        navigator.clipboard.writeText(portalLink);
-        
-        alert(`Portal-Link kopiert!\n\n${portalLink}\n\nGültig für 24 Stunden.`);
+      } catch (mappingError) {
+        console.warn('Mapping creation failed (nicht kritisch):', mappingError);
       }
+
+      // Legacy ID speichern
+      if (!customData.legacy_id) {
+        customData.legacy_id = legacyId;
+      }
+
+      // Coachee aktualisieren
+      const updatedCoachee = {
+        ...localCoachee,
+        portal_access: portalAccess,
+        custom_data: customData,
+        portalData: {
+          journalEntries: [],
+          tasks: [],
+          documents: [],
+          weeklyImpulses: [],
+          progressData: { goals: [], achievements: [], reflections: [] },
+          sharedContent: [],
+          lastUpdated: new Date().toISOString()
+        }
+      };
+
+      setLocalCoachee(updatedCoachee);
+
+      if (onUpdate) {
+        await onUpdate(updatedCoachee);
+      }
+
+       
+      // Link IMMER generieren und kopieren
+      const portalLink = `${window.location.origin}/portal/${oneTimeToken}`;
+      
+      // Versuche zu kopieren, aber zeige Link auch wenn es fehlschlägt
+      try {
+        await navigator.clipboard.writeText(portalLink);
+      } catch (clipboardError) {
+        console.warn('Clipboard failed, aber Link ist trotzdem verfügbar:', clipboardError);
+      }
+      
+      return portalLink;
     } catch (error) {
       console.error('Portal link generation error:', error);
       alert('Fehler beim Erstellen des Portal-Links');
     }
   };
-
   const getPortalStatus = () => {
     const access = localCoachee?.portalAccess;
     if (!access) return { status: 'none', text: 'Nicht eingerichtet', color: 'text-slate-400' };
@@ -398,10 +403,10 @@ export default function ProfileCard({
                   Nur geteilte Inhalte sind für Sie als Coach sichtbar.
                 </p>
 
-                <Button
-                  onClick={() => {
+                 <Button
+                  onClick={async () => {
                     try {
-                      const portalLink = generatePortalAccess();
+                      const portalLink = await generatePortalAccess();
                       alert(`Portal-Link für ${localCoachee?.firstName} wurde erstellt und kopiert!\n\nLink: ${portalLink}\n\nGültigkeit: 24 Stunden\nNach dem ersten Login wird ein permanenter Zugang eingerichtet.`);
                     } catch (error) {
                       console.error('Fehler beim Portal-Link:', error);
