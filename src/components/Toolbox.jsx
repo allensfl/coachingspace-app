@@ -4,6 +4,7 @@ import { Activity, Target, Search, Plus, Star, Upload, BarChart3, Users, Scale, 
 import { classes } from '../styles/standardClasses';
 import Skalenarbeit from './toolbox/tools/Skalenarbeit';
 import Lebensrad from './toolbox/tools/Lebensrad';
+import GrowModell from './toolbox/tools/GrowModell';
 
 export default function Toolbox() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,7 +66,8 @@ export default function Toolbox() {
       icon: Compass,
       status: 'active',
       duration: '30-60 Min',
-      difficulty: 'Mittel'
+      difficulty: 'Mittel',
+      component: GrowModell 
     },
     {
       id: 'wertequadrat',
