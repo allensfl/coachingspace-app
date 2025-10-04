@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Target, Search, Plus, Star, Upload, BarChart3, Users, Scale, Compass, Settings, Trash2, Eye, Edit, Share, Download, ChevronRight, ChevronLeft, RotateCcw } from 'lucide-react';
 import { classes } from '../styles/standardClasses';
 import Skalenarbeit from './toolbox/tools/Skalenarbeit';
+import Lebensrad from './toolbox/tools/Lebensrad';
 
 export default function Toolbox() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,7 +53,8 @@ export default function Toolbox() {
       icon: Target,
       status: 'active',
       duration: '20-40 Min',
-      difficulty: 'Mittel'
+      difficulty: 'Mittel',
+      component: Lebensrad  
     },
     {
       id: 'grow-builtin',
