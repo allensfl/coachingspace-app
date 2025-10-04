@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/supabaseConfig';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, Calendar, Target, Gift, ExternalLink, Copy, Plus, X, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -128,41 +129,74 @@ export default function ProfileCard({
     alert(`Feld "${newField.label}" wurde hinzugefügt`);
   };
 
-  const generatePortalAccess = () => {
-    const oneTimeToken = crypto.randomUUID();
-    const portalAccess = {
-      oneTimeToken: oneTimeToken,
-      permanentToken: null,
-      passwordHash: null,
-      expirationTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      isUsed: false,
-      hasPassword: false
-    };
+  const generatePortalAccess = async () => {
+    try {
+      const oneTimeToken = crypto.randomUUID();
+      const portalAccess = {
+        oneTimeToken: oneTimeToken,
+        permanentToken: null,
+        passwordHash: null,
+        expirationTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        isUsed: false,
+        hasPassword: false
+      };
 
-    const updatedCoachee = {
-      ...localCoachee,
-      portalAccess: portalAccess,
-      portalData: {
-        journalEntries: [],
-        tasks: [],
-        documents: [],
-        weeklyImpulses: [],
-        progressData: { goals: [], achievements: [], reflections: [] },
-        sharedContent: [],
-        lastUpdated: new Date().toISOString()
+      // WICHTIG: Mapping für Portal erstellen
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user) {
+        // Legacy ID aus custom_data holen oder generieren
+        const customData = localCoachee.custom_data || {};
+        const legacyId = customData.legacy_id || Date.now();
+        
+        // Portal Mapping erstellen
+        const { error: mappingError } = await supabase
+          .from('portal_coachee_mapping')
+          .upsert({
+            portal_token: oneTimeToken,
+            coachee_uuid: localCoachee.id,
+            coachee_legacy_id: legacyId
+          });
+
+        if (mappingError) {
+          console.error('Mapping error:', mappingError);
+          throw mappingError;
+        }
+
+        // Legacy ID im Coachee speichern falls noch nicht vorhanden
+        if (!customData.legacy_id) {
+          customData.legacy_id = legacyId;
+        }
+
+        const updatedCoachee = {
+          ...localCoachee,
+          portal_access: portalAccess,
+          custom_data: customData,
+          portalData: {
+            journalEntries: [],
+            tasks: [],
+            documents: [],
+            weeklyImpulses: [],
+            progressData: { goals: [], achievements: [], reflections: [] },
+            sharedContent: [],
+            lastUpdated: new Date().toISOString()
+          }
+        };
+
+        setLocalCoachee(updatedCoachee);
+
+        if (onUpdate) {
+          await onUpdate(updatedCoachee);
+        }
+
+        const portalLink = `${window.location.origin}/portal/${oneTimeToken}`;
+        navigator.clipboard.writeText(portalLink);
+        
+        alert(`Portal-Link kopiert!\n\n${portalLink}\n\nGültig für 24 Stunden.`);
       }
-    };
-
-    setLocalCoachee(updatedCoachee);
-
-    if (onUpdate) {
-      onUpdate(updatedCoachee);
+    } catch (error) {
+      console.error('Portal link generation error:', error);
+      alert('Fehler beim Erstellen des Portal-Links');
     }
-
-    const portalLink = `${window.location.origin}/portal/${oneTimeToken}`;
-    navigator.clipboard.writeText(portalLink);
-
-    return portalLink;
   };
 
   const getPortalStatus = () => {
