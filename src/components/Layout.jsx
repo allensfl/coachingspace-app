@@ -1,9 +1,11 @@
 import React, { useState, Suspense } from 'react';
 import { NavLink, Link, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, Store, Menu, X, Command, Loader2, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, FileText, Folder, Settings, Bot, BookOpen, PenSquare, Wrench, Store, Menu, X, Command, Loader2, LifeBuoy, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStateContext } from '@/context/AppStateContext';
+import Footer from './Footer';
+import FloatingFeedbackButton from './FloatingFeedbackButton';
 
 // Akzentfarbe je Navitem (bei Aktivität)
 const navItems = [
@@ -16,7 +18,6 @@ const navItems = [
     { icon: FileText, label: 'Rechnungen', path: '/invoices', color: 'text-rose-500' },
     { icon: Bot, label: 'KI-Assistent', path: '/ai-coaching', color: 'text-fuchsia-500', requiresFeature: 'aiModule' },
     { icon: Wrench, label: 'Toolbox', path: '/toolbox', color: 'text-pink-500' },
-    //{ icon: Store, label: 'Store', path: '/store', color: 'text-yellow-500' },
 ];
 
 const bottomNavItems = [
@@ -24,12 +25,12 @@ const bottomNavItems = [
     { icon: LifeBuoy, label: 'Hilfe & Doku', path: '/documentation', color: 'text-lime-500' },
 ];
 
+
 const NavItem = ({ item, collapsed, onClick }) => {
     const location = useLocation();
     const { hasFeature, showPremiumFeature } = useAppStateContext();
     const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '/');
     
-    // Wenn ein Feature erforderlich ist, aber nicht verfügbar
     if (item.requiresFeature && !hasFeature(item.requiresFeature)) {
         return (
             <button
@@ -187,6 +188,8 @@ const Layout = () => {
                         </AnimatePresence>
                     </Suspense>
                 </main>
+                <Footer />
+                <FloatingFeedbackButton />
             </div>
         </div>
     );

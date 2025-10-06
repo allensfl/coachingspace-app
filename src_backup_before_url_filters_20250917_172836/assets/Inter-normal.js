@@ -1,1 +1,0 @@
-export const FONT_INTER_NORMAL = `AAEAAAARAQAABAAQRFNJRwAAAAEAA... (truncated)`;

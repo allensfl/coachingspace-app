@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Clock, Users, FileText, Calculator, Brain, Settings, CheckCircle, AlertCircle, Play, BookOpen, Target, Zap, Shield, TrendingUp, Calendar, DollarSign, Search, Menu, X, Mail, Sparkles, Lightbulb, BarChart3, Copy, Save, Upload, Folder, Trash2, Edit, Download, Eye, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, Users, FileText, Calculator, Brain, Settings, CheckCircle, AlertCircle, Play, BookOpen, Target, Zap, Shield, TrendingUp, Calendar, DollarSign, Search, Menu, X, Mail, Sparkles, Lightbulb, BarChart3, Copy, Save, Upload, Folder, Trash2, Edit, Download, Eye } from 'lucide-react';
 
 const DocumentationPage = () => {
   const [activeSection, setActiveSection] = useState('overview');
@@ -27,10 +27,11 @@ const DocumentationPage = () => {
     { id: 'toolbox', title: 'Coaching-Toolbox', icon: Zap },
     { id: 'settings', title: 'Einstellungen', icon: Settings },
     { id: 'legal', title: 'Rechtliches & DSGVO', icon: Shield },
-    { id: 'business', title: 'Business-Optimierung', icon: TrendingUp },
-    { id: 'betafeedback', title: 'Beta-Feedback geben', icon: MessageSquare }
+    { id: 'business', title: 'Business-Optimierung', icon: TrendingUp }
   ];
 
+  // Alle anderen Komponenten bleiben gleich (StepGuide, FeatureCard, etc.)
+  // ... (der Rest des Codes bleibt identisch bis zum renderContent())
   // StepGuide Komponente
   const StepGuide = ({ title, icon: Icon, steps }) => (
     <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">

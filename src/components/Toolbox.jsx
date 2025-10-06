@@ -3,6 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Search, Plus, Star, Upload, BarChart3, Users, Scale, Compass, Settings, Trash2, Eye, Edit, Share, Download, ChevronRight, ChevronLeft, RotateCcw } from 'lucide-react';
 import { classes } from '../styles/standardClasses';
 
+// Import der 5 vollständigen Coaching-Tools
+import SkalenarbeitTool from './tools/SkalenarbeitTool';
+import LebensradTool from './tools/LebensradTool';
+import GrowModellTool from './tools/GrowModellTool';
+import WertequadratTool from './tools/WertequadratTool';
+import InneresTeamTool from './tools/InneresTeamTool';
+
 export default function Toolbox() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -73,12 +80,32 @@ export default function Toolbox() {
       status: 'active',
       duration: '30-50 Min',
       difficulty: 'Fortgeschritten'
+    },
+    {
+      id: 'values-builtin',
+      name: 'Wertequadrat',
+      description: 'Werte-Analyse nach Schulz von Thun mit Visualisierung des Spannungsfelds.',
+      category: 'Reflexion',
+      type: 'interactive',
+      icon: Scale,
+      status: 'active',
+      duration: '25-45 Min',
+      difficulty: 'Mittel'
     }
   ];
 
   const categories = ['all', 'Entscheidungshilfen', 'Reflexion', 'Ressourcen', 'Zielklärung', ...customCategories];
 
   const allTools = [...builtInTools, ...customTools];
+
+  // Tool-Komponenten Map für interaktive Tools
+  const INTERACTIVE_TOOL_COMPONENTS = {
+    'scaling-builtin': SkalenarbeitTool,
+    'lifewheel-builtin': LebensradTool,
+    'grow-builtin': GrowModellTool,
+    'team-builtin': InneresTeamTool,
+    'values-builtin': WertequadratTool
+  };
 
   // Text Tool Handler
   const handleCreateTextTool = () => {
@@ -148,7 +175,6 @@ export default function Toolbox() {
   const handleDeleteCategory = (categoryName) => {
     if (categoryName !== 'Eigene Tools') {
       setCustomCategories(prev => prev.filter(cat => cat !== categoryName));
-      // Update tools in deleted category to 'Eigene Tools'
       setCustomTools(prev => prev.map(tool => 
         tool.category === categoryName ? { ...tool, category: 'Eigene Tools' } : tool
       ));
@@ -179,8 +205,15 @@ export default function Toolbox() {
     });
   }, [searchTerm, filterCategory, allTools]);
 
-  // Simple Tool Placeholder for interactive tools
+  // Interaktive Tool Renderer - LÄDT JETZT DIE ECHTEN KOMPONENTEN
   const renderInteractiveTool = (tool) => {
+    const ToolComponent = INTERACTIVE_TOOL_COMPONENTS[tool.id];
+    
+    if (ToolComponent) {
+      return <ToolComponent />;
+    }
+    
+    // Fallback für unbekannte Tools
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
         <div style={{
@@ -198,29 +231,8 @@ export default function Toolbox() {
         <p className={classes.body} style={{ margin: '0 0 2rem 0', maxWidth: '600px', lineHeight: '1.6' }}>
           {tool.description}
         </p>
-        <div className={classes.card} style={{
-          maxWidth: '400px',
-          margin: '0 auto 2rem auto',
-          textAlign: 'left'
-        }}>
-          <h4 className={classes.h4} style={{ margin: '0 0 1rem 0' }}>Tool-Details:</h4>
-          <div style={{ display: 'grid', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className={classes.body}>Dauer:</span>
-              <span className={classes.caption}>{tool.duration}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className={classes.body}>Schwierigkeit:</span>
-              <span className={classes.caption}>{tool.difficulty}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className={classes.body}>Kategorie:</span>
-              <span className={classes.caption}>{tool.category}</span>
-            </div>
-          </div>
-        </div>
         <p className={classes.caption} style={{ fontStyle: 'italic' }}>
-          Vollständige interaktive Version wird in einem zukünftigen Update verfügbar sein.
+          Tool wird geladen...
         </p>
       </div>
     );
@@ -841,7 +853,6 @@ export default function Toolbox() {
                 Kategorien verwalten
               </h3>
               
-              {/* Add new category */}
               <div style={{ marginBottom: '2rem' }}>
                 <label className={classes.body} style={{ display: 'block', marginBottom: '0.5rem' }}>
                   Neue Kategorie hinzufügen:
@@ -866,11 +877,9 @@ export default function Toolbox() {
                 </div>
               </div>
 
-              {/* List existing categories */}
               <div style={{ marginBottom: '2rem' }}>
                 <h4 className={classes.h4} style={{ margin: '0 0 1rem 0' }}>Bestehende Kategorien:</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {/* Built-in categories (not deletable) */}
                   {['Entscheidungshilfen', 'Reflexion', 'Ressourcen', 'Zielklärung'].map(category => (
                     <div key={category} className={classes.cardCompact} style={{
                       display: 'flex',
@@ -884,7 +893,6 @@ export default function Toolbox() {
                     </div>
                   ))}
 
-                  {/* Custom categories (deletable) */}
                   {customCategories.map(category => (
                     <div key={category} className={classes.cardCompact} style={{
                       display: 'flex',
