@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/hooks/use-theme';
 import { AppStateProvider } from '@/context/AppStateContext';
 import Layout from '@/components/Layout';
+import CoacheePortal from '@/components/CoacheePortal';
 
 const Dashboard = lazy(() => import('@/components/Dashboard'));
 const Coachees = lazy(() => import('@/components/Coachees'));
@@ -25,11 +26,17 @@ const AppContent = () => {
   return (
     <div className="min-h-screen bg-background">
       <Routes>
+        {/* Portal Route OHNE Layout - muss VOR allen anderen sein */}
+        <Route path="/portal/:token" element={<CoacheePortal />} />
+        
+        {/* Test Route */}
         <Route path="/test" element={
           <div className="min-h-screen bg-slate-900 text-white p-8">
             <h2 className="text-2xl text-green-400">✓ Debug-Route funktioniert!</h2>
           </div>
         } />
+        
+        {/* Alle anderen Routes MIT Layout */}
         <Route path="" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="coachees" element={<Coachees />} />
