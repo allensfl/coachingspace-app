@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/supabaseConfig';
 import { 
   Shield, ShieldCheck, Eye, EyeOff, AlertTriangle, 
-  MessageCircle, CheckSquare, BookOpen, Upload, 
+  MessageCircle, CheckSquare, BookOpen, Upload, Download,
   TrendingUp, Settings, Plus, Send, Save, 
-  Calendar, Clock, Share2, Lock
+  Calendar, Clock, Share2, Lock, Trash2, Edit, FileText  // <- FileText hinzufügen
 } from 'lucide-react';
 
 // Helper-Funktion für Kalenderwoche
@@ -53,12 +53,42 @@ const CoacheePortal = () => {
   const [supabaseTasks, setSupabaseTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   
+  // Task-Dialog State - ERWEITERT
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [editingTask, setEditingTask] = useState(null); // NEU: Für Edit-Mode
+  const [activeDialogTab, setActiveDialogTab] = useState('details');
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    dueDate: '',
+    tags: [],
+    status: 'open',
+    estimatedTime: '',
+    notes: '',
+    subtasks: [],
+    attachments: [],
+    attachedTools: [], // NEU
+    recurring: {
+      enabled: false,
+      frequency: 'weekly',
+      interval: 1
+    },
+    reminder: {
+      enabled: false,
+      daysBefore: 1
+    },
+    linkedGoalId: null
+  });
+  const [newSubtask, setNewSubtask] = useState('');
+  const [availableTags] = useState([
+    'Beruflich', 'Persönlich', 'Gesundheit', 'Lernen', 
+    'Finanzen', 'Familie', 'Hobbies', 'Dringend'
+  ]);
+  
   // Shared Content State
   const [sharedContent, setSharedContent] = useState([]);
-  
-  // Wochenimpulse State
-  const [weeklyImpulses, setWeeklyImpulses] = useState([]);
-  
+
   // Documents State
   const [documents, setDocuments] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -74,6 +104,8 @@ const CoacheePortal = () => {
   const [newGoal, setNewGoal] = useState('');
   const [newReflection, setNewReflection] = useState('');
 
+  // NEU: Expanded Tasks State - welche Tasks sind aufgeklappt
+  const [expandedTasks, setExpandedTasks] = useState(new Set());
   // Supabase Tasks laden
   const loadSupabaseTasks = async (coacheeId) => {
     try {
@@ -112,8 +144,21 @@ const CoacheePortal = () => {
       isSupabaseTask: true,
       id: task.id,
       title: task.title,
+      description: task.description,
       completed: task.completed || false,
-      createdAt: task.created_at
+      createdAt: task.created_at,
+      dueDate: task.due_date,
+      priority: task.priority,
+      status: task.status,
+      tags: task.tags || [],
+      estimatedTime: task.estimated_time,
+      notes: task.notes,
+      subtasks: task.subtasks || [],
+      attachments: task.attachments || [],
+      attachedTools: task.attached_tools || [],
+      recurring: task.recurring || { enabled: false, frequency: 'weekly', interval: 1 },
+      reminder: task.reminder || { enabled: false, daysBefore: 1 },
+      linkedGoalId: task.linked_goal_id
     }));
     
     console.log('Local tasks:', localTasks.length);
@@ -189,16 +234,37 @@ const CoacheePortal = () => {
 
   const loadPortalData = (coacheeData) => {
     const portalData = coacheeData.portalData || {};
+    
     setJournalEntries(portalData.journalEntries || []);
-    setTasks(portalData.tasks || []);
     setSharedContent(portalData.sharedContent || []);
-    setWeeklyImpulses(portalData.weeklyImpulses || []);
     setDocuments(portalData.documents || []);
     setProgressData(portalData.progressData || {
       goals: [],
       achievements: [],
       reflections: []
     });
+    
+    const realCoacheeId = coacheeData.id;
+    
+    console.log('Loading tasks for coachee ID:', realCoacheeId, 'Type:', typeof realCoacheeId);
+    
+    const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+    const myLocalTasks = allTasks.filter(t => {
+      return t.assignedTo == realCoacheeId;
+    });
+    
+    console.log('Portal: Filtered tasks', {
+      allTasks: allTasks.length,
+      myLocalTasks: myLocalTasks.length,
+      coacheeId: realCoacheeId
+    });
+    
+    const combinedTasks = [
+      ...(portalData.tasks || []),
+      ...myLocalTasks
+    ];
+    
+    setTasks(combinedTasks);
   };
 
   const savePortalData = () => {
@@ -210,7 +276,6 @@ const CoacheePortal = () => {
         journalEntries,
         tasks,
         sharedContent,
-        weeklyImpulses,
         documents,
         progressData,
         lastUpdated: new Date().toISOString()
@@ -262,6 +327,40 @@ const CoacheePortal = () => {
     }
   };
 
+  // NEU: Task aufklappen/zuklappen
+  const toggleExpandTask = (taskId) => {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  };
+
+  // NEU: Task zum Bearbeiten öffnen
+  const openEditTask = (task) => {
+    setEditingTask(task);
+    setTaskForm({
+      title: task.title || '',
+      description: task.description || '',
+      priority: task.priority || 'medium',
+      dueDate: task.dueDate || '',
+      tags: task.tags || [],
+      status: task.status || 'open',
+      estimatedTime: task.estimatedTime || '',
+      notes: task.notes || '',
+      subtasks: task.subtasks || [],
+      attachments: task.attachments || [],
+      attachedTools: task.attachedTools || [],
+      recurring: task.recurring || { enabled: false, frequency: 'weekly', interval: 1 },
+      reminder: task.reminder || { enabled: false, daysBefore: 1 },
+      linkedGoalId: task.linkedGoalId || null
+    });
+    setShowTaskDialog(true);
+  };
   // Journal Funktionen
   const addJournalEntry = () => {
     if (!newJournalEntry.trim() || !journalTitle.trim()) return;
@@ -279,38 +378,49 @@ const CoacheePortal = () => {
     setNewJournalEntry('');
     setJournalTitle('');
     
-    // Auto-save
     setTimeout(savePortalData, 100);
   };
 
   const shareJournalEntry = (entryId) => {
-    const updatedEntries = journalEntries.map(entry => {
-      if (entry.id === entryId) {
-        const sharedEntry = { ...entry, isShared: !entry.isShared };
-        
-        // Zum geteilten Content hinzufügen/entfernen
-        if (sharedEntry.isShared) {
-          const newSharedContent = [...sharedContent, {
-            id: `journal_${entryId}`,
-            type: 'journal',
-            title: entry.title,
-            content: entry.content,
-            sharedAt: new Date().toISOString(),
-            viewedByCoach: false
-          }];
-          setSharedContent(newSharedContent);
-        } else {
-          const filteredShared = sharedContent.filter(item => item.id !== `journal_${entryId}`);
-          setSharedContent(filteredShared);
-        }
-        
-        return sharedEntry;
+    const entry = journalEntries.find(e => e.id === entryId);
+    if (!entry) return;
+    
+    const updatedEntries = journalEntries.map(e => {
+      if (e.id === entryId) {
+        return { ...e, isShared: !e.isShared };
       }
-      return entry;
+      return e;
     });
     
+    let newSharedContent;
+    if (!entry.isShared) {
+      newSharedContent = [...sharedContent, {
+        id: `journal_${entryId}`,
+        type: 'journal',
+        title: entry.title,
+        content: entry.content,
+        sharedAt: new Date().toISOString(),
+        viewedByCoach: false
+      }];
+    } else {
+      newSharedContent = sharedContent.filter(item => item.id !== `journal_${entryId}`);
+    }
+    
     setJournalEntries(updatedEntries);
-    setTimeout(savePortalData, 100);
+    setSharedContent(newSharedContent);
+    
+    const storedCoachees = JSON.parse(localStorage.getItem('coachees') || '[]');
+    const coacheeIndex = storedCoachees.findIndex(c => c.id === coachee.id);
+    
+    if (coacheeIndex !== -1) {
+      storedCoachees[coacheeIndex].portalData = {
+        ...storedCoachees[coacheeIndex].portalData,
+        journalEntries: updatedEntries,
+        sharedContent: newSharedContent,
+        lastUpdated: new Date().toISOString()
+      };
+      localStorage.setItem('coachees', JSON.stringify(storedCoachees));
+    }
   };
 
   // Task Funktionen
@@ -331,20 +441,306 @@ const CoacheePortal = () => {
     setTimeout(savePortalData, 100);
   };
 
-  const toggleTask = (taskId, isSupabaseTask) => {
+  // NEU: Task togglen mit Supabase-Update
+  const toggleTask = async (taskId, isSupabaseTask) => {
     if (isSupabaseTask) {
-      // Supabase-Task - nur Warnung anzeigen
-      alert('Dashboard-Tasks können nur im Dashboard bearbeitet werden.');
+      // Supabase Task togglen
+      const task = supabaseTasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: !task.completed })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error updating Supabase task:', error);
+        alert('Fehler beim Aktualisieren der Aufgabe');
+        return;
+      }
+
+      // Lokalen State aktualisieren
+      setSupabaseTasks(prev => 
+        prev.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t)
+      );
+    } else {
+      // localStorage Task togglen
+      const updatedTasks = tasks.map(task => 
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      );
+      setTasks(updatedTasks);
+      
+      // Auch in globalem localStorage aktualisieren
+      const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const updatedAllTasks = allTasks.map(t => 
+        t.id === taskId ? { ...t, completed: !t.completed } : t
+      );
+      localStorage.setItem('tasks', JSON.stringify(updatedAllTasks));
+      
+      setTimeout(savePortalData, 100);
+    }
+  };
+
+  // File-Upload für Tasks
+  const handleTaskFileUpload = (event) => {
+    const files = Array.from(event.target.files);
+    
+    files.forEach(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`Datei ${file.name} ist zu groß (max. 10MB)`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const newAttachment = {
+          id: Date.now() + Math.random(),
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          content: e.target.result,
+          uploadedAt: new Date().toISOString()
+        };
+        
+        setTaskForm(prev => ({
+          ...prev,
+          attachments: [...prev.attachments, newAttachment]
+        }));
+      };
+      
+      reader.readAsDataURL(file);
+    });
+    
+    event.target.value = '';
+  };
+
+  const removeTaskAttachment = (attachmentId) => {
+    setTaskForm(prev => ({
+      ...prev,
+      attachments: prev.attachments.filter(a => a.id !== attachmentId)
+    }));
+  };
+
+  // Subtask Management
+  const addSubtask = () => {
+    if (!newSubtask.trim()) return;
+    
+    const subtask = {
+      id: Date.now(),
+      text: newSubtask,
+      completed: false
+    };
+    
+    setTaskForm(prev => ({
+      ...prev,
+      subtasks: [...prev.subtasks, subtask]
+    }));
+    setNewSubtask('');
+  };
+
+  const toggleSubtask = (subtaskId) => {
+    setTaskForm(prev => ({
+      ...prev,
+      subtasks: prev.subtasks.map(st => 
+        st.id === subtaskId ? { ...st, completed: !st.completed } : st
+      )
+    }));
+  };
+
+  const removeSubtask = (subtaskId) => {
+    setTaskForm(prev => ({
+      ...prev,
+      subtasks: prev.subtasks.filter(st => st.id !== subtaskId)
+    }));
+  };
+
+  // Tags Management
+  const toggleTag = (tag) => {
+    setTaskForm(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag]
+    }));
+  };
+
+  // Dialog Reset
+  const resetTaskDialog = () => {
+    setShowTaskDialog(false);
+    setEditingTask(null); // NEU
+    setActiveDialogTab('details');
+    setTaskForm({
+      title: '',
+      description: '',
+      priority: 'medium',
+      dueDate: '',
+      tags: [],
+      status: 'open',
+      estimatedTime: '',
+      notes: '',
+      subtasks: [],
+      attachments: [],
+      attachedTools: [],
+      recurring: {
+        enabled: false,
+        frequency: 'weekly',
+        interval: 1
+      },
+      reminder: {
+        enabled: false,
+        daysBefore: 1
+      },
+      linkedGoalId: null
+    });
+    setNewSubtask('');
+  };
+
+  // NEU: Task speichern (Create oder Update)
+  const saveTask = async () => {
+    if (!taskForm.title.trim()) {
+      alert('Bitte geben Sie einen Titel ein.');
       return;
     }
 
-    const updatedTasks = tasks.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    );
-    setTasks(updatedTasks);
-    setTimeout(savePortalData, 100);
+    if (editingTask) {
+      // EDIT MODE - Task aktualisieren
+      if (editingTask.isSupabaseTask) {
+        // Supabase Task updaten
+        const { error } = await supabase
+          .from('tasks')
+          .update({
+            title: taskForm.title,
+            description: taskForm.description,
+            due_date: taskForm.dueDate,
+            priority: taskForm.priority,
+            status: taskForm.status,
+            tags: taskForm.tags,
+            estimated_time: taskForm.estimatedTime,
+            notes: taskForm.notes,
+            subtasks: taskForm.subtasks,
+            attachments: taskForm.attachments,
+            attached_tools: taskForm.attachedTools,
+            recurring: taskForm.recurring,
+            reminder: taskForm.reminder,
+            linked_goal_id: taskForm.linkedGoalId
+          })
+          .eq('id', editingTask.id);
+
+        if (error) {
+          console.error('Error updating Supabase task:', error);
+          alert('Fehler beim Aktualisieren der Aufgabe');
+          return;
+        }
+
+        // Lokalen State aktualisieren
+        setSupabaseTasks(prev =>
+          prev.map(t => t.id === editingTask.id ? {
+            ...t,
+            title: taskForm.title,
+            description: taskForm.description,
+            due_date: taskForm.dueDate,
+            priority: taskForm.priority,
+            status: taskForm.status,
+            tags: taskForm.tags,
+            estimated_time: taskForm.estimatedTime,
+            notes: taskForm.notes,
+            subtasks: taskForm.subtasks,
+            attachments: taskForm.attachments,
+            attached_tools: taskForm.attachedTools,
+            recurring: taskForm.recurring,
+            reminder: taskForm.reminder,
+            linked_goal_id: taskForm.linkedGoalId
+          } : t)
+        );
+
+        alert('✅ Aufgabe erfolgreich aktualisiert');
+      } else {
+        // localStorage Task updaten
+        const updatedTasks = tasks.map(t =>
+          t.id === editingTask.id ? {
+            ...t,
+            ...taskForm,
+            dueDate: taskForm.dueDate
+          } : t
+        );
+        setTasks(updatedTasks);
+
+        // Auch in globalem localStorage aktualisieren
+        const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        const updatedAllTasks = allTasks.map(t =>
+          t.id === editingTask.id ? {
+            ...t,
+            ...taskForm,
+            dueDate: taskForm.dueDate
+          } : t
+        );
+        localStorage.setItem('tasks', JSON.stringify(updatedAllTasks));
+
+        setTimeout(savePortalData, 100);
+        alert('✅ Aufgabe erfolgreich aktualisiert');
+      }
+    } else {
+      // CREATE MODE - Neue Task erstellen
+      const newTask = {
+        id: Date.now(),
+        ...taskForm,
+        completed: false,
+        createdAt: new Date().toISOString(),
+        assignedTo: coachee.id,
+        isSupabaseTask: false
+      };
+
+      const updatedTasks = [...tasks, newTask];
+      setTasks(updatedTasks);
+
+      // Task in localStorage speichern
+      const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      allTasks.push(newTask);
+      localStorage.setItem('tasks', JSON.stringify(allTasks));
+
+      setTimeout(savePortalData, 100);
+      alert('✅ Aufgabe erfolgreich erstellt');
+    }
+
+    resetTaskDialog();
   };
 
+  // Task löschen
+  const deletePortalTask = async (taskId, isSupabaseTask) => {
+    if (!confirm('Aufgabe wirklich löschen?')) {
+      return;
+    }
+
+    if (isSupabaseTask) {
+      // Supabase Task löschen
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error deleting Supabase task:', error);
+        alert('Fehler beim Löschen der Aufgabe');
+        return;
+      }
+
+      // Aus lokalem State entfernen
+      setSupabaseTasks(prev => prev.filter(t => t.id !== taskId));
+      alert('✅ Aufgabe gelöscht');
+    } else {
+      // localStorage Task löschen
+      const updatedTasks = tasks.filter(t => t.id !== taskId);
+      setTasks(updatedTasks);
+
+      // Aus localStorage entfernen
+      const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const filteredTasks = allTasks.filter(t => t.id !== taskId);
+      localStorage.setItem('tasks', JSON.stringify(filteredTasks));
+
+      setTimeout(savePortalData, 100);
+      alert('✅ Aufgabe gelöscht');
+    }
+  };
   // Dokument Funktionen
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -378,32 +774,45 @@ const CoacheePortal = () => {
   };
 
   const shareDocument = (docId) => {
-    const updatedDocs = documents.map(doc => {
-      if (doc.id === docId) {
-        const sharedDoc = { ...doc, isShared: !doc.isShared };
-        
-        if (sharedDoc.isShared) {
-          const newSharedContent = [...sharedContent, {
-            id: `doc_${docId}`,
-            type: 'document',
-            title: doc.name,
-            content: `Dokument: ${doc.name}`,
-            sharedAt: new Date().toISOString(),
-            viewedByCoach: false
-          }];
-          setSharedContent(newSharedContent);
-        } else {
-          const filteredShared = sharedContent.filter(item => item.id !== `doc_${docId}`);
-          setSharedContent(filteredShared);
-        }
-        
-        return sharedDoc;
+    const doc = documents.find(d => d.id === docId);
+    if (!doc) return;
+    
+    const updatedDocs = documents.map(d => {
+      if (d.id === docId) {
+        return { ...d, isShared: !d.isShared };
       }
-      return doc;
+      return d;
     });
     
+    let newSharedContent;
+    if (!doc.isShared) {
+      newSharedContent = [...sharedContent, {
+        id: `doc_${docId}`,
+        type: 'document',
+        title: doc.name,
+        content: `Dokument: ${doc.name}`,
+        sharedAt: new Date().toISOString(),
+        viewedByCoach: false
+      }];
+    } else {
+      newSharedContent = sharedContent.filter(item => item.id !== `doc_${docId}`);
+    }
+    
     setDocuments(updatedDocs);
-    setTimeout(savePortalData, 100);
+    setSharedContent(newSharedContent);
+    
+    const storedCoachees = JSON.parse(localStorage.getItem('coachees') || '[]');
+    const coacheeIndex = storedCoachees.findIndex(c => c.id === coachee.id);
+    
+    if (coacheeIndex !== -1) {
+      storedCoachees[coacheeIndex].portalData = {
+        ...storedCoachees[coacheeIndex].portalData,
+        documents: updatedDocs,
+        sharedContent: newSharedContent,
+        lastUpdated: new Date().toISOString()
+      };
+      localStorage.setItem('coachees', JSON.stringify(storedCoachees));
+    }
   };
 
   // Fortschritt Funktionen
@@ -428,7 +837,6 @@ const CoacheePortal = () => {
       if (goal.id === goalId) {
         const toggledGoal = { ...goal, achieved: !goal.achieved };
         if (toggledGoal.achieved && !goal.achieved) {
-          // Ziel erreicht - als Achievement hinzufügen
           const newAchievement = {
             id: Date.now(),
             title: goal.text,
@@ -463,6 +871,513 @@ const CoacheePortal = () => {
     setTimeout(savePortalData, 100);
   };
 
+// Task-Dialog Render
+  const renderTaskDialog = () => {
+    if (!showTaskDialog) return null;
+
+    const tabs = [
+      { id: 'details', label: 'Details', icon: '📝' },
+      { id: 'extended', label: 'Erweitert', icon: '⚙️' },
+      { id: 'files', label: 'Dateien', icon: '📎' },
+      { id: 'subtasks', label: 'Subtasks', icon: '✓' },
+      { id: 'tools', label: 'Tools', icon: '🛠️' }
+    ];
+
+    const selectStyle = {
+      backgroundColor: 'rgba(30, 41, 59, 0.5)',
+      borderColor: 'rgb(71, 85, 105)',
+      color: 'rgb(226, 232, 240)',
+      padding: '0.5rem 0.75rem',
+      borderRadius: '0.5rem',
+      width: '100%',
+      border: '1px solid rgb(71, 85, 105)'
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <Card className="glass-card w-full max-w-3xl my-8">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-slate-200">
+                {editingTask ? 'Aufgabe bearbeiten' : 'Neue Aufgabe erstellen'}
+              </CardTitle>
+              <button
+                onClick={resetTaskDialog}
+                className="text-slate-400 hover:text-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Tabs */}
+            <div className="flex space-x-2 mt-4 border-b border-slate-600">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveDialogTab(tab.id)}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    activeDialogTab === tab.id
+                      ? 'text-blue-400 border-b-2 border-blue-400'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span className="mr-2">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </CardHeader>
+          
+          <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
+            {/* TAB 1: Details */}
+            {activeDialogTab === 'details' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                    Titel *
+                  </label>
+                  <Input
+                    value={taskForm.title}
+                    onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                    placeholder="Aufgabentitel eingeben..."
+                    className="glass-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                    Beschreibung
+                  </label>
+                  <textarea
+                    value={taskForm.description}
+                    onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                    placeholder="Weitere Details zur Aufgabe..."
+                    className="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-200 mb-2">
+                      Priorität
+                    </label>
+                    <select
+                      value={taskForm.priority}
+                      onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                      style={selectStyle}
+                    >
+                      <option value="low">Niedrig</option>
+                      <option value="medium">Mittel</option>
+                      <option value="high">Hoch</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-200 mb-2">
+                      Fälligkeitsdatum
+                    </label>
+                    <Input
+                      type="date"
+                      value={taskForm.dueDate}
+                      onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
+                      className="glass-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-200 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={taskForm.status}
+                      onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })}
+                      style={selectStyle}
+                    >
+                      <option value="open">Offen</option>
+                      <option value="in_progress">In Arbeit</option>
+                      <option value="blocked">Blockiert</option>
+                      <option value="done">Erledigt</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-200 mb-2">
+                      Geschätzter Aufwand
+                    </label>
+                    <select
+                      value={taskForm.estimatedTime}
+                      onChange={(e) => setTaskForm({ ...taskForm, estimatedTime: e.target.value })}
+                      style={selectStyle}
+                    >
+                      <option value="">Keine Angabe</option>
+                      <option value="15min">15 Minuten</option>
+                      <option value="30min">30 Minuten</option>
+                      <option value="1h">1 Stunde</option>
+                      <option value="2h">2 Stunden</option>
+                      <option value="4h">4 Stunden</option>
+                      <option value="1d">1 Tag</option>
+                      <option value="2d">2-3 Tage</option>
+                      <option value="1w">1 Woche</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: Erweitert */}
+            {activeDialogTab === 'extended' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                    Tags / Kategorien
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {availableTags.map(tag => (
+                      <Badge
+                        key={tag}
+                        variant="outline"
+                        className={`cursor-pointer transition-colors ${
+                          taskForm.tags.includes(tag)
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'text-slate-400 border-slate-600 hover:border-blue-400'
+                        }`}
+                        onClick={() => toggleTag(tag)}
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                    Notizen
+                  </label>
+                  <textarea
+                    value={taskForm.notes}
+                    onChange={(e) => setTaskForm({ ...taskForm, notes: e.target.value })}
+                    placeholder="Private Notizen zu dieser Aufgabe..."
+                    className="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                    Mit Ziel verknüpfen
+                  </label>
+                  <select
+                    value={taskForm.linkedGoalId || ''}
+                    onChange={(e) => setTaskForm({ ...taskForm, linkedGoalId: e.target.value || null })}
+                    style={selectStyle}
+                  >
+                    <option value="">Kein Ziel</option>
+                    {progressData.goals.map(goal => (
+                      <option key={goal.id} value={goal.id}>
+                        {goal.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="border-t border-slate-600 pt-4">
+                  <label className="flex items-center space-x-2 text-slate-200 mb-3">
+                    <input
+                      type="checkbox"
+                      checked={taskForm.recurring.enabled}
+                      onChange={(e) => setTaskForm({
+                        ...taskForm,
+                        recurring: { ...taskForm.recurring, enabled: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium">Wiederkehrende Aufgabe</span>
+                  </label>
+                  
+                  {taskForm.recurring.enabled && (
+                    <div className="grid grid-cols-2 gap-4 ml-6">
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Frequenz</label>
+                        <select
+                          value={taskForm.recurring.frequency}
+                          onChange={(e) => setTaskForm({
+                            ...taskForm,
+                            recurring: { ...taskForm.recurring, frequency: e.target.value }
+                          })}
+                          style={selectStyle}
+                        >
+                          <option value="daily">Täglich</option>
+                          <option value="weekly">Wöchentlich</option>
+                          <option value="monthly">Monatlich</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Alle X Tage/Wochen</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={taskForm.recurring.interval}
+                          onChange={(e) => setTaskForm({
+                            ...taskForm,
+                            recurring: { ...taskForm.recurring, interval: parseInt(e.target.value) || 1 }
+                          })}
+                          className="glass-input text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-slate-600 pt-4">
+                  <label className="flex items-center space-x-2 text-slate-200 mb-3">
+                    <input
+                      type="checkbox"
+                      checked={taskForm.reminder.enabled}
+                      onChange={(e) => setTaskForm({
+                        ...taskForm,
+                        reminder: { ...taskForm.reminder, enabled: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium">Erinnerung aktivieren</span>
+                  </label>
+                  
+                  {taskForm.reminder.enabled && (
+                    <div className="ml-6">
+                      <label className="block text-xs text-slate-400 mb-1">Tage vor Fälligkeit</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={taskForm.reminder.daysBefore}
+                        onChange={(e) => setTaskForm({
+                          ...taskForm,
+                          reminder: { ...taskForm.reminder, daysBefore: parseInt(e.target.value) || 0 }
+                        })}
+                        className="glass-input text-sm w-32"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Dateien */}
+            {activeDialogTab === 'files' && (
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center">
+                  <Upload className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                  <p className="text-slate-400 mb-4">
+                    Dateien zu dieser Aufgabe hinzufügen
+                  </p>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleTaskFileUpload}
+                    className="hidden"
+                    id="task-file-upload"
+                    accept=".pdf,.doc,.docx,.txt,.jpg,.png,.jpeg,.xlsx,.xls"
+                  />
+                  <Button 
+                    variant="outline" 
+                    onClick={() => document.getElementById('task-file-upload').click()}
+                  >
+                    Dateien auswählen
+                  </Button>
+                  <p className="text-slate-500 text-xs mt-2">
+                    PDF, DOC, Bilder, Excel (max. 10MB pro Datei)
+                  </p>
+                </div>
+
+                {taskForm.attachments.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-slate-200">
+                      Angehängte Dateien ({taskForm.attachments.length})
+                    </h4>
+                    {taskForm.attachments.map(attachment => (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="h-8 w-8 rounded bg-blue-600/20 flex items-center justify-center">
+                            <Upload className="h-4 w-4 text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-slate-200 text-sm font-medium">{attachment.name}</p>
+                            <p className="text-slate-400 text-xs">
+                              {(attachment.size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => removeTaskAttachment(attachment.id)}
+                          className="text-red-400 border-red-400"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 4: Subtasks */}
+            {activeDialogTab === 'subtasks' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                    Checkliste / Teilaufgaben
+                  </label>
+                  <div className="flex space-x-2">
+                    <Input
+                      value={newSubtask}
+                      onChange={(e) => setNewSubtask(e.target.value)}
+                      placeholder="Neue Teilaufgabe hinzufügen..."
+                      className="glass-input flex-1"
+                      onKeyPress={(e) => e.key === 'Enter' && addSubtask()}
+                    />
+                    <Button 
+                      onClick={addSubtask}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      disabled={!newSubtask.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {taskForm.subtasks.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-slate-200">
+                      Teilaufgaben ({taskForm.subtasks.filter(st => st.completed).length}/{taskForm.subtasks.length})
+                    </h4>
+                    {taskForm.subtasks.map(subtask => (
+                      <div
+                        key={subtask.id}
+                        className="flex items-center space-x-3 p-3 bg-slate-800/30 rounded-lg"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={subtask.completed}
+                          onChange={() => toggleSubtask(subtask.id)}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <span className={`flex-1 text-sm ${
+                          subtask.completed 
+                            ? 'text-slate-400 line-through' 
+                            : 'text-slate-200'
+                        }`}>
+                          {subtask.text}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => removeSubtask(subtask.id)}
+                          className="text-red-400 border-red-400 h-6 w-6 p-0"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {taskForm.subtasks.length === 0 && (
+                  <div className="text-center py-8">
+                    <CheckSquare className="h-12 w-12 text-slate-400 mx-auto mb-2 opacity-50" />
+                    <p className="text-slate-400 text-sm">
+                      Keine Teilaufgaben hinzugefügt
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 5: Tools */}
+            {activeDialogTab === 'tools' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                    Vom Coach angehängte Tools
+                  </label>
+                  <p className="text-xs text-slate-400 mb-4">
+                    Ihr Coach hat diese Ressourcen für diese Aufgabe bereitgestellt.
+                  </p>
+                </div>
+
+                {(!taskForm.attachedTools || taskForm.attachedTools.length === 0) ? (
+                  <div className="text-center py-8">
+                    <FileText className="h-12 w-12 text-slate-400 mx-auto mb-2 opacity-50" />
+                    <p className="text-slate-400 text-sm">
+                      Keine Tools angehängt
+                    </p>
+                    <p className="text-slate-500 text-xs mt-1">
+                      Ihr Coach kann Tools zu dieser Aufgabe hinzufügen
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-slate-200">
+                      Angehängte Tools ({taskForm.attachedTools.length})
+                    </h4>
+                    <div className="text-center py-6 bg-slate-800/20 rounded-lg border border-slate-700">
+                      <FileText className="h-10 w-10 text-blue-400 mx-auto mb-2" />
+                      <p className="text-slate-300 text-sm">
+                        {taskForm.attachedTools.length} Tool(s) vom Coach bereitgestellt
+                      </p>
+                      <p className="text-slate-400 text-xs mt-1">
+                        Tools werden in der Vollversion hier angezeigt
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+
+          <div className="border-t border-slate-600 p-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-slate-400">
+                {taskForm.attachments.length > 0 && (
+                  <span className="mr-4">📎 {taskForm.attachments.length} Dateien</span>
+                )}
+                {taskForm.subtasks.length > 0 && (
+                  <span className="mr-4">✓ {taskForm.subtasks.length} Subtasks</span>
+                )}
+                {taskForm.tags.length > 0 && (
+                  <span className="mr-4">🏷️ {taskForm.tags.length} Tags</span>
+                )}
+                {taskForm.attachedTools && taskForm.attachedTools.length > 0 && (
+                  <span>🛠️ {taskForm.attachedTools.length} Tools</span>
+                )}
+              </div>
+              <div className="flex space-x-2">
+                <Button
+                  onClick={resetTaskDialog}
+                  variant="outline"
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  onClick={saveTask}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={!taskForm.title.trim()}
+                >
+                  {editingTask ? 'Speichern' : 'Erstellen'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  };
   // Loading State
   if (loading) {
     return (
@@ -632,7 +1547,6 @@ const CoacheePortal = () => {
   // Navigation
   const navigation = [
     { id: 'dashboard', label: 'Übersicht', icon: Shield },
-    { id: 'impulses', label: 'Wochenimpulse', icon: MessageCircle },
     { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'tasks', label: 'Aufgaben', icon: CheckSquare },
     { id: 'documents', label: 'Dokumente', icon: Upload },
@@ -644,80 +1558,435 @@ const CoacheePortal = () => {
   // Render aktive Sektion
   const renderActiveSection = () => {
     switch (activeSection) {
-      case 'impulses':
+      case 'journal':
         return (
           <div className="space-y-6">
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center text-slate-200">
-                  <MessageCircle className="h-5 w-5 mr-2 text-blue-400" />
-                  Wochenimpulse vom Coach
+                  <BookOpen className="h-5 w-5 mr-2 text-blue-400" />
+                  Neuer Journal-Eintrag
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-slate-400 text-sm mb-4">
-                  Hier erhalten Sie wöchentliche Impulse und Inspirationen von Ihrem Coach für Ihre persönliche Entwicklung.
-                </p>
-                
-                {weeklyImpulses.length === 0 ? (
-                  <div className="text-center py-8">
-                    <MessageCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                    <p className="text-slate-400">Noch keine Wochenimpulse erhalten.</p>
-                    <p className="text-slate-500 text-sm mt-2">Ihr Coach wird Ihnen regelmäßig inspirierende Inhalte senden.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {weeklyImpulses.map(impulse => (
-                      <Card key={impulse.id} className="glass-card border border-blue-400/20">
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-slate-200">{impulse.title}</CardTitle>
-                            <Badge variant="outline" className="text-blue-400 border-blue-400">
-                              KW {impulse.week}
+              <CardContent className="space-y-4">
+                <Input
+                  value={journalTitle}
+                  onChange={(e) => setJournalTitle(e.target.value)}
+                  placeholder="Titel für Ihren Eintrag..."
+                  className="glass-input"
+                />
+                <textarea
+                  value={newJournalEntry}
+                  onChange={(e) => setNewJournalEntry(e.target.value)}
+                  placeholder="Schreiben Sie hier Ihre Gedanken und Reflexionen..."
+                  className="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={6}
+                />
+                <Button 
+                  onClick={addJournalEntry}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={!newJournalEntry.trim() || !journalTitle.trim()}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Eintrag speichern
+                </Button>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-slate-200">Meine Journal-Einträge</h3>
+              {journalEntries.length === 0 ? (
+                <Card className="glass-card">
+                  <CardContent className="p-8 text-center">
+                    <BookOpen className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                    <p className="text-slate-400">Noch keine Journal-Einträge vorhanden.</p>
+                    <p className="text-slate-500 text-sm mt-2">Beginnen Sie mit Ihrem ersten Eintrag oben.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                journalEntries.map(entry => (
+                  <Card key={entry.id} className="glass-card">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-slate-200">{entry.title}</CardTitle>
+                        <div className="flex items-center space-x-2">
+                          {entry.isShared && (
+                            <Badge variant="outline" className="text-green-400 border-green-400">
+                              <Share2 className="h-3 w-3 mr-1" />
+                              Geteilt
                             </Badge>
-                          </div>
-                          <p className="text-slate-400 text-sm">
-                            {new Date(impulse.date).toLocaleDateString('de-DE')}
-                          </p>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="prose prose-invert max-w-none">
-                            <p className="text-slate-300 whitespace-pre-wrap">{impulse.content}</p>
-                          </div>
-                          {impulse.reflection && (
-                            <div className="mt-4 p-4 bg-slate-800/30 rounded-lg">
-                              <h5 className="text-sm font-medium text-slate-200 mb-2">Reflexionsfrage:</h5>
-                              <p className="text-slate-400 text-sm italic">{impulse.reflection}</p>
-                            </div>
                           )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="mt-6 pt-6 border-t border-slate-700">
-                  <Button 
-                    variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => shareJournalEntry(entry.id)}
+                            className={entry.isShared ? 'border-green-400 text-green-400' : ''}
+                          >
+                            {entry.isShared ? <Lock className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-slate-400 text-sm">
+                        {new Date(entry.date).toLocaleDateString('de-DE', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-slate-300 whitespace-pre-wrap">{entry.content}</p>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+        );
+
+      case 'tasks':
+        const allTasks = getAllTasks();
+        const openTasks = allTasks.filter(t => !t.completed);
+        const completedTasks = allTasks.filter(t => t.completed);
+        
+        return (
+          <div className="space-y-6">
+            {renderTaskDialog()}
+            
+            <Card className="glass-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center text-slate-200">
+                    <CheckSquare className="h-5 w-5 mr-2 text-blue-400" />
+                    Meine Aufgaben
+                  </CardTitle>
+                  <Button
                     onClick={() => {
-                      const demoImpulse = {
-                        id: Date.now(),
-                        title: "Selbstreflexion: Ihre Stärken erkennen",
-                        content: "Diese Woche möchte ich Sie einladen, einen bewussten Blick auf Ihre Stärken zu werfen. Oft konzentrieren wir uns auf das, was wir verbessern möchten, und übersehen dabei unsere bereits vorhandenen Fähigkeiten.\n\nNehmen Sie sich täglich 10 Minuten Zeit, um zu reflektieren: Was ist Ihnen heute gut gelungen? Welche Ihrer Stärken haben Sie eingesetzt? Schreiben Sie diese Erkenntnisse in Ihr Journal.",
-                        reflection: "Welche drei Stärken haben Sie diese Woche am häufigsten eingesetzt und wie können Sie diese noch bewusster nutzen?",
-                        week: new Date().getWeek(),
-                        date: new Date().toISOString()
-                      };
-                      setWeeklyImpulses([demoImpulse, ...weeklyImpulses]);
-                      setTimeout(savePortalData, 100);
+                      setEditingTask(null);
+                      setShowTaskDialog(true);
                     }}
-                    className="text-xs"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
-                    Demo-Impuls hinzufügen
+                    <Plus className="h-4 w-4 mr-2" />
+                    Neue Aufgabe
                   </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex space-x-2">
+                  <Badge variant="outline" className="text-blue-400 border-blue-400">
+                    {openTasks.length} offen
+                  </Badge>
+                  <Badge variant="outline" className="text-green-400 border-green-400">
+                    {completedTasks.length} erledigt
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
+
+            {allTasks.length === 0 ? (
+              <Card className="glass-card">
+                <CardContent className="p-8 text-center">
+                  <CheckSquare className="h-12 w-12 text-slate-400 mx-auto mb-4 opacity-50" />
+                  <p className="text-slate-400 mb-4">Keine Aufgaben vorhanden</p>
+                  <Button
+                    onClick={() => {
+                      setEditingTask(null);
+                      setShowTaskDialog(true);
+                    }}
+                    variant="outline"
+                  >
+                    Erste Aufgabe erstellen
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {openTasks.length > 0 && (
+                  <Card className="glass-card">
+                    <CardHeader>
+                      <CardTitle className="text-slate-200">Offene Aufgaben</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {openTasks.map(task => {
+                        const isExpanded = expandedTasks.has(task.id);
+                        
+                        return (
+                          <Card 
+                            key={`${task.isSupabaseTask ? 'supabase' : 'local'}_${task.id}`} 
+                            className="glass-card border-slate-700"
+                          >
+                            <CardContent className="p-4">
+                              <div className="space-y-3">
+                                {/* Kompakte Header-Zeile */}
+                                <div className="flex items-start space-x-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={false}
+                                    onChange={() => toggleTask(task.id, task.isSupabaseTask)}
+                                    className="w-4 h-4 mt-1 text-blue-600 rounded focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <button
+                                        onClick={() => toggleExpandTask(task.id)}
+                                        className="flex-1 text-left"
+                                      >
+                                        <span className="font-medium text-slate-200 text-lg hover:text-blue-400 transition-colors">
+                                          {task.title}
+                                        </span>
+                                      </button>
+                                      <div className="flex items-center space-x-1 flex-shrink-0">
+                                        {/* Priority Badge */}
+                                        {task.priority && (
+                                          <Badge 
+                                            variant="outline" 
+                                            className={`text-xs ${
+                                              task.priority === 'high' ? 'text-red-400 border-red-400' :
+                                              task.priority === 'medium' ? 'text-yellow-400 border-yellow-400' :
+                                              'text-green-400 border-green-400'
+                                            }`}
+                                          >
+                                            {task.priority === 'high' ? 'Hoch' : task.priority === 'medium' ? 'Mittel' : 'Niedrig'}
+                                          </Badge>
+                                        )}
+                                        
+                                        {/* Coach Badge */}
+                                        {task.isSupabaseTask && (
+                                          <Badge variant="outline" className="text-blue-400 border-blue-400 text-xs">
+                                            Coach
+                                          </Badge>
+                                        )}
+                                        
+                                        {/* Edit Button */}
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => openEditTask(task)}
+                                          className="text-blue-400 border-blue-400 h-7 w-7 p-0"
+                                        >
+                                          <Edit className="h-3 w-3" />
+                                        </Button>
+                                        
+                                        {/* Delete Button */}
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => deletePortalTask(task.id, task.isSupabaseTask)}
+                                          className="text-red-400 border-red-400 h-7 w-7 p-0"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Meta Info - immer sichtbar */}
+                                    <div className="flex flex-wrap items-center gap-2 mt-2 text-slate-400 text-xs">
+                                      {task.dueDate && (
+                                        <div className="flex items-center space-x-1">
+                                          <Calendar className="h-3 w-3" />
+                                          <span>
+                                            {new Date(task.dueDate).toLocaleDateString('de-DE', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                              year: 'numeric'
+                                            })}
+                                          </span>
+                                        </div>
+                                      )}
+                                      
+                                      {task.estimatedTime && (
+                                        <div className="flex items-center space-x-1">
+                                          <Clock className="h-3 w-3" />
+                                          <span>{task.estimatedTime}</span>
+                                        </div>
+                                      )}
+                                      
+                                      {task.status && task.status !== 'open' && (
+                                        <Badge 
+                                          variant="outline" 
+                                          className={`text-xs ${
+                                            task.status === 'in_progress' ? 'text-blue-400 border-blue-400' :
+                                            task.status === 'blocked' ? 'text-orange-400 border-orange-400' :
+                                            'text-green-400 border-green-400'
+                                          }`}
+                                        >
+                                          {task.status === 'in_progress' ? 'In Arbeit' : 
+                                           task.status === 'blocked' ? 'Blockiert' : 'Erledigt'}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Expandierte Details */}
+                                {isExpanded && (
+                                  <div className="pl-7 space-y-3 border-l-2 border-slate-700 ml-2">
+                                    {/* Description */}
+                                    {task.description && (
+                                      <div>
+                                        <h4 className="text-xs font-semibold text-slate-400 mb-1">Beschreibung:</h4>
+                                        <p className="text-slate-300 text-sm">{task.description}</p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Tags */}
+                                    {task.tags && task.tags.length > 0 && (
+                                      <div>
+                                        <h4 className="text-xs font-semibold text-slate-400 mb-1">Tags:</h4>
+                                        <div className="flex flex-wrap gap-1">
+                                          {task.tags.map(tag => (
+                                            <Badge key={tag} variant="outline" className="text-xs text-slate-400 border-slate-600">
+                                              {tag}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Subtasks */}
+                                    {task.subtasks && task.subtasks.length > 0 && (
+                                      <div>
+                                        <h4 className="text-xs font-semibold text-slate-400 mb-2">
+                                          Teilaufgaben ({task.subtasks.filter(st => st.completed).length}/{task.subtasks.length}):
+                                        </h4>
+                                        <div className="space-y-1">
+                                          {task.subtasks.map(subtask => (
+                                            <div key={subtask.id} className="flex items-center space-x-2 text-xs">
+                                              <CheckSquare className={`h-3 w-3 ${subtask.completed ? 'text-green-400' : 'text-slate-500'}`} />
+                                              <span className={subtask.completed ? 'text-slate-500 line-through' : 'text-slate-300'}>
+                                                {subtask.text}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Attachments */}
+                                    {task.attachments && task.attachments.length > 0 && (
+                                      <div>
+                                        <h4 className="text-xs font-semibold text-slate-400 mb-2">Dateien:</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                          {task.attachments.map(attachment => (
+                                            <button
+                                              key={attachment.id}
+                                              onClick={() => {
+                                                const link = document.createElement('a');
+                                                link.href = attachment.content;
+                                                link.download = attachment.name;
+                                                link.click();
+                                              }}
+                                              className="flex items-center space-x-2 px-2 py-1 bg-slate-800/50 border border-slate-600 rounded text-xs text-slate-300 hover:border-blue-400 transition-colors"
+                                            >
+                                              <Upload className="h-3 w-3" />
+                                              <span>{attachment.name}</span>
+                                              <Download className="h-3 w-3" />
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Notes */}
+                                    {task.notes && (
+                                      <div>
+                                        <h4 className="text-xs font-semibold text-slate-400 mb-1">Notizen:</h4>
+                                        <p className="text-slate-300 text-sm italic">{task.notes}</p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Additional Meta */}
+                                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-700">
+                                      {task.recurring && task.recurring.enabled && (
+                                        <Badge variant="outline" className="text-purple-400 border-purple-400 text-xs">
+                                          🔁 Wiederkehrend ({task.recurring.frequency})
+                                        </Badge>
+                                      )}
+                                      
+                                      {task.reminder && task.reminder.enabled && (
+                                        <Badge variant="outline" className="text-amber-400 border-amber-400 text-xs">
+                                          🔔 Erinnerung ({task.reminder.daysBefore} Tage vorher)
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {completedTasks.length > 0 && (
+                  <Card className="glass-card">
+                    <CardHeader>
+                      <CardTitle className="text-slate-200">Erledigte Aufgaben</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {completedTasks.map(task => (
+                        <Card 
+                          key={`${task.isSupabaseTask ? 'supabase' : 'local'}_${task.id}`} 
+                          className="glass-card border-green-700/30 bg-green-900/10"
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start space-x-3">
+                              <input
+                                type="checkbox"
+                                checked={true}
+                                onChange={() => toggleTask(task.id, task.isSupabaseTask)}
+                                className="w-4 h-4 mt-1 text-green-600 rounded focus:ring-green-500"
+                              />
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-start justify-between">
+                                  <span className="font-medium text-slate-400 line-through">
+                                    {task.title}
+                                  </span>
+                                  <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+                                    <Badge variant="outline" className="text-green-400 border-green-400 text-xs">
+                                      Erledigt
+                                    </Badge>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => deletePortalTask(task.id, task.isSupabaseTask)}
+                                      className="text-red-400 border-red-400 h-6 w-6 p-0"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                
+                                {task.description && (
+                                  <p className="text-slate-500 text-sm line-through">{task.description}</p>
+                                )}
+                                
+                                {task.dueDate && (
+                                  <div className="flex items-center space-x-1 text-slate-500 text-xs">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>
+                                      War fällig: {new Date(task.dueDate).toLocaleDateString('de-DE', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric'
+                                      })}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </div>
         );
 
@@ -745,11 +2014,12 @@ const CoacheePortal = () => {
                       id="file-upload"
                       accept=".pdf,.doc,.docx,.txt,.jpg,.png,.jpeg"
                     />
-                    <label htmlFor="file-upload">
-                      <Button variant="outline" className="cursor-pointer">
-                        Datei auswählen
-                      </Button>
-                    </label>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => document.getElementById('file-upload').click()}
+                    >
+                      Datei auswählen
+                    </Button>
                     <p className="text-slate-500 text-xs mt-2">
                       Unterstützt: PDF, DOC, DOCX, TXT, JPG, PNG (max. 10MB)
                     </p>
@@ -792,6 +2062,48 @@ const CoacheePortal = () => {
                                 Geteilt
                               </Badge>
                             )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = doc.content;
+                                link.download = doc.name;
+                                link.click();
+                              }}
+                              className="text-blue-400 border-blue-400"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                if (confirm('Dokument wirklich löschen?')) {
+                                  const updatedDocs = documents.filter(d => d.id !== doc.id);
+                                  const newSharedContent = sharedContent.filter(item => item.id !== `doc_${doc.id}`);
+                                  
+                                  setDocuments(updatedDocs);
+                                  setSharedContent(newSharedContent);
+                                  
+                                  const storedCoachees = JSON.parse(localStorage.getItem('coachees') || '[]');
+                                  const coacheeIndex = storedCoachees.findIndex(c => c.id === coachee.id);
+                                  
+                                  if (coacheeIndex !== -1) {
+                                    storedCoachees[coacheeIndex].portalData = {
+                                      ...storedCoachees[coacheeIndex].portalData,
+                                      documents: updatedDocs,
+                                      sharedContent: newSharedContent,
+                                      lastUpdated: new Date().toISOString()
+                                    };
+                                    localStorage.setItem('coachees', JSON.stringify(storedCoachees));
+                                  }
+                                }
+                              }}
+                              className="text-red-400 border-red-400"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -942,193 +2254,6 @@ const CoacheePortal = () => {
             </Card>
           </div>
         );
-      case 'journal':
-        return (
-          <div className="space-y-6">
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="flex items-center text-slate-200">
-                  <BookOpen className="h-5 w-5 mr-2 text-blue-400" />
-                  Neuer Journal-Eintrag
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Input
-                  value={journalTitle}
-                  onChange={(e) => setJournalTitle(e.target.value)}
-                  placeholder="Titel für Ihren Eintrag..."
-                  className="glass-input"
-                />
-                <textarea
-                  value={newJournalEntry}
-                  onChange={(e) => setNewJournalEntry(e.target.value)}
-                  placeholder="Schreiben Sie hier Ihre Gedanken und Reflexionen..."
-                  className="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  rows={6}
-                />
-                <Button 
-                  onClick={addJournalEntry}
-                  className="bg-blue-600 hover:bg-blue-700"
-                  disabled={!newJournalEntry.trim() || !journalTitle.trim()}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Eintrag speichern
-                </Button>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-slate-200">Meine Journal-Einträge</h3>
-              {journalEntries.length === 0 ? (
-                <Card className="glass-card">
-                  <CardContent className="p-8 text-center">
-                    <BookOpen className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                    <p className="text-slate-400">Noch keine Journal-Einträge vorhanden.</p>
-                    <p className="text-slate-500 text-sm mt-2">Beginnen Sie mit Ihrem ersten Eintrag oben.</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                journalEntries.map(entry => (
-                  <Card key={entry.id} className="glass-card">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-slate-200">{entry.title}</CardTitle>
-                        <div className="flex items-center space-x-2">
-                          {entry.isShared && (
-                            <Badge variant="outline" className="text-green-400 border-green-400">
-                              <Share2 className="h-3 w-3 mr-1" />
-                              Geteilt
-                            </Badge>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => shareJournalEntry(entry.id)}
-                            className={entry.isShared ? 'border-green-400 text-green-400' : ''}
-                          >
-                            {entry.isShared ? <Lock className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                      <p className="text-slate-400 text-sm">
-                        {new Date(entry.date).toLocaleDateString('de-DE', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-slate-300 whitespace-pre-wrap">{entry.content}</p>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </div>
-        );
-
-      case 'tasks':
-        const allTasks = getAllTasks();
-        const openTasks = allTasks.filter(t => !t.completed);
-        const completedTasks = allTasks.filter(t => t.completed);
-        
-        return (
-          <div className="space-y-6">
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="flex items-center text-slate-200">
-                  <CheckSquare className="h-5 w-5 mr-2 text-blue-400" />
-                  Neue Aufgabe hinzufügen
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex space-x-2">
-                  <Input
-                    value={newTask}
-                    onChange={(e) => setNewTask(e.target.value)}
-                    placeholder="Was möchten Sie erreichen?"
-                    className="glass-input flex-1"
-                    onKeyPress={(e) => e.key === 'Enter' && addTask()}
-                  />
-                  <Button 
-                    onClick={addTask}
-                    className="bg-blue-600 hover:bg-blue-700"
-                    disabled={!newTask.trim()}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-200">Meine Aufgaben</h3>
-                <div className="flex space-x-2">
-                  <Badge variant="outline" className="text-blue-400 border-blue-400">
-                    {openTasks.length} offen
-                  </Badge>
-                  <Badge variant="outline" className="text-green-400 border-green-400">
-                    {completedTasks.length} erledigt
-                  </Badge>
-                </div>
-              </div>
-              
-              {allTasks.length === 0 ? (
-                <Card className="glass-card">
-                  <CardContent className="p-8 text-center">
-                    <CheckSquare className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                    <p className="text-slate-400">Noch keine Aufgaben vorhanden.</p>
-                    <p className="text-slate-500 text-sm mt-2">Fügen Sie Ihre erste Aufgabe oben hinzu.</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-3">
-                  {allTasks.map(task => (
-                    <Card 
-                      key={`${task.isSupabaseTask ? 'supabase' : 'local'}_${task.id}`} 
-                      className={`glass-card ${task.isSupabaseTask ? 'ring-1 ring-blue-500/30' : ''}`}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="checkbox"
-                            checked={task.completed}
-                            onChange={() => toggleTask(task.id, task.isSupabaseTask)}
-                            disabled={task.isSupabaseTask}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50"
-                          />
-                          <span className={`flex-1 ${task.completed ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
-                            {task.title}
-                          </span>
-                          <div className="flex items-center space-x-2">
-                            {task.isSupabaseTask && (
-                              <Badge variant="outline" className="text-blue-400 border-blue-400 text-xs">
-                                Vom Coach
-                              </Badge>
-                            )}
-                            {task.completed && (
-                              <Badge variant="outline" className="text-green-400 border-green-400">
-                                Erledigt
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        {task.isSupabaseTask && (
-                          <p className="text-slate-500 text-xs mt-2">
-                            Diese Aufgabe wurde von Ihrem Coach erstellt und kann nur im Dashboard bearbeitet werden.
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        );
 
       case 'shared':
         return (
@@ -1198,7 +2323,11 @@ const CoacheePortal = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg">
                     <span className="text-slate-300">Passwort ändern</span>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => alert("⚙️ Passwort-Änderung\n\nDiese Funktion wird in der Vollversion verfügbar sein.\nIn der Beta-Phase wird Ihr Passwort vom Coach verwaltet.")}
+                    >
                       Ändern
                     </Button>
                   </div>
@@ -1231,25 +2360,6 @@ const CoacheePortal = () => {
         
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="flex items-center text-slate-200">
-                  <MessageCircle className="h-5 w-5 mr-2 text-blue-400" />
-                  Wochenimpuls
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-slate-400">Neue Impulse von Ihrem Coach warten auf Sie...</p>
-                <Button 
-                  className="mt-4 w-full" 
-                  variant="outline"
-                  onClick={() => setActiveSection('impulses')}
-                >
-                  Impulse ansehen
-                </Button>
-              </CardContent>
-            </Card>
-
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center text-slate-200">
@@ -1362,7 +2472,6 @@ const CoacheePortal = () => {
   // Authenticated Portal Dashboard
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-      {/* Header */}
       <div className="border-b border-slate-700 bg-slate-900/50 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -1384,7 +2493,6 @@ const CoacheePortal = () => {
       </div>
 
       <div className="max-w-6xl mx-auto p-4">
-        {/* Navigation */}
         <Card className="glass-card mb-6">
           <CardContent className="p-4">
             <div className="flex flex-wrap gap-2">
@@ -1407,7 +2515,6 @@ const CoacheePortal = () => {
           </CardContent>
         </Card>
 
-        {/* Main Content */}
         {renderActiveSection()}
       </div>
     </div>
