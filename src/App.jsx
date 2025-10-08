@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/hooks/use-theme';
 import { AppStateProvider } from '@/context/AppStateContext';
 import Layout from '@/components/Layout';
 import CoacheePortal from '@/components/CoacheePortal';
+import { Toaster } from '@/components/ui/toaster';
 
 const Dashboard = lazy(() => import('@/components/Dashboard'));
 const Coachees = lazy(() => import('@/components/Coachees'));
@@ -21,11 +22,15 @@ const TaskManager = lazy(() => import('@/components/TaskManager'));
 const Documents = lazy(() => import('@/components/Documents'));
 const Profile = lazy(() => import('@/components/Profile'));
 const DocumentationPage = lazy(() => import('@/components/DocumentationPage'));
+const ConsentPage = lazy(() => import('@/components/ConsentPage'));
 
 const AppContent = () => {
   return (
     <div className="min-h-screen bg-background">
       <Routes>
+        {/* Consent Route OHNE Layout */}
+        <Route path="/consent/:coacheeId" element={<ConsentPage />} />
+        
         {/* Portal Route OHNE Layout - muss VOR allen anderen sein */}
         <Route path="/portal/:token" element={<CoacheePortal />} />
         
@@ -67,6 +72,7 @@ const App = () => (
   <ThemeProvider defaultTheme="light" storageKey="coaching-theme">
     <AppStateProvider>
       <AppContent />
+      <Toaster />
     </AppStateProvider>
   </ThemeProvider>
 );
