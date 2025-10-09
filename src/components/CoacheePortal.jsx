@@ -2372,11 +2372,11 @@ const CoacheePortal = () => {
                 <p className="text-slate-400">{dashboardCompletedTasks.length} erledigte Aufgaben</p>
                 <div className="flex items-center space-x-2 mt-2">
                   <Badge variant="outline" className="text-slate-400 border-slate-400 text-xs">
-                    {tasks.length} eigene
+                  {dashboardAllTasks.filter(t => t.createdBy === coachee.id || t.createdBy === String(coachee.id)).length} eigene
                   </Badge>
                   <Badge variant="outline" className="text-blue-400 border-blue-400 text-xs">
-                    {supabaseTasks.length} vom Coach
-                  </Badge>
+                  {dashboardAllTasks.filter(t => (t.assignedTo === coachee.id || t.assignedTo === String(coachee.id)) && t.createdBy !== coachee.id && t.createdBy !== String(coachee.id)).length} vom Coach
+                </Badge>
                 </div>
                 <Button 
                   className="mt-4 w-full" 

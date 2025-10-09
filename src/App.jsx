@@ -1,4 +1,4 @@
-import React, { lazy } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/hooks/use-theme';
 import { AppStateProvider } from '@/context/AppStateContext';
@@ -27,43 +27,45 @@ const ConsentPage = lazy(() => import('@/components/ConsentPage'));
 const AppContent = () => {
   return (
     <div className="min-h-screen bg-background">
-      <Routes>
-        {/* Consent Route OHNE Layout */}
-        <Route path="/consent/:coacheeId" element={<ConsentPage />} />
-        
-        {/* Portal Route OHNE Layout - muss VOR allen anderen sein */}
-        <Route path="/portal/:token" element={<CoacheePortal />} />
-        
-        {/* Test Route */}
-        <Route path="/test" element={
-          <div className="min-h-screen bg-slate-900 text-white p-8">
-            <h2 className="text-2xl text-green-400">✓ Debug-Route funktioniert!</h2>
-          </div>
-        } />
-        
-        {/* Alle anderen Routes MIT Layout */}
-        <Route path="" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="coachees" element={<Coachees />} />
-          <Route path="coachees/:id" element={<CoacheeDetail />} />
-          <Route path="sessions" element={<Sessions />} />
-          <Route path="sessions/:sessionId/prepare" element={<SessionPreparation />} />
-          <Route path="invoices" element={<Invoices />} />
-          <Route path="invoices/new" element={<InvoiceCreator />} />
-          <Route path="invoices/edit/:id" element={<InvoiceCreator />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="journal" element={<Journal />} />
-          <Route path="session-notes" element={<SessionNotes />} />
-          <Route path="session-notes/new" element={<SessionNoteEditor isNew />} />
-          <Route path="session-notes/:id" element={<SessionNoteEditor />} />
-          <Route path="toolbox" element={<Toolbox />} />
-          <Route path="tasks" element={<TaskManager />} />
-          <Route path="documentation" element={<DocumentationPage />} />
-          <Route path="*" element={<DocumentationPage />} />
-        </Route>
-      </Routes>
+      <Suspense fallback={<div className="flex h-screen items-center justify-center text-foreground">Lädt...</div>}>
+        <Routes>
+          {/* Consent Route OHNE Layout */}
+          <Route path="/consent/:coacheeId" element={<ConsentPage />} />
+          
+          {/* Portal Route OHNE Layout - muss VOR allen anderen sein */}
+          <Route path="/portal/:token" element={<CoacheePortal />} />
+          
+          {/* Test Route */}
+          <Route path="/test" element={
+            <div className="min-h-screen bg-slate-900 text-white p-8">
+              <h2 className="text-2xl text-green-400">✓ Debug-Route funktioniert!</h2>
+            </div>
+          } />
+          
+          {/* Alle anderen Routes MIT Layout */}
+          <Route path="" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="coachees" element={<Coachees />} />
+            <Route path="coachees/:id" element={<CoacheeDetail />} />
+            <Route path="sessions" element={<Sessions />} />
+            <Route path="sessions/:sessionId/prepare" element={<SessionPreparation />} />
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="invoices/new" element={<InvoiceCreator />} />
+            <Route path="invoices/edit/:id" element={<InvoiceCreator />} />
+            <Route path="documents" element={<Documents />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="journal" element={<Journal />} />
+            <Route path="session-notes" element={<SessionNotes />} />
+            <Route path="session-notes/new" element={<SessionNoteEditor isNew />} />
+            <Route path="session-notes/:id" element={<SessionNoteEditor />} />
+            <Route path="toolbox" element={<Toolbox />} />
+            <Route path="tasks" element={<TaskManager />} />
+            <Route path="documentation" element={<DocumentationPage />} />
+            <Route path="*" element={<DocumentationPage />} />
+          </Route>
+        </Routes>
+      </Suspense>
     </div>
   );
 };
