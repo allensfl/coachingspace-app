@@ -23,6 +23,7 @@ const Documents = lazy(() => import('@/components/Documents'));
 const Profile = lazy(() => import('@/components/Profile'));
 const DocumentationPage = lazy(() => import('@/components/DocumentationPage'));
 const ConsentPage = lazy(() => import('@/components/ConsentPage'));
+const CoachingRoom = lazy(() => import('@/components/CoachingRoom'));
 
 const AppContent = () => {
   return (
@@ -61,6 +62,7 @@ const AppContent = () => {
             <Route path="session-notes/:id" element={<SessionNoteEditor />} />
             <Route path="toolbox" element={<Toolbox />} />
             <Route path="tasks" element={<TaskManager />} />
+            <Route path="coaching-room/:id" element={<CoachingRoom />} />
             <Route path="documentation" element={<DocumentationPage />} />
             <Route path="*" element={<DocumentationPage />} />
           </Route>

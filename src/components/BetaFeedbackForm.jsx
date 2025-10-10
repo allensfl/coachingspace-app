@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { Star, Send, User, Clock, Target, Bug, Lightbulb, ThumbsUp, ThumbsDown, MessageSquare, Mail, Phone, Briefcase, CheckCircle, AlertCircle } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = 'https://jlvmkfpjnqvtnqepmpsf.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsdm1rZnBqbnF2dG5xZXBtcHNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5MzE3MjMsImV4cCI6MjA3MzUwNzcyM30.xdltEUoQC5zK6Im6NIJBBmHy2XzR36A9NoarPTwatbQ'; // Dein echter Key
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '../supabaseConfig.js';
 
 const BetaFeedbackForm = () => {
   const [formData, setFormData] = useState({

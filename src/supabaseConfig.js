@@ -1,6 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://bykxizmcuentxxepalhs.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5a3hpem1jdWVudHh4ZXBhbGhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjU4NzAsImV4cCI6MjA3NDA0MTg3MH0.7l2O63Tsn6HDChroWBOjtI2AslzR7GH2puTJj9eE31s'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Supabase URL und Key müssen in .env.local gesetzt werden und mit VITE_ beginnen')
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey);

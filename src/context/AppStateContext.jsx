@@ -171,7 +171,7 @@ const useAppState = () => {
       localStorage.setItem('tasks', JSON.stringify(filteredTasks));
 
       try {
-        const { supabase } = await import('@/supabaseConfig');
+        const { supabase } = await import('../supabaseConfig.js');
         const { data: userData } = await supabase.auth.getUser();
         if (userData?.user) {
           await supabase.from('pushed_tasks').delete().eq('coachee_id', coachee.id).eq('coach_id', userData.user.id);
