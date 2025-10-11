@@ -73,9 +73,9 @@ ${notes}
 
   // SVG Spinnendiagramm Generator
   const generateWheel = () => {
-    const centerX = 200;
+    const centerX = 225;
     const centerY = 200;
-    const maxRadius = 150;
+    const maxRadius = 140;
     const angleStep = (2 * Math.PI) / categories.length;
 
     // Berechne Punkte für das Polygon (die Werte verbinden)
@@ -88,7 +88,7 @@ ${notes}
     }).join(' ');
 
     return (
-      <svg width="400" height="450" viewBox="0 0 400 450" className="mx-auto">
+      <svg width="450" height="450" viewBox="0 0 450 450" className="mx-auto">
         {/* Konzentrische Kreise für die Skala */}
         {[2, 4, 6, 8, 10].map((level) => (
           <g key={level}>
@@ -147,7 +147,7 @@ ${notes}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="white"
-                fontSize="12"
+                fontSize="10"
                 fontWeight="500"
               >
                 {cat.name}

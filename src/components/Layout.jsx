@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAppStateContext } from '@/context/AppStateContext';
 import Footer from './Footer';
 import FloatingFeedbackButton from './FloatingFeedbackButton';
+import { GlobalCommand } from './GlobalCommand';
 
 // Akzentfarbe je Navitem (bei Aktivität)
 const navItems = [
@@ -139,6 +140,9 @@ const Layout = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const location = useLocation();
+    const { state, actions } = useAppStateContext();
+    const { isCommandOpen, coachees, sessions, invoices, documents } = state;
+    const { setCommandOpen } = actions;
 
     return (
         <div className="flex h-screen bg-background text-foreground">
@@ -191,6 +195,14 @@ const Layout = () => {
                 <Footer />
                 <FloatingFeedbackButton />
             </div>
+            <GlobalCommand
+                open={isCommandOpen}
+                setOpen={setCommandOpen}
+                coachees={coachees}
+                sessions={sessions}
+                invoices={invoices}
+                documents={documents}
+            />
         </div>
     );
 };
